@@ -1,0 +1,71 @@
+# Flutter
+#
+# Specific to Flutter projects.
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.dart_tool/
+build/
+
+# Exceptions to above rules.
+!/marketsnap/ios/Pods/
+!/marketsnap/ios/Pods/Manifest.lock
+!/marketsnap/ios/Pods/Pods.xcodeproj/
+!/marketsnap/ios/Pods/Target\ Support\ Files/
+
+# Rider
+.idea/
+
+# Windows
+#
+# Windows thumbnail cache files
+Thumbs.db
+# Windows Live file lock
+ehthumbs.db
+
+# macOS
+#
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must be unique for all targets, so let's ignore the macOS folder.
+**/macos/Assets.xcassets/AppIcon.appiconset/app_icon_*.png
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP shares
+.AppleDB
+.AppleDesktop
+.Network Trash Folder
+Temporary Items
+.apdisk
+
+# VS Code
+.vscode/
+
+# Firebase
+#
+# Ignore Firebase service account keys and config files
+google-services.json
+GoogleService-Info.plist
+
+# Ignore other sensitive files
+*.env
+secrets.yaml
+
+# Cursor
+.cursorrules
+.cursor/
