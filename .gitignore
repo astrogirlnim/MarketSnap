@@ -69,3 +69,9 @@ secrets.yaml
 # Cursor
 .cursorrules
 .cursor/
+
+# Environment variables
+.env
+
+# Firebase configuration files
+firebase.json
