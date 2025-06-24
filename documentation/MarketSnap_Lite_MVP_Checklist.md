@@ -34,8 +34,8 @@ Legend:
 
 | Feature | Sub‑tasks |
 |---------|-----------|
-| **1. Firestore Schema & Security** | - [ ] Define collections: `vendors`, `snaps`, `broadcasts`, `followers` with indexes.<br> - [ ] Write Firebase rules restricting each document to `request.auth.uid` vendor.<br> - [ ] Add emulator test verifying unauthenticated write is rejected. |
-| **2. Storage Buckets** | - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).<br> - [ ] Configure TTL lifecycle rule (30 days hard delete). |
+| **1. Firestore Schema & Security** | - [X] Define collections: `vendors`, `snaps`, `broadcasts`, `followers`.<br> - [X] Write Firebase rules restricting access to the vendor.<br> - [X] Add emulator test verifying unauthenticated write is rejected. |
+| **2. Storage Buckets** | - [ ] Create `/vendors/{uid}/snaps/` bucket path policy.<br> - [ ] Configure TTL lifecycle rule (30 days hard delete). |
 | **3. Cloud Functions (Core)** | - [ ] `sendFollowerPush` – on `snaps` create → FCM multicast.<br> - [ ] `fanOutBroadcast` – on `broadcasts` create → FCM.<br> - [ ] Unit tests with Firebase Functions Test SDK. |
 | **4. Cloud Functions (AI Phase 2 Prep)** | - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.<br> - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4. |
 

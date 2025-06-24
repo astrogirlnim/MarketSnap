@@ -1,16 +1,38 @@
-# Progress (Status)
+# Progress Log
+
+*Last Updated: June 24, 2025*
+
+---
 
 ## What Works
-- Background sync (WorkManager) is complete and production-ready on both Android and iOS.
-  - Android: Fully functional, in-app verification available.
-  - iOS: Fully functional, but requires manual log verification due to platform limitations.
-- All test UI and debug buttons have been removed from the frontend.
 
-## What's Left
-- Continue with next checklist items (static asset pipeline, etc.)
+-   **Phase 1 - Foundation:**
+    -   Flutter project created and all core dependencies are installed.
+    -   Firebase SDKs are configured for both Android and iOS.
+    -   Local data stores (Hive) and background job framework (WorkManager) are in place.
 
-## Known Issues
-- iOS: Background task execution cannot be tracked in-app due to platform restrictions; must check logs for confirmation.
+-   **Phase 2 - Data Layer (In Progress):**
+    -   **Firestore Schema & Security:** The database schema (`vendors`, `snaps`, `broadcasts`, `followers`) is defined. Security rules and indexes have been implemented and tested with the local emulator. Unauthenticated writes are successfully blocked.
+    -   **Storage Security:** Cloud Storage security rules are in place, restricting uploads to authenticated users and enforcing a 1MB file size limit.
+    -   **Cloud Functions Setup:** The Cloud Functions project has been initialized with TypeScript and ESLint. The default code has been cleaned, and the project compiles successfully.
+    -   **Local Emulator Environment:** The full Firebase Emulator Suite (Auth, Firestore, Functions, Storage) is configured and runs correctly, providing a complete local backend for development and testing.
+
+## What's Left to Build
+
+-   **Phase 2 - Data Layer:**
+    -   Implement the 30-day TTL lifecycle rule for Cloud Storage objects.
+    -   Develop the core Cloud Functions (`sendFollowerPush`, `fanOutBroadcast`).
+
+-   **Phase 3 - Interface Layer:**
+    -   All UI screens and user flows, including Auth, Profile, Media Capture, and Feeds.
+
+-   **Phase 4 - Implementation Layer:**
+    -   All business logic connecting the UI to the backend, including the offline media queue and AI helper features.
+
+## Known Issues & Blockers
+
+-   **Node.js Version:** The `functions` project was initialized for Node.js v22 but the host environment is v20. This has been corrected in `package.json`, but serves as a reminder to ensure environment consistency.
+-   **iOS Background Sync:** As noted in the `README.md`, testing background sync on iOS requires manual verification via console logs due to platform limitations.
 
 ## Completed
 - **Phase 1: Foundation**
@@ -37,6 +59,4 @@
 ## Known Issues / Risks
 - Video compression performance on older devices not yet profiled.
 - Vector DB cost evaluation pending provider selection.
-
-*Last updated June 24 2025.*
 

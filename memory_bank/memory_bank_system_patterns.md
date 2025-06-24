@@ -1,6 +1,65 @@
-# System Patterns
+# System Patterns & Architecture
 
-*Updated: June 24, 2025*
+*Last Updated: June 24, 2025*
+
+---
+
+## Core Architecture: Offline-First, Vendor-Centric
+
+The application is built on an offline-first architecture using Flutter for the cross-platform mobile client and Firebase for the backend. The core principle is to ensure vendors can capture and queue media even with poor or no network connectivity.
+
+```mermaid
+graph TD
+    subgraph "Flutter App (Client)"
+        A[UI/Logic] --> B{Offline Media Queue};
+    end
+
+    subgraph "Local Emulators (Development)"
+        G[Auth Emulator]
+        H[Firestore Emulator]
+        I[Storage Emulator]
+        J[Functions Emulator]
+    end
+
+    subgraph "Firebase Backend (Cloud)"
+        C[Firebase Auth]
+        D[Cloud Firestore]
+        E[Cloud Storage]
+        F[Cloud Functions]
+    end
+
+    B -- "WorkManager Sync" --> E;
+    E -- "On Success" --> D;
+    A -- "Direct Auth/DB/Storage Calls" --> C;
+    A -- " " --> D;
+    A -- " " --> E;
+    D -- "Trigger" --> F;
+
+    C <-.-> G;
+    D <-.-> H;
+    E <-.-> I;
+    F <-.-> J;
+
+    D -- "Protected by" --> K((firestore.rules));
+    E -- "Protected by" --> L((storage.rules));
+```
+
+## Key Components & Patterns
+
+1.  **Flutter Client:**
+    -   **State Management:** Riverpod 2 / BLoC Cubit (To be finalized).
+    -   **Local Persistence:** `hive` is used for the `pendingMediaQueue` and `userSettings` boxes, providing a fast and reliable local database.
+    -   **Background Sync:** `workmanager` is used to create a robust background task that uploads queued media when network connectivity is restored. This is a critical component for the offline-first guarantee.
+
+2.  **Firebase Backend:**
+    -   **Authentication:** Firebase Auth is used for user management (Phone/Email OTP). The `request.auth.uid` is the cornerstone of our security rules.
+    -   **Database:** Cloud Firestore stores all application metadata (`vendors`, `snaps`, `broadcasts`, `followers`). Access is tightly controlled by `firestore.rules`.
+    -   **File Storage:** Cloud Storage is used to store user-generated media (photos/videos). `storage.rules` ensure that only authenticated users can upload to their designated, size-limited paths.
+    -   **Serverless Logic:** Cloud Functions (written in TypeScript) are used for backend logic that should not run on the client, such as sending push notifications upon new snap creation.
+
+3.  **Local Development Environment:**
+    -   **Firebase Emulator Suite:** We use the full emulator suite for local development. This allows for rapid, offline testing of all backend components, including security rules, database triggers, and functions.
+    -   **Configuration:** The emulators are configured in `firebase.json`, with rules defined in `firestore.rules` and `storage.rules`.
 
 ## Asset Management
 - **Static Assets**: All static assets are managed in the `assets/` directory at the project root.
