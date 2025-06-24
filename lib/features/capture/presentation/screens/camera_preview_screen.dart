@@ -3,6 +3,48 @@ import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import '../../application/camera_service.dart';
 
+/// Custom painter for drawing viewfinder grid overlay
+class ViewfinderGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Draw rule of thirds grid
+    final double thirdWidth = size.width / 3;
+    final double thirdHeight = size.height / 3;
+
+    // Vertical lines
+    canvas.drawLine(
+      Offset(thirdWidth, 0),
+      Offset(thirdWidth, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(thirdWidth * 2, 0),
+      Offset(thirdWidth * 2, size.height),
+      paint,
+    );
+
+    // Horizontal lines
+    canvas.drawLine(
+      Offset(0, thirdHeight),
+      Offset(size.width, thirdHeight),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(0, thirdHeight * 2),
+      Offset(size.width, thirdHeight * 2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 /// Camera preview screen with photo capture functionality
 /// Provides a full-screen camera interface with controls for taking photos
 class CameraPreviewScreen extends StatefulWidget {
@@ -253,6 +295,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Build camera preview widget
   Widget _buildCameraPreview() {
+    // Handle simulator mode with mock camera preview
+    if (_cameraService.isSimulatorMode) {
+      return _buildSimulatorPreview();
+    }
+
+    // Handle real camera
     if (_cameraService.controller == null || !_cameraService.controller!.value.isInitialized) {
       return Container(
         color: Colors.black,
@@ -266,6 +314,121 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     }
 
     return CameraPreview(_cameraService.controller!);
+  }
+
+  /// Build simulator camera preview
+  Widget _buildSimulatorPreview() {
+    return Container(
+      color: Colors.black,
+      child: Stack(
+        children: [
+          // Mock camera viewfinder with gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF6366F1), // Indigo
+                  Color(0xFF8B5CF6), // Purple
+                  Color(0xFFEC4899), // Pink
+                ],
+              ),
+            ),
+          ),
+          
+          // Camera viewfinder overlay
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Camera icon
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.2),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Simulator mode text
+                const Text(
+                  'MarketSnap',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                const Text(
+                  'Simulator Camera',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Instructions
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.black.withValues(alpha: 0.3),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Text(
+                    'Tap the shutter to capture a test photo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Viewfinder grid (optional)
+          if (_showViewfinderGrid()) _buildViewfinderGrid(),
+        ],
+      ),
+    );
+  }
+
+  /// Check if viewfinder grid should be shown
+  bool _showViewfinderGrid() {
+    return true; // Always show grid in simulator for better visual feedback
+  }
+
+  /// Build viewfinder grid overlay
+  Widget _buildViewfinderGrid() {
+    return CustomPaint(
+      size: Size.infinite,
+      painter: ViewfinderGridPainter(),
+    );
   }
 
   /// Build camera controls overlay
@@ -431,7 +594,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               ),
               
               // Camera info
-              if (_cameraService.controller != null && _cameraService.controller!.value.isInitialized)
+              if (_cameraService.isInitialized)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                      decoration: BoxDecoration(
@@ -439,7 +602,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                      color: Colors.black.withValues(alpha: 0.5),
                    ),
                   child: Text(
-                    _cameraService.isFrontCamera ? 'Front Camera' : 'Back Camera',
+                    _cameraService.isSimulatorMode 
+                        ? 'Simulator Mode'
+                        : _cameraService.isFrontCamera ? 'Front Camera' : 'Back Camera',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
