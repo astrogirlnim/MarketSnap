@@ -166,7 +166,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Capture a photo using the camera service
   Future<void> _capturePhoto() async {
     if (_isTakingPhoto || _isRecordingVideo) {
-      debugPrint('[CameraPreviewScreen] Photo capture blocked - operation in progress');
+      debugPrint(
+        '[CameraPreviewScreen] Photo capture blocked - operation in progress',
+      );
       return;
     }
 
@@ -239,7 +241,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Start video recording with 5-second countdown
   Future<void> _startVideoRecording() async {
     if (_isTakingPhoto || _isRecordingVideo) {
-      debugPrint('[CameraPreviewScreen] Video recording blocked - operation in progress');
+      debugPrint(
+        '[CameraPreviewScreen] Video recording blocked - operation in progress',
+      );
       return;
     }
 
@@ -261,8 +265,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         // Listen to countdown updates
         _countdownSubscription = _cameraService.countdownStream?.listen(
           (remainingTime) {
-            debugPrint('[CameraPreviewScreen] Countdown update: $remainingTime seconds remaining');
-            
+            debugPrint(
+              '[CameraPreviewScreen] Countdown update: $remainingTime seconds remaining',
+            );
+
             if (mounted) {
               setState(() {
                 _recordingCountdown = remainingTime;
@@ -271,7 +277,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
             // Auto-stop when countdown reaches 0 (handled by service, but we update UI)
             if (remainingTime <= 0) {
-              debugPrint('[CameraPreviewScreen] Countdown finished, video should be stopping');
+              debugPrint(
+                '[CameraPreviewScreen] Countdown finished, video should be stopping',
+              );
               _handleVideoRecordingComplete();
             }
           },
@@ -284,9 +292,13 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           },
         );
 
-        debugPrint('[CameraPreviewScreen] Video recording started successfully');
+        debugPrint(
+          '[CameraPreviewScreen] Video recording started successfully',
+        );
       } else {
-        throw Exception(_cameraService.lastError ?? 'Failed to start video recording');
+        throw Exception(
+          _cameraService.lastError ?? 'Failed to start video recording',
+        );
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Video recording start failed: $e');
@@ -330,7 +342,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       final videoPath = await _cameraService.stopVideoRecording();
 
       if (videoPath != null) {
-        debugPrint('[CameraPreviewScreen] Video recorded successfully: $videoPath');
+        debugPrint(
+          '[CameraPreviewScreen] Video recorded successfully: $videoPath',
+        );
 
         // Show success feedback
         if (mounted) {
@@ -340,7 +354,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 children: [
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text('Video recorded successfully! Duration: ${_cameraService.recordingDuration}s'),
+                  Text(
+                    'Video recorded successfully! Duration: ${_cameraService.recordingDuration}s',
+                  ),
                 ],
               ),
               backgroundColor: Colors.green,
@@ -406,7 +422,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
     try {
       await _cameraService.cancelVideoRecording();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -424,7 +440,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         );
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Video recording cancellation failed: $e');
+      debugPrint(
+        '[CameraPreviewScreen] Video recording cancellation failed: $e',
+      );
     }
 
     _handleVideoRecordingComplete();
@@ -614,7 +632,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     ),
                   ),
                   child: Text(
-                    _isRecordingVideo 
+                    _isRecordingVideo
                         ? 'Recording video... $_recordingCountdown seconds left'
                         : 'Tap red button for 5-sec video or photo button',
                     style: const TextStyle(
@@ -671,16 +689,18 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
             children: [
               // Recording countdown display
               if (_isRecordingVideo) _buildRecordingCountdown(),
-              
+
               const SizedBox(height: 16),
-              
+
               // Control buttons row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Flash toggle button
                   _buildControlButton(
-                    onPressed: _cameraService.hasFlash && !_isRecordingVideo ? _toggleFlash : null,
+                    onPressed: _cameraService.hasFlash && !_isRecordingVideo
+                        ? _toggleFlash
+                        : null,
                     icon: _getFlashIcon(),
                     label: 'Flash',
                   ),
@@ -690,7 +710,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
                   // Camera switch button
                   _buildControlButton(
-                    onPressed: (_cameraService.cameras?.length ?? 0) > 1 && !_isTakingPhoto && !_isRecordingVideo
+                    onPressed:
+                        (_cameraService.cameras?.length ?? 0) > 1 &&
+                            !_isTakingPhoto &&
+                            !_isRecordingVideo
                         ? _switchCamera
                         : null,
                     icon: Icons.cameraswitch,
@@ -698,9 +721,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Mode selector (Photo/Video)
               if (!_isRecordingVideo && !_isTakingPhoto) _buildModeSelector(),
             ],
@@ -737,9 +760,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               );
             },
           ),
-          
+
           const SizedBox(width: 12),
-          
+
           // Countdown text
           Text(
             'REC $_recordingCountdown',
@@ -750,9 +773,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               letterSpacing: 1.2,
             ),
           ),
-          
+
           const SizedBox(width: 12),
-          
+
           // Cancel button
           GestureDetector(
             onTap: _cancelVideoRecording,
@@ -762,11 +785,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.2),
               ),
-              child: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
             ),
           ),
         ],
@@ -777,11 +796,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Build main capture button (adapts based on mode)
   Widget _buildMainCaptureButton() {
     return GestureDetector(
-      onTap: _isRecordingVideo 
-          ? _stopVideoRecording 
-          : _isTakingPhoto 
-              ? null 
-              : _startVideoRecording,
+      onTap: _isRecordingVideo
+          ? _stopVideoRecording
+          : _isTakingPhoto
+          ? null
+          : _startVideoRecording,
       child: Container(
         width: 80,
         height: 80,
@@ -789,7 +808,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           shape: BoxShape.circle,
           color: _isRecordingVideo ? Colors.red : Colors.white,
           border: Border.all(
-            color: _isRecordingVideo ? Colors.white : Colors.white, 
+            color: _isRecordingVideo ? Colors.white : Colors.white,
             width: 4,
           ),
         ),
@@ -805,18 +824,14 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 ),
               )
             : _isRecordingVideo
-                ? const Icon(
-                    Icons.stop,
-                    color: Colors.white,
-                    size: 32,
-                  )
-                : Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.red,
-                    ),
-                  ),
+            ? const Icon(Icons.stop, color: Colors.white, size: 32)
+            : Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red,
+                ),
+              ),
       ),
     );
   }
@@ -862,9 +877,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               ),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Video mode button (currently selected)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
