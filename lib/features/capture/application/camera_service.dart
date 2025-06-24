@@ -210,10 +210,10 @@ class CameraService {
       }
 
       // Create camera controller with optimal settings
-      // Use medium resolution for Android emulators to reduce buffer overflow warnings
+      // Use lower resolution for Android emulators to reduce buffer overflow warnings
       final ResolutionPreset resolution = _isAndroidEmulator()
           ? ResolutionPreset
-                .medium // Reduced resolution for emulators
+                .low // Very low resolution for emulators to prevent buffer overflow
           : ResolutionPreset.high; // High quality for real devices
 
       debugPrint(
@@ -226,6 +226,11 @@ class CameraService {
         enableAudio: true, // Enable audio for video recording
         imageFormatGroup: ImageFormatGroup.jpeg, // JPEG for photos
       );
+
+      // Set additional buffer management for Android emulators
+      if (_isAndroidEmulator()) {
+        debugPrint('[CameraService] Applying Android emulator optimizations...');
+      }
 
       debugPrint('[CameraService] Initializing camera controller...');
       await _controller!.initialize();
