@@ -310,11 +310,18 @@ check_android_emulator_status() {
     
     log "DEBUG" "Boot properties - completed: '$boot_completed', dev_complete: '$dev_bootcomplete', bootanim: '$init_svc_bootanim'"
     
-    if [[ "$boot_completed" == "1" && "$dev_bootcomplete" == "1" && "$init_svc_bootanim" == "stopped" ]]; then
-        log "DEBUG" "Android emulator fully booted"
-        return 0  # Fully booted
+    # Primary check: Both boot_completed and dev_bootcomplete must be "1"
+    if [[ "$boot_completed" == "1" && "$dev_bootcomplete" == "1" ]]; then
+        # Secondary check: If bootanim is available, it should not be "running"
+        if [[ -n "$init_svc_bootanim" && "$init_svc_bootanim" == "running" ]]; then
+            log "DEBUG" "Android emulator boot animation still running"
+            return 1  # Still booting
+        else
+            log "DEBUG" "Android emulator fully booted (bootanim: '$init_svc_bootanim')"
+            return 0  # Fully booted
+        fi
     else
-        log "DEBUG" "Android emulator still booting"
+        log "DEBUG" "Android emulator still booting (boot_completed: '$boot_completed', dev_complete: '$dev_bootcomplete')"
         return 1  # Still booting
     fi
 }
