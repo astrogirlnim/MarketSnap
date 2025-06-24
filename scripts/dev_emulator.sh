@@ -285,16 +285,36 @@ launch_ios_simulator() {
     fi
 }
 
+# Function to get currently running Android emulator device ID
+get_android_device_id() {
+    # Get the first available Android emulator device ID
+    local device_id=$("$ANDROID_SDK_PATH/platform-tools/adb" devices 2>/dev/null | grep "emulator-" | head -1 | awk '{print $1}' || echo "")
+    echo "$device_id"
+}
+
 # Function to check Android emulator status
 check_android_emulator_status() {
-    # Check if emulator is fully booted by checking multiple properties
-    local boot_completed=$("$ANDROID_SDK_PATH/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || echo "")
-    local dev_bootcomplete=$("$ANDROID_SDK_PATH/platform-tools/adb" shell getprop dev.bootcomplete 2>/dev/null | tr -d '\r' || echo "")
-    local init_svc_bootanim=$("$ANDROID_SDK_PATH/platform-tools/adb" shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r' || echo "")
+    local device_id=$(get_android_device_id)
+    
+    if [[ -z "$device_id" ]]; then
+        log "DEBUG" "No Android device found in ADB devices list"
+        return 1
+    fi
+    
+    log "DEBUG" "Checking Android device status: $device_id"
+    
+    # Check if emulator is fully booted by checking multiple properties with specific device
+    local boot_completed=$("$ANDROID_SDK_PATH/platform-tools/adb" -s "$device_id" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || echo "")
+    local dev_bootcomplete=$("$ANDROID_SDK_PATH/platform-tools/adb" -s "$device_id" shell getprop dev.bootcomplete 2>/dev/null | tr -d '\r' || echo "")
+    local init_svc_bootanim=$("$ANDROID_SDK_PATH/platform-tools/adb" -s "$device_id" shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r' || echo "")
+    
+    log "DEBUG" "Boot properties - completed: '$boot_completed', dev_complete: '$dev_bootcomplete', bootanim: '$init_svc_bootanim'"
     
     if [[ "$boot_completed" == "1" && "$dev_bootcomplete" == "1" && "$init_svc_bootanim" == "stopped" ]]; then
+        log "DEBUG" "Android emulator fully booted"
         return 0  # Fully booted
     else
+        log "DEBUG" "Android emulator still booting"
         return 1  # Still booting
     fi
 }
@@ -314,20 +334,26 @@ launch_android_emulator() {
     
     log "DEBUG" "Android Emulator launched with PID: $ANDROID_EMU_PID"
     
-    # Wait for Android Emulator to be ready (reduced timeout)
-    local max_wait=30  # Reduced to 30 seconds for faster iteration
+    # Wait for Android Emulator to be ready (optimized for fast boot)
+    local max_wait=10  # Reduced to 10 seconds for fast emulator boot
     local wait_count=0
     
     while [ $wait_count -lt $max_wait ]; do
-        # Check if ADB can connect first
-        if "$ANDROID_SDK_PATH/platform-tools/adb" devices | grep -q "emulator-$ANDROID_PORT"; then
-            log "DEBUG" "ADB connection established, checking boot status..."
+        # Check if ADB can connect to any Android emulator
+        local device_id=$(get_android_device_id)
+        if [[ -n "$device_id" ]]; then
+            log "DEBUG" "ADB connection established to device: $device_id"
+            
+            # Wait a moment for emulator to settle
+            sleep 2
             
             # Check if fully booted
             if check_android_emulator_status; then
-                log "SUCCESS" "✅ Android Emulator is fully booted and ready"
+                log "SUCCESS" "✅ Android Emulator is fully booted and ready (Device: $device_id)"
                 return 0
             fi
+        else
+            log "DEBUG" "No Android device found in ADB devices list yet..."
         fi
         
         # Show progress every 10 seconds
@@ -462,6 +488,14 @@ run_flutter_android() {
         # Try to find Android emulator (multiple possible patterns)
         android_device_id=$(echo "$flutter_devices_output" | grep -E "(emulator-[0-9]+|android)" | head -1 | awk '{print $NF}' | tr -d '()' || true)
         
+        # Also try to get the device ID from ADB if Flutter detection fails
+        if [[ -z "$android_device_id" ]]; then
+            local adb_device_id=$(get_android_device_id)
+            if [[ -n "$adb_device_id" ]] && echo "$flutter_devices_output" | grep -q "$adb_device_id"; then
+                android_device_id="$adb_device_id"
+            fi
+        fi
+        
         if [[ -n "$android_device_id" ]] && echo "$flutter_devices_output" | grep -q "$android_device_id"; then
             log "SUCCESS" "✅ Flutter recognizes Android Emulator: $android_device_id"
             device_detected=true
@@ -470,15 +504,21 @@ run_flutter_android() {
         
         if [[ $wait_count -eq 0 ]] || [[ $((wait_count % 5)) -eq 0 ]]; then
             log "DEBUG" "Waiting for Android device to be available... ($wait_count/$max_wait)"
+            log "DEBUG" "ADB device ID: $(get_android_device_id)"
         fi
         sleep 2
         ((wait_count++))
     done
     
-    # Fallback to default emulator ID if detection failed
+    # Fallback to ADB device ID if Flutter detection failed
     if [[ -z "$android_device_id" ]]; then
-        android_device_id="emulator-$ANDROID_PORT"
-        log "WARNING" "⚠️  Using fallback Android device ID: $android_device_id"
+        android_device_id=$(get_android_device_id)
+        if [[ -n "$android_device_id" ]]; then
+            log "WARNING" "⚠️  Using ADB device ID as fallback: $android_device_id"
+        else
+            android_device_id="emulator-$ANDROID_PORT"
+            log "WARNING" "⚠️  Using default fallback Android device ID: $android_device_id"
+        fi
     fi
     
     if ! $device_detected; then
@@ -589,49 +629,68 @@ cleanup() {
     pkill -f "flutter run" 2>/dev/null || true
     sleep 1
     
-    # Shutdown iOS Simulator properly
-    local booted_ios_id=$(get_booted_ios_simulator_id)
-    if [[ -n "$booted_ios_id" ]]; then
-        log "DEBUG" "Shutting down iOS Simulator (ID: $booted_ios_id)"
-        xcrun simctl shutdown "$booted_ios_id" 2>/dev/null || true
-        sleep 2
+    # Only shutdown simulators/emulators if CLEANUP_ON_EXIT is true (CTRL-C pressed)
+    if [[ "$CLEANUP_ON_EXIT" == "true" ]]; then
+        log "INFO" "🛑 CTRL-C detected - shutting down simulators and emulators..."
+        
+        # Shutdown iOS Simulator properly
+        local booted_ios_id=$(get_booted_ios_simulator_id)
+        if [[ -n "$booted_ios_id" ]]; then
+            log "DEBUG" "Shutting down iOS Simulator (ID: $booted_ios_id)"
+            xcrun simctl shutdown "$booted_ios_id" 2>/dev/null || true
+            sleep 2
+        fi
+        
+        # Kill iOS Simulator app process
+        if [[ -n "$IOS_SIM_PID" ]]; then
+            log "DEBUG" "Terminating iOS Simulator app (PID: $IOS_SIM_PID)"
+            kill -TERM "$IOS_SIM_PID" 2>/dev/null || true
+            sleep 1
+            kill -KILL "$IOS_SIM_PID" 2>/dev/null || true
+        fi
+        
+        # Additional iOS Simulator cleanup
+        pkill -f "iOS Simulator" 2>/dev/null || true
+        pkill -f "Simulator" 2>/dev/null || true
+        
+        # Kill Android emulator processes
+        if [[ -n "$ANDROID_EMU_PID" ]]; then
+            log "DEBUG" "Terminating Android Emulator (PID: $ANDROID_EMU_PID)"
+            kill -TERM "$ANDROID_EMU_PID" 2>/dev/null || true
+            sleep 3
+            kill -KILL "$ANDROID_EMU_PID" 2>/dev/null || true
+        fi
+        
+        # Additional Android emulator cleanup
+        pkill -f "qemu-system" 2>/dev/null || true
+        pkill -f "emulator" 2>/dev/null || true
+        
+        log "SUCCESS" "✅ All simulators and emulators shut down"
+    else
+        log "INFO" "ℹ️  Keeping simulators running (use CTRL-C to shut them down)"
     fi
-    
-    # Kill iOS Simulator app process
-    if [[ -n "$IOS_SIM_PID" ]]; then
-        log "DEBUG" "Terminating iOS Simulator app (PID: $IOS_SIM_PID)"
-        kill -TERM "$IOS_SIM_PID" 2>/dev/null || true
-        sleep 1
-        kill -KILL "$IOS_SIM_PID" 2>/dev/null || true
-    fi
-    
-    # Additional iOS Simulator cleanup
-    pkill -f "iOS Simulator" 2>/dev/null || true
-    pkill -f "Simulator" 2>/dev/null || true
-    
-    # Kill Android emulator processes
-    if [[ -n "$ANDROID_EMU_PID" ]]; then
-        log "DEBUG" "Terminating Android Emulator (PID: $ANDROID_EMU_PID)"
-        kill -TERM "$ANDROID_EMU_PID" 2>/dev/null || true
-        sleep 3
-        kill -KILL "$ANDROID_EMU_PID" 2>/dev/null || true
-    fi
-    
-    # Additional Android emulator cleanup
-    pkill -f "qemu-system" 2>/dev/null || true
-    pkill -f "emulator" 2>/dev/null || true
     
     # Clean Flutter build cache
     cd "$PROJECT_DIR"
     log "DEBUG" "Cleaning Flutter build cache..."
     flutter clean > /dev/null 2>&1 || true
     
-    log "SUCCESS" "✅ Cleanup completed - all simulators and processes terminated"
+    log "SUCCESS" "✅ Cleanup completed - Flutter processes terminated"
     exit 0
 }
 
-# Signal handlers
-trap cleanup SIGINT SIGTERM EXIT
+# Global flag to track if we should cleanup on exit
+CLEANUP_ON_EXIT=false
+
+# Signal handlers - only cleanup on SIGINT (CTRL-C) and SIGTERM
+cleanup_signal_handler() {
+    log "INFO" "📢 Received termination signal - starting cleanup..."
+    CLEANUP_ON_EXIT=true
+    cleanup
+}
+
+# Trap only interrupt signals, not normal exit
+trap cleanup_signal_handler SIGINT SIGTERM
 
 # Main execution function
 main() {
@@ -679,7 +738,11 @@ main() {
             ios_detected=true
         fi
         
-        if echo "$flutter_devices" | grep -q "emulator-$ANDROID_PORT"; then
+        # Check for Android device using dynamic detection
+        local android_device_id=$(get_android_device_id)
+        if [[ -n "$android_device_id" ]] && echo "$flutter_devices" | grep -q "$android_device_id"; then
+            android_detected=true
+        elif echo "$flutter_devices" | grep -q "emulator-"; then
             android_detected=true
         fi
         
@@ -720,12 +783,13 @@ main() {
     # Step 11: Display connection info
     log "SUCCESS" "🎉 Both emulators launched and Flutter apps deployed!"
     log "INFO" "📱 iOS Simulator: Check Simulator app"
-    log "INFO" "🤖 Android Emulator: Running on port $ANDROID_PORT"
+    log "INFO" "🤖 Android Emulator: $(get_android_device_id || echo "Running")"
     log "INFO" "📝 iOS logs: scripts/flutter_ios.log"
     log "INFO" "📝 Android logs: scripts/flutter_android.log"
     log "INFO" "🔄 Hot reload: Press 'r' in either terminal"
     log "INFO" "🔄 Hot restart: Press 'R' in either terminal"
-    log "INFO" "🛑 To stop: Press CTRL+C"
+    log "INFO" "🛑 To stop Flutter apps: Press CTRL+C"
+    log "INFO" "📱 Note: Simulators will remain running until you press CTRL-C"
     
     # Step 12: Monitor processes continuously
     monitor_flutter_processes
