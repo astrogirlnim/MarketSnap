@@ -13,16 +13,16 @@ This directory contains development automation scripts for the MarketSnap Flutte
 
 ### `dev_emulator.sh` - Dual Platform Development Environment
 
-Launches both iOS and Android emulators simultaneously and runs the Flutter app on both platforms for parallel development and testing.
+**Enhanced Development Script v2.0** - Launches both iOS and Android emulators simultaneously and runs the Flutter app on both platforms for parallel development and testing with optimized performance and robust error handling.
 
 #### 🎯 What it does:
 
 1. **Prerequisites Check**: Verifies Flutter, Android SDK, Xcode, and project setup
 2. **Environment Setup**: Configures Android SDK paths and environment variables
-3. **Emulator Launch**: Starts both iOS Simulator and Android Emulator
-4. **App Deployment**: Runs Flutter app on both platforms with hot reload enabled
-5. **Process Monitoring**: Continuously monitors app status on both platforms
-6. **Cleanup Handling**: Gracefully shuts down all processes on CTRL+C or exit
+3. **Smart Emulator Launch**: Intelligent iOS Simulator detection and fast Android Emulator startup
+4. **Robust App Deployment**: Advanced Flutter app deployment with multi-pattern device detection
+5. **Real-time Process Monitoring**: Enhanced monitoring with status updates and helpful tips
+6. **Comprehensive Cleanup**: Proper simulator shutdown and complete process termination
 
 #### 🔧 Requirements:
 
@@ -81,15 +81,44 @@ The script generates detailed log files for debugging:
 - `scripts/flutter_android.log` - Android Flutter app logs
 - Console output - Real-time status and process monitoring
 
-#### 🎨 Features:
+#### 🎨 Enhanced Features:
 
-- **🌈 Colored Console Output**: Different colors for different log levels
-- **⏰ Timestamped Logs**: All log entries include precise timestamps
+- **🌈 Colored Console Output**: Different colors for different log levels (INFO, SUCCESS, WARNING, ERROR)
+- **⏰ Timestamped Logs**: All log entries include precise timestamps for debugging
 - **🔄 Hot Reload Support**: Both platforms support hot reload during development
-- **📊 Real-time Monitoring**: Continuous status updates every 10 seconds
-- **🧹 Automatic Cleanup**: Graceful shutdown of all processes and cleanup
-- **⚡ Fast Recovery**: Automatic retry and error handling
-- **🔧 Detailed Debugging**: Verbose logging for troubleshooting
+- **📊 Real-time Monitoring**: Enhanced status updates every 10 seconds with device detection
+- **🧹 Comprehensive Cleanup**: Proper iOS Simulator shutdown + complete process termination
+- **⚡ Fast Android Boot**: Optimized startup (~30 seconds) with smart boot detection
+- **🔧 Robust Device Detection**: Multi-pattern Flutter device ID recognition with fallbacks
+- **📝 Live Logging**: Real-time logs with `tee` output to both console and files
+- **🎯 Smart iOS Handling**: Automatic booted simulator detection or intelligent selection
+- **🛡️ Error Resilience**: Enhanced error handling with graceful degradation
+
+#### 🆕 Recent Improvements (v2.0):
+
+**✅ iOS Simulator Cleanup Fixed**
+- Proper `xcrun simctl shutdown` command usage
+- Complete process termination (both simulator app and instance)
+- No more leftover iOS Simulator processes after script exit
+
+**⚡ Android Emulator Speed Boost**
+- Reduced boot timeout from 180 to 30 seconds
+- Removed `-wipe-data` flag for faster startup
+- Multi-layered boot completion detection
+- Enhanced ADB connection verification
+
+**🎯 Robust Flutter Deployment**
+- Multi-pattern device ID detection with fallbacks
+- Better Flutter device recognition timing
+- Real-time log output with `tee` command
+- Process validation after deployment start
+- Enhanced error handling with graceful degradation
+
+**📊 Enhanced Monitoring**
+- Device detection status in monitoring loop
+- Periodic helpful tips during long-running processes
+- Better process health verification
+- Comprehensive cleanup verification
 
 #### 🛠️ Customization:
 
@@ -141,13 +170,17 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
    chmod +x scripts/dev_emulator.sh
    ```
 
-#### 💡 Tips:
+#### 💡 Tips & Best Practices:
 
 - **Hot Reload**: Press `r` in either Flutter console to hot reload
 - **Hot Restart**: Press `R` in either Flutter console to hot restart  
-- **Multiple Terminals**: Open multiple terminals to interact with each platform separately
-- **Log Monitoring**: Use `tail -f scripts/flutter_ios.log` to monitor iOS logs in real-time
-- **Performance**: Close other applications to free up resources for emulators
+- **Live Log Monitoring**: Use `tail -f scripts/flutter_ios.log` and `tail -f scripts/flutter_android.log`
+- **Fast Iteration**: Android emulator optimized for 30-second boot time
+- **Multiple Terminals**: Open additional terminals to interact with each platform separately
+- **Performance Optimization**: Close other applications to free up resources for emulators
+- **Simulator Management**: iOS Simulator automatically detects booted devices or boots preferred one
+- **Cleanup Testing**: Use CTRL+C to test cleanup functionality - all processes should terminate
+- **Device Detection**: Script waits for Flutter to recognize both devices before app deployment
 
 #### 🔐 Security:
 
@@ -156,13 +189,26 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
 - No hardcoded secrets in the script
 - Process isolation for each platform
 
-#### 📊 Performance Monitoring:
+#### 📊 Performance Monitoring & Optimizations:
 
-The script provides real-time monitoring:
-- Process status (Running/Stopped)
-- Process IDs for debugging
-- Memory and CPU usage warnings
-- Automatic restart on process failure
+**Real-time Monitoring:**
+- Process status (Running/Stopped) with PID tracking
+- Flutter device recognition status  
+- Emulator boot progress with time estimates
+- Log file locations and monitoring tips
+
+**Performance Optimizations:**
+- **Fast Android Boot**: 30-second timeout vs previous 180 seconds
+- **Smart iOS Detection**: Reuses already booted simulators
+- **Optimized Emulator Settings**: No data wipe, GPU acceleration, no boot animation
+- **Enhanced Device Detection**: Multi-pattern recognition with intelligent fallbacks
+- **Live Process Validation**: Verifies Flutter processes are actually running after start
+
+**Monitoring Features:**
+- Device detection status every 60 seconds
+- Helpful tips shown periodically during monitoring
+- Real-time log output with `tee` for both console and file logging
+- Comprehensive process health checks with automatic cleanup
 
 ---
 
