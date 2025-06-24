@@ -13,7 +13,7 @@ This directory contains development automation scripts for the MarketSnap Flutte
 
 ### `dev_emulator.sh` - Dual Platform Development Environment
 
-**Enhanced Development Script v2.0** - Launches both iOS and Android emulators simultaneously and runs the Flutter app on both platforms for parallel development and testing with optimized performance and robust error handling.
+**Enhanced Development Script v3.0** - Launches both iOS and Android emulators simultaneously and runs the Flutter app on both platforms for parallel development and testing with advanced Android detection, smart signal handling, and robust error handling.
 
 #### 🎯 What it does:
 
@@ -51,8 +51,8 @@ This directory contains development automation scripts for the MarketSnap Flutte
 # 📊 Show real-time status updates
 # 🔄 Enable hot reload on both platforms
 
-# To stop everything, press CTRL+C
-# The script will automatically cleanup all processes
+# To stop Flutter apps and simulators, press CTRL+C
+# Note: Simulators remain running until you press CTRL+C
 ```
 
 #### 📋 Process Flow:
@@ -88,24 +88,26 @@ The script generates detailed log files for debugging:
 - **🔄 Hot Reload Support**: Both platforms support hot reload during development
 - **📊 Real-time Monitoring**: Enhanced status updates every 10 seconds with device detection
 - **🧹 Comprehensive Cleanup**: Proper iOS Simulator shutdown + complete process termination
-- **⚡ Fast Android Boot**: Optimized startup (~30 seconds) with smart boot detection
+- **⚡ Fast Android Boot**: Optimized startup (~10 seconds) with intelligent boot detection
 - **🔧 Robust Device Detection**: Multi-pattern Flutter device ID recognition with fallbacks
 - **📝 Live Logging**: Real-time logs with `tee` output to both console and files
 - **🎯 Smart iOS Handling**: Automatic booted simulator detection or intelligent selection
 - **🛡️ Error Resilience**: Enhanced error handling with graceful degradation
 
-#### 🆕 Recent Improvements (v2.0):
+#### 🆕 Latest Improvements (v3.0):
 
 **✅ iOS Simulator Cleanup Fixed**
 - Proper `xcrun simctl shutdown` command usage
 - Complete process termination (both simulator app and instance)
 - No more leftover iOS Simulator processes after script exit
 
-**⚡ Android Emulator Speed Boost**
-- Reduced boot timeout from 180 to 30 seconds
-- Removed `-wipe-data` flag for faster startup
-- Multi-layered boot completion detection
-- Enhanced ADB connection verification
+**🎯 Advanced Android Detection (v3.0)**
+- **Dynamic Device ID Detection**: Automatically detects actual emulator device ID (e.g., emulator-5554)
+- **Targeted ADB Commands**: Uses `adb -s device_id` for specific device targeting
+- **Intelligent Boot Detection**: Improved logic using `sys.boot_completed` and `dev.bootcomplete` properties
+- **Enhanced Debug Logging**: Detailed boot property values for troubleshooting
+- **Fast Boot Timeout**: Optimized 10-second detection for quick emulator startup
+- **Robust Fallback Detection**: Multiple methods to find Android device in Flutter
 
 **🎯 Robust Flutter Deployment**
 - Multi-pattern device ID detection with fallbacks
@@ -114,11 +116,19 @@ The script generates detailed log files for debugging:
 - Process validation after deployment start
 - Enhanced error handling with graceful degradation
 
-**📊 Enhanced Monitoring**
-- Device detection status in monitoring loop
+**🛑 Smart Signal Handling (v3.0)**
+- **No Automatic Shutdown**: Simulators remain running after successful deployment
+- **User-Controlled Cleanup**: Only shuts down simulators when CTRL-C is pressed
+- **Signal-Specific Handling**: Responds only to SIGINT (CTRL-C) and SIGTERM, not normal script exit
+- **Enhanced Process Management**: Flutter apps can be stopped without shutting down simulators
+- **Clear User Communication**: Better messaging about shutdown behavior
+
+**📊 Enhanced Monitoring & Debugging**
+- Device detection status in monitoring loop with actual device IDs
+- Detailed Android boot property logging for troubleshooting
 - Periodic helpful tips during long-running processes
-- Better process health verification
-- Comprehensive cleanup verification
+- Better process health verification with specific device targeting
+- Comprehensive cleanup verification and status reporting
 
 #### 🛠️ Customization:
 
@@ -145,7 +155,19 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
    # Update ANDROID_EMULATOR_ID in script with your AVD name
    ```
 
-2. **iOS Simulator Issues**
+2. **Android Detection Issues**
+   ```bash
+   # Check if ADB can see the emulator
+   $HOME/Library/Android/sdk/platform-tools/adb devices
+   
+   # Check emulator boot properties manually
+   $HOME/Library/Android/sdk/platform-tools/adb shell getprop sys.boot_completed
+   $HOME/Library/Android/sdk/platform-tools/adb shell getprop dev.bootcomplete
+   
+   # The script now shows detailed boot property values in debug logs
+   ```
+
+3. **iOS Simulator Issues**
    ```bash
    # Reset iOS Simulator
    xcrun simctl erase all
@@ -154,7 +176,7 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
    xcrun simctl list devices
    ```
 
-3. **Flutter Environment Issues**
+4. **Flutter Environment Issues**
    ```bash
    # Check Flutter environment
    flutter doctor -v
@@ -164,7 +186,7 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
    flutter pub get
    ```
 
-4. **Permission Issues**
+5. **Permission Issues**
    ```bash
    # Make script executable
    chmod +x scripts/dev_emulator.sh
@@ -175,11 +197,11 @@ ANDROID_SDK_PATH="$HOME/Library/Android/sdk"   # Android SDK path
 - **Hot Reload**: Press `r` in either Flutter console to hot reload
 - **Hot Restart**: Press `R` in either Flutter console to hot restart  
 - **Live Log Monitoring**: Use `tail -f scripts/flutter_ios.log` and `tail -f scripts/flutter_android.log`
-- **Fast Iteration**: Android emulator optimized for 30-second boot time
+- **Fast Iteration**: Android emulator optimized for 10-second boot detection
 - **Multiple Terminals**: Open additional terminals to interact with each platform separately
 - **Performance Optimization**: Close other applications to free up resources for emulators
 - **Simulator Management**: iOS Simulator automatically detects booted devices or boots preferred one
-- **Cleanup Testing**: Use CTRL+C to test cleanup functionality - all processes should terminate
+- **Smart Cleanup**: Use CTRL+C to terminate Flutter apps and shutdown simulators - simulators stay running otherwise
 - **Device Detection**: Script waits for Flutter to recognize both devices before app deployment
 
 #### 🔐 Security:
