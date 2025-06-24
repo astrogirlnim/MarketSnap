@@ -15,6 +15,9 @@ import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
+import 'features/feed/presentation/screens/feed_screen.dart';
+import 'features/app/presentation/screens/main_app_screen.dart';
+import 'shared/presentation/theme/app_theme.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -188,10 +191,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MarketSnap',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
@@ -218,12 +220,12 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is authenticated - redirect to camera preview
+        // User is authenticated - redirect to main app
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint(
-            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera',
+            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to main app',
           );
-          return const CameraPreviewScreen();
+          return const MainAppScreen();
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
@@ -292,7 +294,7 @@ class DevelopmentAuthScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Skip authentication and test camera functionality directly',
+                    'Skip authentication and test app functionality directly',
                     style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
@@ -306,13 +308,13 @@ class DevelopmentAuthScreen extends StatelessWidget {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                             builder: (context) =>
-                                const DevelopmentCameraWrapper(),
+                                const DevelopmentMainWrapper(),
                           ),
                         );
                       },
                       icon: const Icon(Icons.camera_alt, color: Colors.orange),
                       label: const Text(
-                        'Demo Camera',
+                        'Demo App',
                         style: TextStyle(
                           color: Colors.orange,
                           fontWeight: FontWeight.bold,
@@ -337,17 +339,17 @@ class DevelopmentAuthScreen extends StatelessWidget {
   }
 }
 
-/// Development wrapper for camera testing without authentication
-class DevelopmentCameraWrapper extends StatelessWidget {
-  const DevelopmentCameraWrapper({super.key});
+/// Development wrapper for main app testing without authentication
+class DevelopmentMainWrapper extends StatelessWidget {
+  const DevelopmentMainWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Camera preview screen
-          const CameraPreviewScreen(),
+          // Main app screen
+          const MainAppScreen(),
 
           // Development overlay banner
           Positioned(
