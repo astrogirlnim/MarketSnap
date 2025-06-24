@@ -1,4 +1,24 @@
-# System Patterns – "How"
+# System Patterns
+
+*Updated: June 24, 2025*
+
+## Asset Management
+- **Static Assets**: All static assets are managed in the `assets/` directory at the project root.
+- **Images**: General images are stored in `assets/images/`.
+- **LUTs**: Look-Up Table (LUT) filter images are stored in `assets/images/luts/`. This keeps them organized and separate from other UI-related images.
+- **Configuration**: All asset directories must be declared in `pubspec.yaml` under the `flutter.assets` section.
+
+## Background Processing
+- Background tasks are handled by the `workmanager` package.
+- A single `SyncPendingMediaTask` is registered to handle offline media uploads.
+- The task uses an exponential back-off policy for retries.
+- Platform-specific implementations are handled within the `BackgroundSyncService`.
+
+## Local Storage
+- **Hive**: Used for structured local data storage. Boxes are encrypted.
+  - `pendingMediaQueue`: Stores media waiting to be uploaded.
+  - `userSettings`: Caches user preferences.
+- **Secure Storage**: `flutter_secure_storage` is used to store the encryption key for Hive boxes.
 
 ## High‑Level Architecture
 

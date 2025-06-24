@@ -13,16 +13,26 @@
 - iOS: Background task execution cannot be tracked in-app due to platform restrictions; must check logs for confirmation.
 
 ## Completed
+- **Phase 1: Foundation**
+  - [X] 1.1: Flutter Project Bootstrap
+  - [X] 1.2: Local Data Stores (Hive)
+  - [X] 1.3: WorkManager Jobs for Background Sync
+  - [X] 1.4: Static Asset Pipeline
 - Project Brief, Product Context, System & Tech docs drafted.
 - Detailed PRD v1.1 delivered.
 - MVP checklist (list format) saved.
 
 ## In Progress
-- Phase 1 tasks: project scaffold, Firebase setup, Hive queue.
+- None
 
 ## To Do
-- Finish Phase 1 subtasks (WorkManager, assets).
-- Begin Phase 2 schema + security rules once Foundation passes CI.
+- **Phase 2: Data Layer**
+  - [ ] 2.1: Firestore Schema & Security
+  - [ ] 2.2: Storage Buckets
+  - [ ] 2.3: Cloud Functions (Core)
+  - [ ] 2.4: Cloud Functions (AI Phase 2 Prep)
+- **Phase 3: Interface Layer**
+- **Phase 4: Implementation Layer**
 
 ## Known Issues / Risks
 - Video compression performance on older devices not yet profiled.
