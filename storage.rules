@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Match the path for vendor snaps.
+    // Allow writes only if the user is authenticated, the path matches their UID,
+    // and the file size is less than 1MB.
+    match /vendors/{userId}/snaps/{allPaths=**} {
+      allow read;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 1 * 1024 * 1024; // 1 MB
+    }
+  }
+}
