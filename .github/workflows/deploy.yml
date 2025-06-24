@@ -124,18 +124,13 @@ jobs:
 
       - name: Authenticate and Setup Firebase Tools
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/service-account.json
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           # Install Firebase tools
           npm install -g firebase-tools
           dart pub global activate flutterfire_cli
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
-          
-          # Create service account file
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" > ./service-account.json
-          chmod 600 ./service-account.json
-          
-          # Verify authentication and setup project
+          # Authenticate with Firebase using CI token
           firebase projects:list
           firebase use --add ${{ secrets.FIREBASE_PROJECT_ID }} --alias default
           echo "✅ Firebase authentication and setup complete"
