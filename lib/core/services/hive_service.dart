@@ -72,6 +72,41 @@ class HiveService {
     debugPrint('[HiveService] All adapters registered.');
   }
 
+  /// Add a pending media item to the upload queue
+  Future<void> addPendingMedia(PendingMediaItem item) async {
+    debugPrint('[HiveService] Adding pending media item to queue: ${item.id}');
+    await pendingMediaQueueBox.put(item.id, item);
+    debugPrint('[HiveService] Pending media item added successfully');
+  }
+
+  /// Get all pending media items
+  List<PendingMediaItem> getAllPendingMedia() {
+    debugPrint('[HiveService] Retrieving all pending media items');
+    final items = pendingMediaQueueBox.values.toList();
+    debugPrint('[HiveService] Found ${items.length} pending media items');
+    return items;
+  }
+
+  /// Remove a pending media item by ID
+  Future<void> removePendingMedia(String id) async {
+    debugPrint('[HiveService] Removing pending media item: $id');
+    await pendingMediaQueueBox.delete(id);
+    debugPrint('[HiveService] Pending media item removed successfully');
+  }
+
+  /// Get user settings
+  UserSettings? getUserSettings() {
+    debugPrint('[HiveService] Retrieving user settings');
+    return userSettingsBox.get('settings');
+  }
+
+  /// Update user settings
+  Future<void> updateUserSettings(UserSettings settings) async {
+    debugPrint('[HiveService] Updating user settings');
+    await userSettingsBox.put('settings', settings);
+    debugPrint('[HiveService] User settings updated successfully');
+  }
+
   /// Closes all open Hive boxes.
   Future<void> close() async {
     debugPrint('[HiveService] Closing all Hive boxes.');
