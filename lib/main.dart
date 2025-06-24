@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -7,12 +6,7 @@ import 'firebase_options.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -175,12 +169,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
               ElevatedButton(
-                child: const Text("Schedule One-Time Task"),
                 onPressed: _scheduleOneTimeTask,
+                child: const Text("Schedule One-Time Task"),
               ),
               ElevatedButton(
-                child: const Text("Refresh Status"),
                 onPressed: _checkBackgroundExecution,
+                child: const Text("Refresh Status"),
               ),
               const SizedBox(height: 20),
             ],

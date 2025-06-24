@@ -165,6 +165,39 @@ generate_firebase_config() {
             "$PROJECT_DIR/firebase.json.template" > "$PROJECT_DIR/firebase.json"
         log "SUCCESS" "✅ Generated firebase.json using sed fallback"
     fi
+    
+    # Generate firebase_options.dart if it doesn't exist
+    if [[ ! -f "$PROJECT_DIR/lib/firebase_options.dart" ]]; then
+        log "INFO" "🔧 Generating firebase_options.dart for local development..."
+        
+        # Check if dart and flutterfire are available
+        if command -v dart &> /dev/null; then
+            log "DEBUG" "Installing FlutterFire CLI..."
+            dart pub global activate flutterfire_cli --quiet &> /dev/null || true
+            
+            # Add pub cache to PATH
+            export PATH="$PATH:$HOME/.pub-cache/bin"
+            
+            if command -v flutterfire &> /dev/null; then
+                log "DEBUG" "Generating firebase_options.dart with FlutterFire CLI..."
+                cd "$PROJECT_DIR"
+                flutterfire configure --project="$FIREBASE_PROJECT_ID" --platforms=android,ios --out=lib/firebase_options.dart --yes &> /dev/null || log "WARNING" "⚠️  FlutterFire configure failed"
+                
+                if [[ -f "$PROJECT_DIR/lib/firebase_options.dart" ]]; then
+                    log "SUCCESS" "✅ Generated firebase_options.dart with FlutterFire CLI"
+                else
+                    log "WARNING" "⚠️  FlutterFire CLI generation failed, will proceed anyway"
+                fi
+            else
+                log "WARNING" "⚠️  FlutterFire CLI not available, skipping firebase_options.dart generation"
+                log "INFO" "💡 You may need to run: flutterfire configure --project=$FIREBASE_PROJECT_ID --platforms=android,ios --out=lib/firebase_options.dart"
+            fi
+        else
+            log "WARNING" "⚠️  Dart CLI not available, skipping firebase_options.dart generation"
+        fi
+    else
+        log "SUCCESS" "✅ firebase_options.dart already exists"
+    fi
 }
 
 # Function to check emulator availability
