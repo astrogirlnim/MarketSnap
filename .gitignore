@@ -33,6 +33,8 @@ documentation/frontend_snapchat_refs/
 # Firebase debug logs
 functions/firebase-debug.log
 firebase-debug.log
+firestore-debug.log
+**-debug.log
 
 # Firebase functions
 functions/node_modules/
@@ -105,5 +107,6 @@ secrets.yaml
 .env
 
 # Firebase configuration files
-firebase.json
 **/firebase_options.dart
+firebase.json
+.firebaserc
