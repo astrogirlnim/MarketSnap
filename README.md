@@ -64,14 +64,26 @@ APP_BUNDLE_ID=your_bundle_id_here
 
 ### Firebase Configuration
 
-The Firebase configuration is automatically generated using the FlutterFire CLI:
+The Firebase configuration uses a template-based system for security:
 
+#### Template System
+- `firebase.json.template` contains the Firebase configuration template with environment variables
+- `firebase.json` is generated from the template using your `.env` file variables
+- `firebase.json` is gitignored to prevent secrets from being committed
+
+#### Automatic Generation
+The `firebase.json` file is automatically generated:
+- **During CI/CD**: Using GitHub Secrets via `envsubst`
+- **During Local Development**: By `./scripts/dev_emulator.sh` using your `.env` file
+
+#### Manual Generation (if needed)
 ```bash
-# Generate Firebase options file
+# Generate Firebase options file (creates lib/firebase_options.dart)
 flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart
-```
 
-This creates `lib/firebase_options.dart` with platform-specific Firebase configuration that is automatically integrated into the app.
+# Generate firebase.json from template (requires .env file)
+envsubst < firebase.json.template > firebase.json
+```
 
 ### Security Features
 
@@ -303,11 +315,19 @@ flutter build ios --release
    - Error: `Too many positional arguments: 0 allowed, but 1 found`
    - Solution: Ensure `hiveService.init()` is called without parameters (the service handles path internally)
 
-4. **Platform-specific build issues**
+4. **Firebase configuration template errors**
+   - Error: `firebase.json not found` when running Firebase commands
+   - Solution: Generate `firebase.json` from template:
+     ```bash
+     # Ensure .env file exists with required variables
+     envsubst < firebase.json.template > firebase.json
+     ```
+
+5. **Platform-specific build issues**
    - Android: Check NDK installation and licenses
    - iOS: Verify Xcode and simulator setup
 
-4. **iOS Build Failure: 'Flutter/Flutter.h' not found or 'Dart compiler exited unexpectedly'**
+6. **iOS Build Failure: 'Flutter/Flutter.h' not found or 'Dart compiler exited unexpectedly'**
    - This project requires two specific modifications to the default iOS project structure.
    - **Symptom 1:** Build fails with `'Flutter/Flutter.h' file not found`.
    - **Symptom 2:** Build succeeds, but the app crashes on launch with `the Dart compiler exited unexpectedly.`
