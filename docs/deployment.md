@@ -14,28 +14,31 @@ MarketSnap uses a comprehensive CI/CD pipeline built with GitHub Actions to auto
 ### Pipeline Stages
 
 #### 1. **Validation Stage** (`validate`)
-**Purpose:** Code quality assurance and testing
-**Triggers:** All pull requests and pushes to main branch
-**Runtime:** ubuntu-latest
+**Purpose:** Code quality assurance and testing.
+**Triggers:** All pull requests and pushes to main branch.
+**Runtime:** `ubuntu-latest`.
+**Authentication:** Does **not** use real credentials. Generates a dummy `firebase_options.dart` to allow `flutter analyze` to pass quickly and securely.
 
 **Steps:**
 - ✅ Checkout code
 - ✅ Setup Java 17 (Zulu distribution)
 - ✅ Setup Flutter (stable channel)
+- ✅ Create dummy `firebase_options.dart` and `.env` files
 - ✅ Install dependencies (`flutter pub get`)
-- ✅ Create dummy `.env` file for analyzer
 - ✅ Run Flutter analyzer (`flutter analyze`)
 - ✅ Execute unit tests (`flutter test`)
 
 #### 2. **Android Deployment** (`deploy_android`)
-**Purpose:** Build and distribute Android APK
-**Triggers:** Push to main branch only (after validation passes)
-**Runtime:** ubuntu-latest
+**Purpose:** Build and distribute Android APK.
+**Triggers:** Push to main branch only (after validation passes).
+**Runtime:** `ubuntu-latest`.
+**Authentication:** Authenticates to Firebase using a service account (`FIREBASE_SERVICE_ACCOUNT_KEY` secret).
 
 **Steps:**
 - ✅ Checkout code
-- ✅ Setup Java 17 (Zulu distribution)
-- ✅ Setup Flutter (stable channel)
+- ✅ Setup Java 17 & Flutter
+- ✅ **Authenticate to Firebase using service account**
+- ✅ **Generate real `firebase_options.dart`** using `flutterfire configure`
 - ✅ Decode Firebase configuration (`google-services.json`)
 - ✅ Install dependencies (`flutter pub get`)
 - ✅ Create production `.env` file from secrets
