@@ -14,12 +14,12 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   final TextEditingController _emailController = TextEditingController();
   final AuthService _authService = AuthService();
   final FocusNode _emailFocus = FocusNode();
-  
+
   bool _isLoading = false;
   bool _emailSent = false;
   String? _errorMessage;
   String? _successMessage;
-  
+
   @override
   void initState() {
     super.initState();
@@ -28,7 +28,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       _emailFocus.requestFocus();
     });
   }
-  
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -39,13 +39,13 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   /// Sends magic link to the provided email address
   Future<void> _sendMagicLink() async {
     final email = _emailController.text.trim();
-    
+
     // Clear any previous messages
     setState(() {
       _errorMessage = null;
       _successMessage = null;
     });
-    
+
     // Validate email
     if (email.isEmpty) {
       setState(() {
@@ -53,41 +53,41 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       });
       return;
     }
-    
+
     if (!_authService.isValidEmail(email)) {
       setState(() {
         _errorMessage = 'Please enter a valid email address';
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     debugPrint('[EmailAuthScreen] Sending magic link to: $email');
-    
+
     try {
       await _authService.sendEmailSignInLink(email: email);
-      
+
       debugPrint('[EmailAuthScreen] Magic link sent successfully');
-      
+
       setState(() {
         _isLoading = false;
         _emailSent = true;
-        _successMessage = 'Magic link sent! Check your email and click the link to sign in.';
+        _successMessage =
+            'Magic link sent! Check your email and click the link to sign in.';
       });
-      
     } catch (e) {
       debugPrint('[EmailAuthScreen] Failed to send magic link: $e');
-      
+
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
     }
   }
-  
+
   /// Resends the magic link
   Future<void> _resendMagicLink() async {
     setState(() {
@@ -116,7 +116,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 32),
-              
+
               // Header
               Text(
                 _emailSent ? 'Check your email' : 'Enter your email',
@@ -125,20 +125,20 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   color: Colors.deepPurple.shade800,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Text(
-                _emailSent 
+                _emailSent
                     ? 'We sent a magic link to your email. Click the link to sign in instantly.'
                     : 'We\'ll send you a magic link for instant sign-in',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade600),
               ),
-              
+
               const SizedBox(height: 48),
-              
+
               if (!_emailSent) ...[
                 // Email input
                 Column(
@@ -151,9 +151,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         color: Colors.grey.shade800,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     TextField(
                       controller: _emailController,
                       focusNode: _emailFocus,
@@ -177,19 +177,31 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.deepPurple.shade600, width: 2),
+                          borderSide: BorderSide(
+                            color: Colors.deepPurple.shade600,
+                            width: 2,
+                          ),
                         ),
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red, width: 2),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 2,
+                          ),
                         ),
                         focusedErrorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red, width: 2),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 2,
+                          ),
                         ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
                       style: Theme.of(context).textTheme.bodyLarge,
                       onSubmitted: (_) {
@@ -200,9 +212,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Send button
                 SizedBox(
                   height: 56,
@@ -222,7 +234,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(
@@ -258,41 +272,45 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                           color: Colors.green.shade600,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       Text(
                         'Magic link sent!',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade800,
+                            ),
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.green.shade700,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.green.shade700),
                           children: [
                             const TextSpan(text: 'We sent a magic link to '),
                             TextSpan(
                               text: _emailController.text.trim(),
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            const TextSpan(text: '. Click the link to sign in instantly.'),
+                            const TextSpan(
+                              text: '. Click the link to sign in instantly.',
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Resend button
                 TextButton(
                   onPressed: _resendMagicLink,
@@ -306,7 +324,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   ),
                 ),
               ],
-              
+
               // Success message
               if (_successMessage != null) ...[
                 const SizedBox(height: 16),
@@ -328,16 +346,15 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       Expanded(
                         child: Text(
                           _successMessage!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.green.shade700,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.green.shade700),
                         ),
                       ),
                     ],
                   ),
                 ),
               ],
-              
+
               // Error message
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
@@ -359,18 +376,17 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.red.shade700,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.red.shade700),
                         ),
                       ),
                     ],
                   ),
                 ),
               ],
-              
+
               const Spacer(),
-              
+
               // Help text
               Container(
                 padding: const EdgeInsets.all(16),
@@ -387,7 +403,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _emailSent 
+                      _emailSent
                           ? 'The magic link will expire in 1 hour for security. If you don\'t see the email, check your spam folder.'
                           : 'Magic links are secure and expire after 1 hour. We\'ll never spam you or share your email.',
                       textAlign: TextAlign.center,
@@ -405,4 +421,4 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       ),
     );
   }
-} 
+}

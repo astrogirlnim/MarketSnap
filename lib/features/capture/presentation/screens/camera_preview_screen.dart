@@ -57,7 +57,7 @@ class CameraPreviewScreen extends StatefulWidget {
 class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     with WidgetsBindingObserver {
   final CameraService _cameraService = CameraService.instance;
-  
+
   bool _isInitializing = true;
   bool _isTakingPhoto = false;
   String? _errorMessage;
@@ -81,15 +81,18 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint('[CameraPreviewScreen] App lifecycle state changed: $state');
-    
+
     // Handle app lifecycle changes for camera
-    if (_cameraService.controller == null || !_cameraService.controller!.value.isInitialized) {
+    if (_cameraService.controller == null ||
+        !_cameraService.controller!.value.isInitialized) {
       return;
     }
 
     if (state == AppLifecycleState.inactive) {
       // App is becoming inactive (e.g., phone call, notification)
-      debugPrint('[CameraPreviewScreen] App inactive - disposing camera controller');
+      debugPrint(
+        '[CameraPreviewScreen] App inactive - disposing camera controller',
+      );
       _cameraService.disposeController();
     } else if (state == AppLifecycleState.resumed) {
       // App is resuming - reinitialize camera
@@ -101,7 +104,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Initialize camera service and controller
   Future<void> _initializeCamera() async {
     debugPrint('[CameraPreviewScreen] Starting camera initialization...');
-    
+
     setState(() {
       _isInitializing = true;
       _errorMessage = null;
@@ -113,7 +116,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         debugPrint('[CameraPreviewScreen] Initializing camera service...');
         final serviceInitialized = await _cameraService.initialize();
         if (!serviceInitialized) {
-          throw Exception(_cameraService.lastError ?? 'Failed to initialize camera service');
+          throw Exception(
+            _cameraService.lastError ?? 'Failed to initialize camera service',
+          );
         }
       }
 
@@ -121,14 +126,18 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       debugPrint('[CameraPreviewScreen] Initializing camera controller...');
       final controllerInitialized = await _cameraService.initializeCamera();
       if (!controllerInitialized) {
-        throw Exception(_cameraService.lastError ?? 'Failed to initialize camera controller');
+        throw Exception(
+          _cameraService.lastError ?? 'Failed to initialize camera controller',
+        );
       }
 
       // Set initial flash mode
       _currentFlashMode = _cameraService.getCurrentFlashMode();
-      
-      debugPrint('[CameraPreviewScreen] Camera initialization completed successfully');
-      
+
+      debugPrint(
+        '[CameraPreviewScreen] Camera initialization completed successfully',
+      );
+
       if (mounted) {
         setState(() {
           _isInitializing = false;
@@ -137,7 +146,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Camera initialization failed: $e');
-      
+
       if (mounted) {
         setState(() {
           _isInitializing = false;
@@ -155,7 +164,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     }
 
     debugPrint('[CameraPreviewScreen] Starting photo capture...');
-    
+
     setState(() {
       _isTakingPhoto = true;
     });
@@ -163,12 +172,14 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     try {
       // Provide haptic feedback
       await _cameraService.provideCameraFeedback();
-      
+
       // Capture the photo
       final photoPath = await _cameraService.capturePhoto();
-      
+
       if (photoPath != null) {
-        debugPrint('[CameraPreviewScreen] Photo captured successfully: $photoPath');
+        debugPrint(
+          '[CameraPreviewScreen] Photo captured successfully: $photoPath',
+        );
 
         // Show success feedback
         if (mounted) {
@@ -192,7 +203,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Photo capture failed: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -221,7 +232,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Switch between front and back cameras
   Future<void> _switchCamera() async {
     debugPrint('[CameraPreviewScreen] Switching camera...');
-    
+
     try {
       final success = await _cameraService.switchCamera();
       if (success) {
@@ -235,7 +246,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Camera switch failed: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -251,7 +262,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Toggle flash mode
   Future<void> _toggleFlash() async {
     debugPrint('[CameraPreviewScreen] Toggling flash mode...');
-    
+
     // Cycle through flash modes: off -> auto -> on -> off
     FlashMode nextMode;
     switch (_currentFlashMode) {
@@ -301,7 +312,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     }
 
     // Handle real camera
-    if (_cameraService.controller == null || !_cameraService.controller!.value.isInitialized) {
+    if (_cameraService.controller == null ||
+        !_cameraService.controller!.value.isInitialized) {
       return Container(
         color: Colors.black,
         child: const Center(
@@ -336,7 +348,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               ),
             ),
           ),
-          
+
           // Camera viewfinder overlay
           Center(
             child: Column(
@@ -359,9 +371,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     size: 48,
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Simulator mode text
                 const Text(
                   'MarketSnap',
@@ -372,9 +384,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     letterSpacing: 1.5,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 const Text(
                   'Simulator Camera',
                   style: TextStyle(
@@ -383,12 +395,15 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Instructions
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     color: Colors.black.withValues(alpha: 0.3),
@@ -410,7 +425,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               ],
             ),
           ),
-          
+
           // Viewfinder grid (optional)
           if (_showViewfinderGrid()) _buildViewfinderGrid(),
         ],
@@ -425,10 +440,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Build viewfinder grid overlay
   Widget _buildViewfinderGrid() {
-    return CustomPaint(
-      size: Size.infinite,
-      painter: ViewfinderGridPainter(),
-    );
+    return CustomPaint(size: Size.infinite, painter: ViewfinderGridPainter());
   }
 
   /// Build camera controls overlay
@@ -460,7 +472,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 icon: _getFlashIcon(),
                 label: 'Flash',
               ),
-              
+
               // Photo capture button
               GestureDetector(
                 onTap: _isTakingPhoto ? null : _capturePhoto,
@@ -470,10 +482,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 4,
-                    ),
+                    border: Border.all(color: Colors.white, width: 4),
                   ),
                   child: _isTakingPhoto
                       ? const Center(
@@ -482,7 +491,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
                             ),
                           ),
                         )
@@ -495,10 +506,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                         ),
                 ),
               ),
-              
+
               // Camera switch button
               _buildControlButton(
-                onPressed: (_cameraService.cameras?.length ?? 0) > 1 ? _switchCamera : null,
+                onPressed: (_cameraService.cameras?.length ?? 0) > 1
+                    ? _switchCamera
+                    : null,
                 icon: Icons.cameraswitch,
                 label: 'Switch',
               ),
@@ -563,11 +576,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-                       colors: [
-             Colors.black.withValues(alpha: 0.6),
-             Colors.black.withValues(alpha: 0.3),
-             Colors.transparent,
-           ],
+            colors: [
+              Colors.black.withValues(alpha: 0.6),
+              Colors.black.withValues(alpha: 0.3),
+              Colors.transparent,
+            ],
           ),
         ),
         child: SafeArea(
@@ -575,36 +588,37 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Close button
-                             Container(
-                 decoration: BoxDecoration(
-                   shape: BoxShape.circle,
-                   color: Colors.black.withValues(alpha: 0.5),
-                 ),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black.withValues(alpha: 0.5),
+                ),
                 child: IconButton(
                   onPressed: () {
                     debugPrint('[CameraPreviewScreen] Close button pressed');
                     Navigator.of(context).pop();
                   },
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 24),
                 ),
               ),
-              
+
               // Camera info
               if (_cameraService.isInitialized)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                     decoration: BoxDecoration(
-                     borderRadius: BorderRadius.circular(16),
-                     color: Colors.black.withValues(alpha: 0.5),
-                   ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.black.withValues(alpha: 0.5),
+                  ),
                   child: Text(
-                    _cameraService.isSimulatorMode 
+                    _cameraService.isSimulatorMode
                         ? 'Simulator Mode'
-                        : _cameraService.isFrontCamera ? 'Front Camera' : 'Back Camera',
+                        : _cameraService.isFrontCamera
+                        ? 'Front Camera'
+                        : 'Back Camera',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -622,11 +636,13 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   @override
   Widget build(BuildContext context) {
     // Set status bar to light content for dark camera interface
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -646,10 +662,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     SizedBox(height: 16),
                     Text(
                       'Initializing camera...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],
                 ),
@@ -703,9 +716,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
             )
           else
             // Camera preview
-            SizedBox.expand(
-              child: _buildCameraPreview(),
-            ),
+            SizedBox.expand(child: _buildCameraPreview()),
 
           // Camera controls overlay
           if (!_isInitializing && _errorMessage == null) ...[
@@ -716,4 +727,4 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       ),
     );
   }
-} 
+}
