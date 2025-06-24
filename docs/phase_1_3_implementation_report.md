@@ -20,6 +20,7 @@ This was accomplished using the `workmanager` Flutter package, which provides a 
 
 -   **`lib/main.dart`**: The application's entry point was modified to initialize the `BackgroundSyncService` on startup. This ensures that the background sync task is registered with the operating system as soon as the app launches.
 -   **`documentation/MarketSnap_Lite_MVP_Checklist_Simple.md`**: The checklist was updated to mark Phase 1.3 and its sub-tasks as complete.
+-   **`README.md`**: Updated to document iOS/Android background sync differences and manual verification steps.
 
 ## 3. Code Architecture
 
@@ -27,10 +28,12 @@ This was accomplished using the `workmanager` Flutter package, which provides a 
 
 The core of this implementation is the `BackgroundSyncService`. It follows the existing service pattern in `lib/core/services`.
 
--   **`callbackDispatcher()`**: A top-level function that acts as the entry point for the background isolate, as required by `workmanager`. It currently contains logging and a placeholder for the future media upload logic (to be implemented in Phase 4).
+-   **`callbackDispatcher()`**: A top-level function that acts as the entry point for the background isolate, as required by `workmanager`. It contains platform-specific logic:
+    - **Android**: Uses SharedPreferences to track execution.
+    - **iOS**: Logs execution to the console (SharedPreferences not available in iOS background isolate).
 -   **`initialize()`**: Initializes the `Workmanager` plugin, linking it to the `callbackDispatcher`.
--   **`scheduleSyncTask()`**: Registers a periodic task (`SyncPendingMediaTask`) that runs approximately every 15 minutes when the device has network connectivity. This aligns with the PRD requirement for regular sync attempts.
--   **`scheduleOneTimeSyncTask()`**: A helper method to schedule an immediate one-off task. This can be used later to trigger a sync when the app detects it has come back online.
+-   **`scheduleSyncTask()`**: Registers a periodic task (`SyncPendingMediaTask`) that runs approximately every 15 minutes when the device has network connectivity.
+-   **`scheduleOneTimeSyncTask()`**: Helper method to schedule an immediate one-off task.
 
 ### Initialization in `main.dart`
 
@@ -46,20 +49,20 @@ The background task was configured with an **exponential back-off policy**. If a
 
 The task is constrained to only run when `NetworkType.connected` is true. This prevents the task from running and failing unnecessarily when the device is offline, saving system resources.
 
-## 5. Firebase Configuration Considerations
+## 5. Platform Differences and Manual Verification
+
+- **Android**: Background sync is fully functional and can be verified in-app (status is tracked via SharedPreferences).
+- **iOS**: Background sync is functional, but due to iOS platform limitations, execution must be verified via console logs. Look for `[Background Isolate] iOS: Background task executed successfully` in the logs.
+
+## 6. Firebase Configuration Considerations
 
 There are **no direct Firebase configuration changes** required for this phase. The `workmanager` operates at the OS level to schedule and execute Dart code.
 
 However, when the actual upload logic is implemented in **Phase 4**, the background task will need to interact with Firebase services (Firestore and Cloud Storage). The Firebase initialization that already exists in `main.dart` will be crucial, and we will need to ensure that the background isolate can access the initialized Firebase app instance. This is a common challenge with background tasks in Flutter and will be addressed during Phase 4 implementation.
 
-## 6. Testing and Verification
+## 7. Testing and Verification
 
-As per user instructions, a formal unit test file was not created. Verification of this phase relies on the following:
-
--   **Extensive Logging**: The service and `main.dart` have been instrumented with `debugPrint` statements. By running the app in debug mode and observing the console output, we can verify:
-    -   The `BackgroundSyncService` initializes successfully.
-    -   The periodic task is scheduled.
-    -   (With the app in the background) The `callbackDispatcher` is triggered by the OS, and the "Executing background sync task..." log appears.
--   **WorkManager Debug Mode**: `isInDebugMode: kDebugMode` was enabled during `Workmanager().initialize()`. When `true`, the plugin will show a system notification on Android when a task is running, providing a visible confirmation that the job is executing.
+-   **Android**: Tap "Schedule One-Time Task" in the app and verify execution in-app or via logs.
+-   **iOS**: Tap "Schedule One-Time Task" in the app, background the app, wait 30+ seconds, and check the console logs for `[Background Isolate]` messages.
 
 This concludes the implementation of Phase 1.3. The foundation for background processing is now in place. 

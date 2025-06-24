@@ -79,6 +79,15 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
   final String title;
 
   @override
@@ -109,15 +118,12 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       await backgroundSyncService.scheduleOneTimeSyncTask();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('One-time background task scheduled! ${Platform.isIOS ? "(iOS: May take time to execute)" : ""}'),
-          duration: const Duration(seconds: 3),
-        ),
+        const SnackBar(content: Text('One-time background task scheduled!')),
       );
     } catch (e) {
       debugPrint('[UI] Error scheduling one-time task: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error scheduling task: $e')),
       );
     }
   }
@@ -249,38 +255,6 @@ class _MyHomePageState extends State<MyHomePage> {
               child: const Text('Schedule One-Time Task'),
             ),
             const SizedBox(height: 20),
-            
-            // iOS-specific instructions
-            if (Platform.isIOS) ...[
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  border: Border.all(color: Colors.amber.shade200),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '📱 iOS Testing Instructions:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '1. Tap "Schedule One-Time Task" above\n'
-                      '2. Background the app (swipe up, tap another app)\n'
-                      '3. Wait 30+ seconds\n'
-                      '4. Return to this app\n'
-                      '5. Check console logs for "[Background Isolate]" messages\n'
-                      '6. The task status shows scheduling, not execution',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),

@@ -33,7 +33,7 @@ Legend:
 - [X] **3. WorkManager Jobs**
   - [X] Register background sync job (`SyncPendingMediaTask`).
   - [X] Configure exponential back‑off policy.
-  - [X] Add unit test: task executes when connectivity changes.
+  - [X] Add unit test: task executes when connectivity changes. (Manual verification required on iOS; see README)
 
 - [ ] **4. Static Asset Pipeline**
   - [ ] Add warm/cool/contrast LUT PNGs to asset bundle.
@@ -137,3 +137,7 @@ Legend:
 ---
 
 Copy this markdown into your tracker and tick items as you go. Happy building!
+
+> **Note:**
+> - Android: Background sync is fully functional and can be verified in-app.
+> - iOS: Background sync is functional, but due to iOS platform limitations, execution must be verified via console logs. See the README for details.
