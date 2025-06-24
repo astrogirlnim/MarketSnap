@@ -35,10 +35,10 @@ Legend:
   - [X] Configure exponential back‑off policy.
   - [X] Add unit test: task executes when connectivity changes. (Manual verification required on iOS; see README)
 
-- [ ] **4. Static Asset Pipeline**
-  - [ ] Add warm/cool/contrast LUT PNGs to asset bundle.
-  - [ ] Verify build size stays < 50 MB release APK/IPA.
-  - [ ] CI step: fail build if assets exceed limit.
+- [X] **4. Static Asset Pipeline**
+  - [X] Add warm/cool/contrast LUT PNGs to asset bundle.
+  - [X] Verify build size stays < 50 MB release APK/IPA.
+  - [X] CI step: fail build if assets exceed limit.
 
 
 ---
@@ -52,23 +52,23 @@ Legend:
   - [ ] Add emulator test verifying unauthenticated write is rejected.
 
 - [ ] **2. Storage Buckets**
-  - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
-  - [ ] Configure TTL lifecycle rule (30 days hard delete).
+  - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
+  - [ ] Configure TTL lifecycle rule (30 days hard delete).
 
 - [ ] **3. Cloud Functions (Core)**
   - [ ] `sendFollowerPush` – on `snaps` create → FCM multicast.
   - [ ] `fanOutBroadcast` – on `broadcasts` create → FCM.
   - [ ] Unit tests with Firebase Functions Test SDK.
 
-- [ ] **4. Cloud Functions (AI Phase 2 Prep)**
+- [ ] **4. Cloud Functions (AI Phase 2 Prep)**
   - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.
-  - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4.
+  - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4.
 
 
 ---
 
 ## Phase 3 – Interface Layer  
-**Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
+**Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
 - [ ] **1. Auth & Profile Screens**
   - [ ] Phone/email OTP flow using `firebase_auth`.
@@ -81,14 +81,14 @@ Legend:
   - [ ] Review screen → apply LUT filter → "Post" button.
 
 - [ ] **3. Story Reel & Feed**
-  - [ ] Horizontal story carousel per vendor with 24 h TTL badge.
+  - [ ] Horizontal story carousel per vendor with 24 h TTL badge.
   - [ ] Vertical feed showing latest three snaps per followed vendor.
   - [ ] Thumbnail placeholder until media downloads completes.
 
 - [ ] **4. Settings & Help**
   - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.
   - [ ] External link to support email.
-  - [ ] Display free‑storage indicator (≥ 100 MB check).
+  - [ ] Display free‑storage indicator (≥ 100 MB check).
 
 
 ---
@@ -99,7 +99,7 @@ Legend:
 - [ ] **1. Offline Media Queue Logic**
   - [ ] Serialize photo/video + metadata into Hive queue.
   - [ ] WorkManager uploads when network available; writes `snaps` doc + Storage file.
-  - [ ] Delete queue item on 200 response; retry on failure.
+  - [ ] Delete queue item on 200 response; retry on failure.
 
 - [ ] **2. Push Notification Flow**
   - [ ] Request FCM permissions; save token in `followers` sub‑coll.
@@ -107,21 +107,21 @@ Legend:
   - [ ] Fallback in‑app banner if system push disabled.
 
 - [ ] **3. Broadcast Text & Location Tagging**
-  - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.
+  - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.
   - [ ] Implement coarse location rounding (0.1°) before upload.
   - [ ] Filter feed by distance if location data present.
 
 - [ ] **4. Save‑to‑Device**
   - [ ] Persist posted media to OS gallery via `image_gallery_saver`.
-  - [ ] Check free space ≥ 100 MB else show toast error.
+  - [ ] Check free space ≥ 100 MB else show toast error.
   - [ ] Unit test: saved file survives app uninstall.
 
-- [ ] **5. AI Caption Helper (Phase 2)**
-  - [ ] Call `generateCaption` CF; display spinner max 2 s.
+- [ ] **5. AI Caption Helper (Phase 2)**
+  - [ ] Call `generateCaption` CF; display spinner max 2 s.
   - [ ] Allow vendor edit before final post.
   - [ ] Cache caption keyed by media hash.
 
-- [ ] **6. Recipe & FAQ Snippets (Phase 2)**
+- [ ] **6. Recipe & FAQ Snippets (Phase 2)**
   - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.
   - [ ] On snap view, call `getRecipeSnippet` for produce keyword.
   - [ ] Render collapsible FAQ card below story.
@@ -131,8 +131,8 @@ Legend:
 
 ### Implementation Rules
 - **Feature Independence:** each sub‑task is self‑contained, rollback‑safe, and unit‑tested.  
-- **Parallelism:** Phase 1 first; Phases 2 & 3 can overlap; Phase 4 starts after Phase 1 complete.  
-- **Status Markers:** `[ ]` Not Started  /  `[~]` In Progress  /  `[X]` Completed  /  `[!]` Blocked.
+- **Parallelism:** Phase 1 first; Phases 2 & 3 can overlap; Phase 4 starts after Phase 1 complete.  
+- **Status Markers:** `[ ]` Not Started  /   `[~]` In Progress  /   `[X]` Completed  /   `[!]` Blocked.
 
 ---
 
