@@ -77,6 +77,41 @@ const getFollowerTokens = async (vendorId: string): Promise<string[]> => {
 };
 
 /**
+ * Retrieves FCM token for a specific user.
+ * @param {string} userId The ID of the user.
+ * @return {Promise<string|null>} A promise that resolves with the FCM token
+ * or null if not found.
+ */
+const getUserFCMToken = async (userId: string): Promise<string | null> => {
+  logger.log(`[getUserFCMToken] Getting FCM token for user: ${userId}`);
+  try {
+    // Check if user has FCM token stored in vendors collection
+    const vendorDoc = await db.collection("vendors").doc(userId).get();
+    if (vendorDoc.exists) {
+      const vendorData = vendorDoc.data();
+      if (vendorData?.fcmToken) {
+        logger.log(
+          `[getUserFCMToken] Found FCM token for vendor ${userId}: ` +
+            `${vendorData.fcmToken.substring(0, 10)}...`
+        );
+        return vendorData.fcmToken;
+      }
+    }
+
+    // TODO: In a full implementation, you might also check a separate
+    // users collection or followers collection for FCM tokens
+    logger.warn(`[getUserFCMToken] No FCM token found for user: ${userId}`);
+    return null;
+  } catch (error) {
+    logger.error(
+      `[getUserFCMToken] Error retrieving FCM token for user ${userId}:`,
+      error
+    );
+    return null;
+  }
+};
+
+/**
  * Cloud Function to send a push notification when a new snap is created.
  */
 export const sendFollowerPush = onDocumentCreated(
@@ -296,6 +331,117 @@ export const fanOutBroadcast = onDocumentCreated(
     } catch (error) {
       logger.error(
         `[fanOutBroadcast] Unexpected error for broadcast ${broadcastId}:`,
+        error
+      );
+    }
+  }
+);
+
+/**
+ * Cloud Function to send push notification when a new message is created.
+ * Triggers on new documents in the 'messages' collection.
+ */
+export const sendMessageNotification = onDocumentCreated(
+  "messages/{messageId}",
+  async (event) => {
+    const {messageId} = event.params;
+    const message = event.data;
+    if (!message) {
+      logger.error(
+        "[sendMessageNotification] No data associated with the event."
+      );
+      return;
+    }
+    const messageData = message.data();
+
+    logger.log(
+      `[sendMessageNotification] Triggered for new message: ${messageId}`
+    );
+    logger.log("[sendMessageNotification] Message data:", messageData);
+
+    // Validate required fields
+    const {fromUid, toUid, text, conversationId} = messageData;
+    if (!fromUid || !toUid || !text || !conversationId) {
+      logger.error(
+        "[sendMessageNotification] Missing required fields in message data. " +
+        `fromUid: ${fromUid}, toUid: ${toUid}, text: ${text}, ` +
+        `conversationId: ${conversationId}`
+      );
+      return;
+    }
+
+    try {
+      // 1. Get sender details for the notification
+      logger.log(
+        "[sendMessageNotification] Fetching sender details for " +
+        `fromUid: ${fromUid}`
+      );
+      const senderDoc = await db.collection("vendors").doc(fromUid).get();
+      if (!senderDoc.exists) {
+        logger.error(
+          `[sendMessageNotification] Sender document ${fromUid} not found.`
+        );
+        return;
+      }
+      const senderData = senderDoc.data();
+      const senderName = senderData?.stallName ||
+        senderData?.displayName || "Someone";
+      logger.log(`[sendMessageNotification] Sender name: ${senderName}`);
+
+      // 2. Get recipient's FCM token
+      logger.log(
+        "[sendMessageNotification] Getting FCM token for " +
+        `recipient: ${toUid}`
+      );
+      const recipientToken = await getUserFCMToken(toUid);
+      if (!recipientToken) {
+        logger.log(
+          "[sendMessageNotification] No FCM token found for " +
+          `recipient ${toUid}. Notification will not be sent.`
+        );
+        return;
+      }
+
+      // 3. Construct the notification payload
+      // Truncate message if too long for notification
+      const truncatedText = text.length > 100 ?
+        `${text.substring(0, 97)}...` : text;
+      const payload = {
+        notification: {
+          title: `Message from ${senderName}`,
+          body: truncatedText,
+        },
+        data: {
+          messageId: messageId,
+          conversationId: conversationId,
+          fromUid: fromUid,
+          toUid: toUid,
+          // This will help the client app navigate to the correct conversation
+          type: "new_message",
+        },
+      };
+      logger.log(
+        "[sendMessageNotification] Constructed notification payload:",
+        payload
+      );
+
+      // 4. Send notification to recipient
+      logger.log(
+        "[sendMessageNotification] Sending message notification to " +
+        `recipient ${toUid}`
+      );
+      const response = await messaging.send({
+        token: recipientToken,
+        ...payload,
+      });
+
+      logger.log(
+        "[sendMessageNotification] Successfully sent message notification. " +
+        `Message ID: ${response}`
+      );
+    } catch (error) {
+      logger.error(
+        `[sendMessageNotification] Unexpected error for message ${messageId}:`,
         error
       );
     }
