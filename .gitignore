@@ -30,6 +30,17 @@ ios/Runner.app.dSYM/Contents/Resources/DWARF/
 documentation/frontend_snapchat_refs/*
 documentation/frontend_snapchat_refs/
 
+# Firebase debug logs
+functions/firebase-debug.log
+firebase-debug.log
+
+# Firebase functions
+functions/node_modules/
+functions/lib/
+functions/package-lock.json
+functions/package.json
+
+
 # Flutter logs
 flutter_android.log
 flutter_ios.log
@@ -95,3 +106,4 @@ secrets.yaml
 
 # Firebase configuration files
 firebase.json
+**/firebase_options.dart

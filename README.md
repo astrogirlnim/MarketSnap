@@ -127,7 +127,31 @@ The following files contain Firebase configuration and are managed securely:
 - `android/app/google-services.json` (gitignored)
 - `ios/Runner/GoogleService-Info.plist` (gitignored)
 - `firebase.json` (gitignored)
+- `.firebaserc` (gitignored)
 - `.env` (gitignored - you must create this)
+
+### Initial Firebase Setup
+
+If you are setting up the project for the first time after cloning, you will need to initialize Firebase to connect to the backend and run the local emulators.
+
+1.  **Install Firebase CLI**: If you haven't already, install the Firebase CLI globally:
+    ```bash
+    npm install -g firebase-tools
+    ```
+2.  **Login to Firebase**:
+    ```bash
+    firebase login
+    ```
+3.  **Initialize Firebase**: In the project root, run the `init` command.
+    ```bash
+    firebase init
+    ```
+    -   Select an existing project (`marketsnap-app`).
+    -   Choose the following features: **Firestore, Functions, Storage, Emulators**.
+    -   When prompted, do **not** overwrite the existing `firestore.rules`, `firestore.indexes.json`, or `storage.rules` files.
+    -   Select **TypeScript** for Cloud Functions and enable **ESLint**.
+    -   Install `npm` dependencies when prompted.
+    -   Download the emulators when prompted.
 
 ## CI/CD Pipeline
 
@@ -182,6 +206,24 @@ The project includes automated development tools for streamlined cross-platform 
 # 📊 Real-time monitoring and logging
 # 🧹 Comprehensive cleanup on exit
 ```
+
+### Running Local Emulators
+
+For backend development and testing, you can run the Firebase Emulator Suite locally.
+
+1.  **Build Cloud Functions**: The functions are written in TypeScript and must be compiled before the emulators can use them.
+    ```bash
+    cd functions
+    npm install
+    npm run build
+    cd ..
+    ```
+
+2.  **Start Emulators**:
+    ```bash
+    firebase emulators:start
+    ```
+    This will start the emulators for Auth, Firestore, Functions, and Storage. You can view the Emulator UI at `http://localhost:4000`.
 
 **Features:**
 - **Parallel Development**: Test on both platforms simultaneously

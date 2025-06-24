@@ -44,12 +44,12 @@ Legend:
 ---
 
 ## Phase 2 – Data Layer  
-**Criteria:** Schemas, rules & serverless endpoints. *Depends on Phase 1.*
+**Criteria:** Schemas, rules & serverless endpoints. *Depends on Phase 1.*
 
-- [ ] **1. Firestore Schema & Security**
-  - [ ] Define collections: `vendors`, `snaps`, `broadcasts`, `followers` with indexes.
-  - [ ] Write Firebase rules restricting each document to `request.auth.uid` vendor.
-  - [ ] Add emulator test verifying unauthenticated write is rejected.
+- [X] **1. Firestore Schema & Security**
+  - [X] Define collections: `vendors`, `snaps`, `broadcasts`, `followers` with indexes.
+  - [X] Write Firebase rules restricting each document to `request.auth.uid` vendor.
+  - [X] Add emulator test verifying unauthenticated write is rejected.
 
 - [ ] **2. Storage Buckets**
   - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
