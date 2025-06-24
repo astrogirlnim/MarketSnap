@@ -7,6 +7,12 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {logger} from "firebase-functions";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {CallableContext} from "firebase-functions/v1/https";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+// Load environment variables from the root of the project
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -293,5 +299,114 @@ export const fanOutBroadcast = onDocumentCreated(
         error
       );
     }
+  }
+);
+
+// --- AI Helper Functions (Phase 2 Scaffolding) ---
+
+// Configuration for AI Functions
+const AI_FUNCTIONS_ENABLED = process.env.AI_FUNCTIONS_ENABLED === "true";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+/**
+ * A disabled-aware wrapper for HTTPS callable functions.
+ * @param {string} functionName The name of the function for logging.
+ * @param {(data: any, context: functions.https.CallableContext) => any} handler
+ * The function handler to execute when AI functions are enabled.
+ * @return {functions.https.HttpsFunction} A callable HTTPS function.
+ */
+const createAIHelper = (
+  functionName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (data: any, context: CallableContext) => any
+) => {
+  return functions.https.onCall(async (data, context) => {
+    logger.log(`[${functionName}] received request.`);
+
+    if (!AI_FUNCTIONS_ENABLED) {
+      logger.warn(
+        `[${functionName}] AI functions are disabled. ` +
+        "Returning dummy response."
+      );
+      return {
+        status: "disabled",
+        message: "This AI function is currently disabled.",
+      };
+    }
+
+    // Check for OpenAI API key
+    if (!OPENAI_API_KEY) {
+      logger.error(`[${functionName}] OPENAI_API_KEY is not set.`);
+      throw new functions.https.HttpsError(
+        "internal",
+        "The server is missing an API key for an AI service."
+      );
+    }
+    logger.log(
+      `[${functionName}] Found OpenAI Key: `+
+      `sk-...${OPENAI_API_KEY.slice(-4)}`
+    );
+
+    // TODO: Phase 4 - Replace with actual implementation
+    return handler(data, context);
+  });
+};
+
+/**
+ * Generates a caption for an image.
+ * [Phase 2: Scaffolded]
+ */
+export const generateCaption = createAIHelper(
+  "generateCaption",
+  (data, context) => {
+    logger.log(
+      "[generateCaption] TODO: Implement actual caption generation logic."
+    );
+    // Dummy response for now
+    return {
+      caption: "A vibrant photo of fresh market produce.",
+      confidence: 0.95,
+    };
+  }
+);
+
+/**
+ * Gets a recipe snippet based on snap content.
+ * [Phase 2: Scaffolded]
+ */
+export const getRecipeSnippet = createAIHelper(
+  "getRecipeSnippet",
+  (data, context) => {
+    logger.log(
+      "[getRecipeSnippet] TODO: Implement actual recipe snippet logic."
+    );
+    // Dummy response for now
+    return {
+      recipeName: "Simple Summer Salad",
+      snippet: "A refreshing salad perfect for a sunny day...",
+    };
+  }
+);
+
+/**
+ * Performs a vector search for relevant FAQs.
+ * [Phase 2: Scaffolded]
+ */
+export const vectorSearchFAQ = createAIHelper(
+  "vectorSearchFAQ",
+  (data, context) => {
+    logger.log(
+      "[vectorSearchFAQ] TODO: Implement actual vector search logic."
+    );
+    // Dummy response for now
+    return {
+      results: [
+        {
+          question: "How long do your products last?",
+          answer: "Our produce is fresh and should last for about a week.",
+          score: 0.88,
+        },
+      ],
+    };
   }
 );
