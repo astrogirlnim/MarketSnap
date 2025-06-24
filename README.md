@@ -235,9 +235,18 @@ The project includes automated development tools for streamlined cross-platform 
 
 ### Running Local Emulators
 
-For backend development and testing, you can run the Firebase Emulator Suite locally.
+For backend development and testing, you can run the Firebase Emulator Suite locally. This allows you to test your Cloud Functions, Firestore rules, and other Firebase features without touching production data.
 
-1.  **Build Cloud Functions**: The functions are written in TypeScript and must be compiled before the emulators can use them.
+**Setup Steps:**
+
+1.  **Create Environment File**: Before starting, ensure you have a valid `.env` file in the project root. If you don't have one, copy the format from the "Security Implementation" section and fill in your project's details.
+
+2.  **Generate `firebase.json`**: The emulators require a `firebase.json` file. Generate it from the template using your `.env` file. This command substitutes the variables in the template with the values from your environment.
+    ```bash
+    envsubst < firebase.json.template > firebase.json
+    ```
+
+3.  **Build Cloud Functions**: The functions are written in TypeScript and must be compiled to JavaScript before the emulators can run them.
     ```bash
     cd functions
     npm install
@@ -245,18 +254,23 @@ For backend development and testing, you can run the Firebase Emulator Suite loc
     cd ..
     ```
 
-2.  **Start Emulators**:
+4.  **Start Emulators**: Now you can start the emulator suite.
     ```bash
     firebase emulators:start
     ```
-    This will start the emulators for Auth, Firestore, Functions, and Storage. You can view the Emulator UI at `http://localhost:4000`.
+    This will start the emulators for Auth, Firestore, Functions, and Storage. You can view the Emulator UI at `http://127.0.0.1:4000`.
 
-**Features:**
-- **Parallel Development**: Test on both platforms simultaneously
-- **Smart Emulator Detection**: Reuses booted simulators when available
-- **Enhanced Error Handling**: Robust process management and cleanup
-- **Live Logging**: Real-time logs saved to `scripts/flutter_*.log`
-- **Hot Reload**: Press `r` in either console to hot reload
+### Testing Cloud Functions Locally
+
+Once the emulators are running, you can test your Firestore-triggered functions manually:
+
+1.  **Open Emulator UI**: Navigate to `http://127.0.0.1:4000/` in your browser.
+2.  **Go to Firestore**: Click on the "Firestore" tab.
+3.  **Create Data**: Manually create documents to trigger your functions. For example, to test `sendFollowerPush`:
+    *   Create a `vendors` collection with a document for a test vendor (e.g., `test-vendor-id`).
+    *   Create a `snaps` collection.
+    *   Add a new document to `snaps`. Make sure the document data contains a `vendorId` field pointing to your test vendor (e.g., `vendorId: "test-vendor-id"`).
+4.  **Observe Logs**: As soon as you save the new snap document, the `sendFollowerPush` function will be triggered. You will see its log output directly in the terminal where you ran `firebase emulators:start`. This output will show you the function's execution path and any errors.
 
 ### Development Scripts
 
