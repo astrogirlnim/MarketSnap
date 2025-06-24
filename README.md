@@ -60,6 +60,10 @@ IOS_APP_ID=your_ios_app_id_here
 
 # App Bundle/Package Identifiers
 APP_BUNDLE_ID=your_bundle_id_here
+
+# OpenAI API Key for AI Helper Functions
+OPENAI_API_KEY=your_openai_api_key_here
+AI_FUNCTIONS_ENABLED=false # Set to true to enable AI functions
 ```
 
 ### Firebase Configuration
@@ -241,7 +245,7 @@ For backend development and testing, you can run the Firebase Emulator Suite loc
 
 1.  **Create Environment File**: Before starting, ensure you have a valid `.env` file in the project root. If you don't have one, copy the format from the "Security Implementation" section and fill in your project's details.
 
-2.  **Generate `firebase.json`**: The emulators require a `firebase.json` file. Generate it from the template using your `.env` file. This command substitutes the variables in the template with the values from your environment.
+2. **Generate `firebase.json`**: The emulators require a `firebase.json` file. Generate it from the template using your `.env` file. This command substitutes the variables in the template with the values from your environment.
     ```bash
     envsubst < firebase.json.template > firebase.json
     ```
@@ -271,6 +275,23 @@ Once the emulators are running, you can test your Firestore-triggered functions 
     *   Create a `snaps` collection.
     *   Add a new document to `snaps`. Make sure the document data contains a `vendorId` field pointing to your test vendor (e.g., `vendorId: "test-vendor-id"`).
 4.  **Observe Logs**: As soon as you save the new snap document, the `sendFollowerPush` function will be triggered. You will see its log output directly in the terminal where you ran `firebase emulators:start`. This output will show you the function's execution path and any errors.
+
+### Testing AI Helper Functions (Locally)
+
+The project includes scaffolded Cloud Functions for future AI features (`generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ`). You can test them locally using the emulators.
+
+1.  **Enable AI Functions**: In your root `.env` file, set `AI_FUNCTIONS_ENABLED=true`.
+2.  **Add OpenAI Key**: Ensure your `OPENAI_API_KEY` is also set in the `.env` file.
+3.  **Start Emulators**: Run `firebase emulators:start` as described above.
+4.  **Test with cURL**: Open a new terminal and use `curl` to call the function endpoints.
+
+    ```bash
+    # Example for generateCaption
+    curl -X POST -H "Content-Type: application/json" \
+    -d '{"data": {}}' \
+    http://127.0.0.1:5001/marketsnap-app/us-central1/generateCaption
+    ```
+5.  **Check Logs**: Observe the emulator logs for output confirming the function was triggered and the API key was found.
 
 ### Development Scripts
 
