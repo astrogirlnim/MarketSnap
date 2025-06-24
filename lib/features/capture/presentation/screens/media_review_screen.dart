@@ -406,6 +406,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: LutFilterType.values.length,
+        // Add caching to prevent rebuilding thumbnails
+        cacheExtent: 500,
         itemBuilder: (context, index) {
           final filterType = LutFilterType.values[index];
           final isSelected = _selectedFilter == filterType;
@@ -462,10 +464,13 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       return Image.file(
         File(widget.mediaPath),
         fit: BoxFit.cover,
+        // Add memory cache optimization
+        cacheWidth: 56,
+        cacheHeight: 56,
       );
     }
 
-    // For other filters, show a preview with caching
+    // For other filters, show a preview with caching and error handling
     return FutureBuilder<Uint8List?>(
       future: _lutFilterService.getFilterPreview(
         inputImagePath: widget.mediaPath,
@@ -474,21 +479,22 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Show loading indicator while generating preview
+          // Show simplified loading indicator
           return Container(
             color: Colors.grey.shade200,
-            child: const Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+            child: Icon(
+              Icons.image,
+              color: Colors.grey.shade400,
+              size: 24,
             ),
           );
         } else if (snapshot.hasData && snapshot.data != null) {
           return Image.memory(
             snapshot.data!,
             fit: BoxFit.cover,
+            // Add memory cache optimization
+            cacheWidth: 56,
+            cacheHeight: 56,
           );
         } else {
           // Fallback to original image with filter name overlay
@@ -497,6 +503,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               Image.file(
                 File(widget.mediaPath),
                 fit: BoxFit.cover,
+                cacheWidth: 56,
+                cacheHeight: 56,
               ),
               Container(
                 color: _getFilterColor(filterType).withValues(alpha: 0.3),
