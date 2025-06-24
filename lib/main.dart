@@ -1,64 +1,44 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
+import 'core/services/background_sync_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
 late final HiveService hiveService;
+late final BackgroundSyncService backgroundSyncService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   debugPrint('[main] Environment variables loaded.');
 
-  // Initialize local storage
+  // Initialize Hive service
   try {
     final secureStorageService = SecureStorageService();
     hiveService = HiveService(secureStorageService);
     await hiveService.init();
     debugPrint('[main] Hive service initialized successfully.');
   } catch (e) {
-    debugPrint('[main] CRITICAL: Failed to initialize Hive. Error: $e');
-    // We could show an error screen here or prevent the app from starting.
-    // For now, we'll just log the error.
+    debugPrint('[main] Error initializing Hive service: $e');
   }
 
-  FirebaseOptions firebaseOptions;
-
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    firebaseOptions = FirebaseOptions(
-      apiKey: dotenv.env['ANDROID_API_KEY']!,
-      appId: dotenv.env['ANDROID_APP_ID']!,
-      messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-      projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-      storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    );
-  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-    firebaseOptions = FirebaseOptions(
-      apiKey: dotenv.env['IOS_API_KEY']!,
-      appId: dotenv.env['IOS_APP_ID']!,
-      messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-      projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-      storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-      iosBundleId: dotenv.env['APP_BUNDLE_ID']!,
-    );
-  } else {
-    throw UnsupportedError(
-      'Platform ${defaultTargetPlatform.toString()} is not supported for Firebase.',
-    );
-  }
-
+  // Initialize and schedule background sync service
   try {
-    await Firebase.initializeApp(
-      options: firebaseOptions,
-    );
-    debugPrint('[main] Firebase initialized successfully.');
+    backgroundSyncService = BackgroundSyncService();
+    await backgroundSyncService.initialize();
+    await backgroundSyncService.scheduleSyncTask();
+    debugPrint('[main] BackgroundSyncService initialized and task scheduled.');
   } catch (e) {
-    debugPrint('[main] CRITICAL: Failed to initialize Firebase. Error: $e');
+    debugPrint('[main] Error initializing BackgroundSyncService: $e');
   }
+
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  debugPrint('[main] Firebase initialized successfully.');
 
   runApp(const MyApp());
 }
@@ -90,30 +70,193 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const MyHomePage(title: 'MarketSnap'),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
+  Map<String, dynamic>? _lastExecutionInfo;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  void _checkBackgroundExecution() async {
+    debugPrint('[UI] Checking background execution status...');
+    final info = await backgroundSyncService.getLastExecutionInfo();
+    if (mounted) {
+      setState(() {
+        _lastExecutionInfo = info;
+      });
+    }
+    debugPrint('[UI] Background execution info: $info');
+  }
+
+  void _scheduleOneTimeTask() async {
+    debugPrint('[UI] Scheduling one-time background task...');
+    try {
+      await backgroundSyncService.scheduleOneTimeSyncTask();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('One-time background task scheduled!')),
+        );
+      }
+    } catch (e) {
+      debugPrint('[UI] Error scheduling one-time task: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error scheduling task: $e')),
+        );
+      }
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: const Text('MarketSnap'),
+        title: Text(widget.title),
       ),
-      body: const Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Text('Welcome to MarketSnap!'),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              'Welcome to MarketSnap!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'You have pushed the button this many times:',
+            ),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 20),
+            
+            // Platform Information
+            Card(
+              margin: const EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Platform: ${Platform.operatingSystem.toUpperCase()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      backgroundSyncService.getPlatformInfo(),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Background Task Status
+            if (_lastExecutionInfo != null) ...[
+              Card(
+                margin: const EdgeInsets.all(16),
+                color: (_lastExecutionInfo!['executed'] == true) 
+                    ? Colors.green.shade50 
+                    : Colors.orange.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Background Task Status',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_lastExecutionInfo!['executed'] == true) ...[
+                        Text('✅ Executed: ${_lastExecutionInfo!['executed']}'),
+                        if (_lastExecutionInfo!['executionTime'] != null)
+                          Text('⏰ Time: ${_lastExecutionInfo!['executionTime']}'),
+                        if (_lastExecutionInfo!['taskName'] != null)
+                          Text('📋 Task: ${_lastExecutionInfo!['taskName']}'),
+                        if (_lastExecutionInfo!['platform'] != null)
+                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
+                        if (_lastExecutionInfo!['minutesAgo'] != null)
+                          Text('⏱️ Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
+                      ] else ...[
+                        Text('❌ Executed: ${_lastExecutionInfo!['executed']}'),
+                        if (_lastExecutionInfo!['platform'] != null)
+                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
+                      ],
+                      if (_lastExecutionInfo!['note'] != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ℹ️ ${_lastExecutionInfo!['note']}',
+                            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ],
+                      if (_lastExecutionInfo!['error'] != null)
+                        Text('❌ Error: ${_lastExecutionInfo!['error']}', 
+                             style: const TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            
+            const SizedBox(height: 20),
+            
+            // Action Buttons
+            ElevatedButton(
+              onPressed: _checkBackgroundExecution,
+              child: const Text('Check Background Task Status'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _scheduleOneTimeTask,
+              child: const Text('Schedule One-Time Task'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
       ),
     );
   }

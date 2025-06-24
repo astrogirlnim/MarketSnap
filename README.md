@@ -12,6 +12,31 @@ MarketSnap is a Flutter application configured with:
 - **Development automation**: Enhanced emulator scripts with dual-platform support
 - **Comprehensive documentation**: Business requirements, technical specs, and UI references
 
+## Background Sync (WorkManager)
+
+MarketSnap supports robust background media sync on both Android and iOS using the `workmanager` package:
+
+- **Android**: Background tasks run reliably using WorkManager. Execution is tracked via SharedPreferences and can be verified in-app.
+- **iOS**: Background tasks are supported, but iOS imposes strict limitations. Tasks may not execute immediately and cannot use SharedPreferences in the background isolate. **To verify execution, check the console logs for `[Background Isolate]` messages.**
+
+### How to Test Background Sync
+
+#### Android
+1. Tap "Schedule One-Time Task" in the app
+2. Task will execute in the background (even if the app is backgrounded)
+3. Check status in-app or via logs
+
+#### iOS
+1. Tap "Schedule One-Time Task" in the app
+2. Background the app (swipe up, open another app)
+3. Wait 30+ seconds
+4. Return to the app
+5. **Check the console logs for:**
+   - `[Background Isolate] iOS: Background task executed successfully`
+   - `[Background Isolate] iOS: Task execution timestamp: ...`
+
+**Note:** iOS may delay or throttle background execution. This is a platform limitation.
+
 ## Security Implementation
 
 ### Environment Variables Setup
