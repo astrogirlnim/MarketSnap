@@ -99,8 +99,9 @@ jobs:
         run: |
           # Install envsubst if not available
           sudo apt-get update && sudo apt-get install -y gettext-base
-          # Generate firebase.json from environment variables
-          envsubst < firebase.json > firebase.json.tmp && mv firebase.json.tmp firebase.json
+          # Generate firebase.json from template with environment variables
+          envsubst < firebase.json.template > firebase.json
+          echo "✅ Generated firebase.json from template with environment variables"
 
       - name: Build Android APK
         run: flutter build apk --release
