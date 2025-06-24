@@ -9,6 +9,8 @@ MarketSnap is a Flutter application configured with:
 - **Firebase backend**: Authentication, Firestore, Storage, and Functions
 - **Secure configuration**: Environment-based secret management
 - **CI/CD pipeline**: GitHub Actions for automated testing and deployment
+- **Development automation**: Enhanced emulator scripts with dual-platform support
+- **Comprehensive documentation**: Business requirements, technical specs, and UI references
 
 ## Security Implementation
 
@@ -104,23 +106,68 @@ The following files contain Firebase configuration and are managed securely:
 
 ## CI/CD Pipeline
 
-GitHub Actions workflow configured in `.github/workflows/main.yml`:
+GitHub Actions workflow configured in `.github/workflows/deploy.yml`:
 - **Automated testing** on push/PR to main branch
-- **Flutter environment setup** with Java 11
-- **Dependency installation** and health checks
-- **Unit and widget tests** execution
+- **Flutter environment setup** with Java 17
+- **Code validation** with Flutter analyzer and tests
+- **Android APK builds** for streamlined testing (switched from AAB)
+- **Firebase App Distribution** deployment to testers
+- **Secure environment management** with encrypted secrets
 
 ## Project Structure
 
 ```
-lib/
-├── main.dart              # App entry point with secure Firebase initialization
-test/
-├── widget_test.dart       # Widget tests
-android/                   # Android platform files
-ios/                       # iOS platform files
-.github/workflows/         # CI/CD pipeline configuration
+MarketSnap/
+├── .github/workflows/     # CI/CD pipeline configuration
+├── android/               # Android platform files with Firebase integration
+├── docs/                  # Technical documentation
+├── documentation/         # Business requirements and design references
+│   ├── BrainLift/        # Product specifications and user stories
+│   ├── deployment/       # Deployment and security documentation
+│   └── frontend_snapchat_refs/ # UI/UX inspiration materials
+├── ios/                   # iOS platform files with enhanced Firebase compatibility
+├── lib/                   # Flutter application source code
+│   └── main.dart         # App entry point with secure Firebase initialization
+├── scripts/               # Development automation tools
+│   ├── dev_emulator.sh   # Dual-platform emulator launcher
+│   └── README.md         # Scripts documentation
+├── test/                  # Testing infrastructure
+│   └── widget_test.dart  # Widget tests
+└── web/                   # Web platform support
 ```
+
+*See `docs/file_structure.md` for complete project organization details.*
+
+## Development Workflow
+
+### Enhanced Development Environment
+
+The project includes automated development tools for streamlined cross-platform development:
+
+```bash
+# Launch both iOS and Android emulators with hot reload
+./scripts/dev_emulator.sh
+
+# This script provides:
+# ✅ Prerequisites checking (Flutter, Android SDK, Xcode)
+# 🍎 iOS Simulator management
+# 🤖 Android Emulator management  
+# 📱 Dual-platform app deployment
+# 🔄 Hot reload support on both platforms
+# 📊 Real-time monitoring and logging
+# 🧹 Comprehensive cleanup on exit
+```
+
+**Features:**
+- **Parallel Development**: Test on both platforms simultaneously
+- **Smart Emulator Detection**: Reuses booted simulators when available
+- **Enhanced Error Handling**: Robust process management and cleanup
+- **Live Logging**: Real-time logs saved to `scripts/flutter_*.log`
+- **Hot Reload**: Press `r` in either console to hot reload
+
+### Development Scripts
+
+All development automation is documented in `scripts/README.md` with comprehensive usage instructions.
 
 ## Development Guidelines
 
@@ -151,9 +198,11 @@ flutter test test/widget_test.dart
 flutter build apk --debug
 flutter build ios --debug
 
-# Release build
+# Release build (APK for testing)
 flutter build apk --release
 flutter build ios --release
+
+# Note: CI/CD pipeline builds APK (not AAB) for simplified testing distribution
 ```
 
 ## Troubleshooting
