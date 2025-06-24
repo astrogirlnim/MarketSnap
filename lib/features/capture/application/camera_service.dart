@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 class CameraService {
   static CameraService? _instance;
   static CameraService get instance => _instance ??= CameraService._();
-  
+
   CameraService._();
 
   List<CameraDescription>? _cameras;
@@ -24,39 +24,40 @@ class CameraService {
 
   /// Available cameras on the device
   List<CameraDescription>? get cameras => _cameras;
-  
+
   /// Current camera controller
   CameraController? get controller => _controller;
-  
+
   /// Whether the camera service is initialized
   bool get isInitialized => _isInitialized;
-  
+
   /// Whether running in simulator mode (mock camera)
   bool get isSimulatorMode => _isSimulatorMode;
-  
+
   /// Last error that occurred during camera operations
   String? get lastError => _lastError;
-  
+
   /// Whether the current camera is the front camera (or simulated front camera)
-  bool get isFrontCamera => _isSimulatorMode ? false : 
-      _controller?.description.lensDirection == CameraLensDirection.front;
+  bool get isFrontCamera => _isSimulatorMode
+      ? false
+      : _controller?.description.lensDirection == CameraLensDirection.front;
 
   /// Check if running on a simulator/emulator
   bool _isRunningOnSimulator() {
     if (kIsWeb) return true;
-    
+
     // iOS Simulator detection
     if (Platform.isIOS) {
       // iOS simulators typically have no cameras or very limited camera support
       return true; // For now, assume iOS simulator always needs mock mode
     }
-    
+
     // Android Emulator detection
     if (Platform.isAndroid) {
       // Android emulators may have virtual cameras, so we'll check camera availability
       return false; // Let Android emulators try real camera first
     }
-    
+
     return false;
   }
 
@@ -65,38 +66,46 @@ class CameraService {
     try {
       debugPrint('[CameraService] Initializing camera service...');
       _lastError = null;
-      
+
       // Check if we're on a simulator first
       bool simulatorDetected = _isRunningOnSimulator();
-      
+
       // Get available cameras
       _cameras = await availableCameras();
       debugPrint('[CameraService] Found ${_cameras?.length ?? 0} cameras');
-      
+
       // If no cameras available or simulator detected, use mock mode
       if (_cameras == null || _cameras!.isEmpty || simulatorDetected) {
-        debugPrint('[CameraService] No physical cameras available or simulator detected');
+        debugPrint(
+          '[CameraService] No physical cameras available or simulator detected',
+        );
         debugPrint('[CameraService] Enabling simulator mode with mock camera');
-        
+
         _isSimulatorMode = true;
         _cameras = _createMockCameras();
-        
+
         debugPrint('[CameraService] Created ${_cameras!.length} mock cameras');
         for (int i = 0; i < _cameras!.length; i++) {
           final camera = _cameras![i];
-          debugPrint('[CameraService] Mock Camera $i: ${camera.name} (${camera.lensDirection})');
+          debugPrint(
+            '[CameraService] Mock Camera $i: ${camera.name} (${camera.lensDirection})',
+          );
         }
       } else {
         // Log available real cameras for debugging
         _isSimulatorMode = false;
         for (int i = 0; i < _cameras!.length; i++) {
           final camera = _cameras![i];
-          debugPrint('[CameraService] Real Camera $i: ${camera.name} (${camera.lensDirection})');
+          debugPrint(
+            '[CameraService] Real Camera $i: ${camera.name} (${camera.lensDirection})',
+          );
         }
       }
 
       _isInitialized = true;
-      debugPrint('[CameraService] Camera service initialized successfully (simulator mode: $_isSimulatorMode)');
+      debugPrint(
+        '[CameraService] Camera service initialized successfully (simulator mode: $_isSimulatorMode)',
+      );
       return true;
     } catch (e) {
       _lastError = 'Failed to initialize camera: $e';
@@ -130,7 +139,9 @@ class CameraService {
       _lastError = null;
 
       if (!_isInitialized) {
-        debugPrint('[CameraService] Service not initialized, initializing first...');
+        debugPrint(
+          '[CameraService] Service not initialized, initializing first...',
+        );
         if (!await initialize()) {
           return false;
         }
@@ -138,7 +149,9 @@ class CameraService {
 
       // In simulator mode, we don't create a real camera controller
       if (_isSimulatorMode) {
-        debugPrint('[CameraService] Simulator mode - skipping real camera controller initialization');
+        debugPrint(
+          '[CameraService] Simulator mode - skipping real camera controller initialization',
+        );
         return true;
       }
 
@@ -156,7 +169,9 @@ class CameraService {
           (camera) => camera.lensDirection == CameraLensDirection.back,
           orElse: () => _cameras!.first,
         );
-        debugPrint('[CameraService] Using default camera: ${selectedCamera.name} (${selectedCamera.lensDirection})');
+        debugPrint(
+          '[CameraService] Using default camera: ${selectedCamera.name} (${selectedCamera.lensDirection})',
+        );
       }
 
       // Create camera controller with optimal settings
@@ -171,8 +186,10 @@ class CameraService {
       await _controller!.initialize();
 
       debugPrint('[CameraService] Camera controller initialized successfully');
-      debugPrint('[CameraService] Camera resolution: ${_controller!.value.previewSize}');
-      
+      debugPrint(
+        '[CameraService] Camera resolution: ${_controller!.value.previewSize}',
+      );
+
       return true;
     } catch (e) {
       _lastError = 'Failed to initialize camera controller: $e';
@@ -186,7 +203,7 @@ class CameraService {
   Future<bool> switchCamera() async {
     try {
       debugPrint('[CameraService] Switching camera...');
-      
+
       if (!_isInitialized || _cameras == null || _cameras!.length < 2) {
         _lastError = 'Camera switching not available';
         debugPrint('[CameraService] ERROR: $_lastError');
@@ -209,8 +226,10 @@ class CameraService {
         orElse: () => _cameras!.first,
       );
 
-      debugPrint('[CameraService] Switching from $currentDirection to ${targetCamera.lensDirection}');
-      
+      debugPrint(
+        '[CameraService] Switching from $currentDirection to ${targetCamera.lensDirection}',
+      );
+
       return await initializeCamera(camera: targetCamera);
     } catch (e) {
       _lastError = 'Failed to switch camera: $e';
@@ -247,18 +266,20 @@ class CameraService {
       final Directory photosDir = Directory(path.dirname(photoPath));
       if (!await photosDir.exists()) {
         await photosDir.create(recursive: true);
-        debugPrint('[CameraService] Created photos directory: ${photosDir.path}');
+        debugPrint(
+          '[CameraService] Created photos directory: ${photosDir.path}',
+        );
       }
 
       debugPrint('[CameraService] Taking photo to: $photoPath');
-      
+
       // Capture the photo
       final XFile photo = await _controller!.takePicture();
-      
+
       // Move the photo to our app directory
       final File photoFile = File(photo.path);
       final File savedPhoto = await photoFile.copy(photoPath);
-      
+
       // Clean up temporary file
       try {
         await photoFile.delete();
@@ -269,7 +290,9 @@ class CameraService {
       final fileSize = await savedPhoto.length();
       debugPrint('[CameraService] Photo captured successfully');
       debugPrint('[CameraService] Photo path: $photoPath');
-      debugPrint('[CameraService] Photo size: ${(fileSize / 1024).toStringAsFixed(1)} KB');
+      debugPrint(
+        '[CameraService] Photo size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
+      );
 
       return photoPath;
     } catch (e) {
@@ -283,7 +306,7 @@ class CameraService {
   Future<String?> _captureSimulatorPhoto() async {
     try {
       debugPrint('[CameraService] Capturing simulator photo...');
-      
+
       // Generate unique filename with timestamp
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filename = 'marketsnap_simulator_photo_$timestamp.jpg';
@@ -296,7 +319,9 @@ class CameraService {
       final Directory photosDir = Directory(path.dirname(photoPath));
       if (!await photosDir.exists()) {
         await photosDir.create(recursive: true);
-        debugPrint('[CameraService] Created photos directory: ${photosDir.path}');
+        debugPrint(
+          '[CameraService] Created photos directory: ${photosDir.path}',
+        );
       }
 
       // Create a mock image (colored rectangle with text)
@@ -315,13 +340,14 @@ class CameraService {
             Color(0xFFEC4899), // Pink
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-      
+
       canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
 
       // Draw text
       final textPainter = TextPainter(
         text: TextSpan(
-          text: 'MarketSnap\nSimulator Photo\n${DateTime.now().toString().split('.')[0]}',
+          text:
+              'MarketSnap\nSimulator Photo\n${DateTime.now().toString().split('.')[0]}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 24,
@@ -331,7 +357,7 @@ class CameraService {
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
       );
-      
+
       textPainter.layout();
       textPainter.paint(
         canvas,
@@ -343,7 +369,10 @@ class CameraService {
 
       // Convert to image
       final picture = recorder.endRecording();
-      final image = await picture.toImage(size.width.toInt(), size.height.toInt());
+      final image = await picture.toImage(
+        size.width.toInt(),
+        size.height.toInt(),
+      );
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final uint8List = byteData!.buffer.asUint8List();
 
@@ -354,7 +383,9 @@ class CameraService {
       final fileSize = await file.length();
       debugPrint('[CameraService] Simulator photo created successfully');
       debugPrint('[CameraService] Photo path: $photoPath');
-      debugPrint('[CameraService] Photo size: ${(fileSize / 1024).toStringAsFixed(1)} KB');
+      debugPrint(
+        '[CameraService] Photo size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
+      );
 
       return photoPath;
     } catch (e) {
@@ -371,18 +402,14 @@ class CameraService {
     }
 
     // Return common flash modes - the camera plugin handles availability
-    return [
-      FlashMode.off,
-      FlashMode.auto,
-      FlashMode.always,
-    ];
+    return [FlashMode.off, FlashMode.auto, FlashMode.always];
   }
 
   /// Set camera flash mode
   Future<bool> setFlashMode(FlashMode flashMode) async {
     try {
       debugPrint('[CameraService] Setting flash mode to: $flashMode');
-      
+
       if (_controller == null || !_controller!.value.isInitialized) {
         _lastError = 'Camera not initialized';
         return false;
@@ -416,7 +443,9 @@ class CameraService {
       final double clampedZoom = zoom.clamp(minZoom, maxZoom);
 
       await _controller!.setZoomLevel(clampedZoom);
-      debugPrint('[CameraService] Zoom set to: $clampedZoom (min: $minZoom, max: $maxZoom)');
+      debugPrint(
+        '[CameraService] Zoom set to: $clampedZoom (min: $minZoom, max: $maxZoom)',
+      );
       return true;
     } catch (e) {
       debugPrint('[CameraService] Failed to set zoom: $e');
@@ -467,7 +496,7 @@ class CameraService {
     if (_controller == null || !_controller!.value.isInitialized) {
       return false;
     }
-    
+
     // For now, assume all back cameras have flash, front cameras don't
     // This is a reasonable assumption for most mobile devices
     return _controller!.description.lensDirection == CameraLensDirection.back;
@@ -496,4 +525,4 @@ class CameraService {
       debugPrint('[CameraService] Could not provide haptic feedback: $e');
     }
   }
-} 
+}

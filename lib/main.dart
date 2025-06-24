@@ -27,15 +27,13 @@ Future<void> main() async {
   debugPrint('[main] Environment variables loaded.');
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // In debug mode, point to the local emulators
   if (kDebugMode) {
     try {
       debugPrint('[main] Debug mode detected, using local emulators.');
-      
+
       // Configure emulators with proper error handling and platform-specific logic
       try {
         // For iOS simulator, we need to be more careful with emulator configuration
@@ -43,7 +41,7 @@ Future<void> main() async {
           debugPrint('[main] Configuring emulators for iOS simulator...');
           // Add a longer delay to ensure Firebase is fully initialized on iOS
           await Future.delayed(const Duration(milliseconds: 500));
-          
+
           // Try to configure Auth emulator with iOS-specific error handling
           try {
             await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
@@ -61,24 +59,26 @@ Future<void> main() async {
       } catch (e) {
         debugPrint('[main] Auth emulator configuration failed: $e');
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint('[main] iOS emulator configuration failure is non-fatal, continuing...');
+          debugPrint(
+            '[main] iOS emulator configuration failure is non-fatal, continuing...',
+          );
         }
       }
-      
+
       try {
         FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
       }
-      
+
       try {
         await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
         debugPrint('[main] Storage emulator configured.');
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
-      
+
       debugPrint('[main] Firebase emulators configured successfully.');
     } catch (e) {
       debugPrint('[main] Error configuring Firebase emulators: $e');
@@ -97,26 +97,30 @@ Future<void> main() async {
     } else {
       // Use production providers for release builds
       debugPrint('[main] Initializing Firebase App Check for production...');
-      
+
       try {
         await FirebaseAppCheck.instance.activate(
           androidProvider: AndroidProvider.playIntegrity,
           appleProvider: AppleProvider.deviceCheck,
         );
-        debugPrint('[main] Firebase App Check initialized with production providers.');
+        debugPrint(
+          '[main] Firebase App Check initialized with production providers.',
+        );
       } catch (appCheckError) {
         debugPrint('[main] Production App Check failed: $appCheckError');
-        
+
         // Fallback to debug provider if production fails
         debugPrint('[main] Falling back to debug App Check provider...');
         await FirebaseAppCheck.instance.activate(
           androidProvider: AndroidProvider.debug,
           appleProvider: AppleProvider.debug,
         );
-        debugPrint('[main] Firebase App Check initialized with debug fallback.');
+        debugPrint(
+          '[main] Firebase App Check initialized with debug fallback.',
+        );
       }
     }
-    
+
     // Verify App Check is working
     try {
       final token = await FirebaseAppCheck.instance.getToken(true);
@@ -128,10 +132,11 @@ Future<void> main() async {
     } catch (tokenError) {
       debugPrint('[main] Warning: Could not get App Check token: $tokenError');
     }
-    
   } catch (e) {
     debugPrint('[main] Firebase App Check initialization failed: $e');
-    debugPrint('[main] Continuing without App Check - some features may be limited.');
+    debugPrint(
+      '[main] Continuing without App Check - some features may be limited.',
+    );
     // Continue without App Check if it fails - not critical for basic functionality
   }
 
@@ -191,26 +196,30 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        debugPrint('[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}');
-        
+        debugPrint(
+          '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
+        );
+
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-        
+
         // User is authenticated - redirect to camera preview
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera');
+          debugPrint(
+            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera',
+          );
           return const CameraPreviewScreen();
         }
-        
+
         // User is not authenticated - show auth screen with demo option in debug mode
         debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
-        return kDebugMode ? const DevelopmentAuthScreen() : const AuthWelcomeScreen();
+        return kDebugMode
+            ? const DevelopmentAuthScreen()
+            : const AuthWelcomeScreen();
       },
     );
   }
@@ -227,7 +236,7 @@ class DevelopmentAuthScreen extends StatelessWidget {
         children: [
           // Main auth screen
           const AuthWelcomeScreen(),
-          
+
           // Development demo button overlay
           Positioned(
             bottom: 100,
@@ -252,7 +261,11 @@ class DevelopmentAuthScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.developer_mode, color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.developer_mode,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
@@ -269,20 +282,20 @@ class DevelopmentAuthScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text(
                     'Skip authentication and test camera functionality directly',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        debugPrint('[DevelopmentAuthScreen] Demo mode selected - navigating to camera');
+                        debugPrint(
+                          '[DevelopmentAuthScreen] Demo mode selected - navigating to camera',
+                        );
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                            builder: (context) => const DevelopmentCameraWrapper(),
+                            builder: (context) =>
+                                const DevelopmentCameraWrapper(),
                           ),
                         );
                       },
@@ -324,7 +337,7 @@ class DevelopmentCameraWrapper extends StatelessWidget {
         children: [
           // Camera preview screen
           const CameraPreviewScreen(),
-          
+
           // Development overlay banner
           Positioned(
             top: 0,
@@ -435,7 +448,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final user = authService.currentUser;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -497,9 +510,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     radius: 16,
                     backgroundColor: Colors.deepPurple.shade600,
                     child: Text(
-                      (user?.phoneNumber?.isNotEmpty == true 
-                          ? user!.phoneNumber!.substring(user.phoneNumber!.length - 2)
-                          : user?.email?.substring(0, 1).toUpperCase()) ?? 'U',
+                      (user?.phoneNumber?.isNotEmpty == true
+                              ? user!.phoneNumber!.substring(
+                                  user.phoneNumber!.length - 2,
+                                )
+                              : user?.email?.substring(0, 1).toUpperCase()) ??
+                          'U',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -554,9 +570,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              const Text("Background Sync", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Background Sync",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               if (_lastExecutionInfo != null) ...[
                 Card(
                   margin: const EdgeInsets.all(16),
@@ -565,16 +584,28 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Last Execution Info", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          "Last Execution Info",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
-                        Text('Platform: ${_lastExecutionInfo!["platform"] ?? "N/A"}'),
-                        Text('Executed: ${_lastExecutionInfo!["executed"] ?? "N/A"}'),
+                        Text(
+                          'Platform: ${_lastExecutionInfo!["platform"] ?? "N/A"}',
+                        ),
+                        Text(
+                          'Executed: ${_lastExecutionInfo!["executed"] ?? "N/A"}',
+                        ),
                         if (_lastExecutionInfo!['executionTime'] != null)
                           Text('Time: ${_lastExecutionInfo!['executionTime']}'),
                         if (_lastExecutionInfo!['note'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
-                            child: Text('Note: ${_lastExecutionInfo!['note']}', style: const TextStyle(fontStyle: FontStyle.italic)),
+                            child: Text(
+                              'Note: ${_lastExecutionInfo!['note']}',
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ),
                       ],
                     ),
