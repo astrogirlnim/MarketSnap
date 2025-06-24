@@ -16,10 +16,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final AuthService _authService = AuthService();
   final FocusNode _phoneFocus = FocusNode();
-  
+
   bool _isLoading = false;
   String? _errorMessage;
-  
+
   @override
   void initState() {
     super.initState();
@@ -28,7 +28,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       _phoneFocus.requestFocus();
     });
   }
-  
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -39,12 +39,12 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   /// Initiates phone number verification process
   Future<void> _verifyPhoneNumber() async {
     final phoneNumber = _phoneController.text.trim();
-    
+
     // Clear any previous errors
     setState(() {
       _errorMessage = null;
     });
-    
+
     // Validate phone number
     if (phoneNumber.isEmpty) {
       setState(() {
@@ -52,7 +52,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       });
       return;
     }
-    
+
     // Format and validate phone number
     final formattedPhone = _authService.formatPhoneNumber(phoneNumber);
     if (!_authService.isValidPhoneNumber(formattedPhone)) {
@@ -61,23 +61,25 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     debugPrint('[PhoneAuthScreen] Starting verification for: $formattedPhone');
-    
+
     try {
       await _authService.verifyPhoneNumber(
         phoneNumber: formattedPhone,
         onCodeSent: (String verificationId, int? resendToken) {
-          debugPrint('[PhoneAuthScreen] SMS code sent, verification ID: $verificationId');
-          
+          debugPrint(
+            '[PhoneAuthScreen] SMS code sent, verification ID: $verificationId',
+          );
+
           setState(() {
             _isLoading = false;
           });
-          
+
           // Navigate to OTP verification screen
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
@@ -91,7 +93,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         },
         onVerificationFailed: (String error) {
           debugPrint('[PhoneAuthScreen] Verification failed: $error');
-          
+
           setState(() {
             _isLoading = false;
             _errorMessage = error;
@@ -99,25 +101,25 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         },
         onVerificationCompleted: (credential) {
           debugPrint('[PhoneAuthScreen] Auto-verification completed');
-          
+
           // This happens on Android when SMS is auto-detected
           setState(() {
             _isLoading = false;
           });
-          
+
           _showSuccessAndNavigate();
         },
       );
     } catch (e) {
       debugPrint('[PhoneAuthScreen] Error initiating verification: $e');
-      
+
       setState(() {
         _isLoading = false;
         _errorMessage = 'Failed to send verification code. Please try again.';
       });
     }
   }
-  
+
   /// Shows success message and navigates to main app
   void _showSuccessAndNavigate() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +128,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         backgroundColor: Colors.green,
       ),
     );
-    
+
     // Navigate back to main app (will be handled by auth state listener)
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -150,7 +152,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 32),
-              
+
               // Header
               Text(
                 'Enter your phone number',
@@ -159,18 +161,18 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   color: Colors.deepPurple.shade800,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Text(
                 'We\'ll send you a verification code to confirm your number',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade600),
               ),
-              
+
               const SizedBox(height: 48),
-              
+
               // Phone number input
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,9 +184,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       color: Colors.grey.shade800,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   TextField(
                     controller: _phoneController,
                     focusNode: _phoneFocus,
@@ -210,19 +212,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.deepPurple.shade600, width: 2),
+                        borderSide: BorderSide(
+                          color: Colors.deepPurple.shade600,
+                          width: 2,
+                        ),
                       ),
                       errorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red, width: 2),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 2,
+                        ),
                       ),
                       focusedErrorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red, width: 2),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 2,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                     style: Theme.of(context).textTheme.bodyLarge,
                     onSubmitted: (_) {
@@ -233,7 +247,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   ),
                 ],
               ),
-              
+
               // Error message
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
@@ -255,18 +269,17 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.red.shade700,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.red.shade700),
                         ),
                       ),
                     ],
                   ),
                 ),
               ],
-              
+
               const SizedBox(height: 32),
-              
+
               // Continue button
               SizedBox(
                 height: 56,
@@ -286,7 +299,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
@@ -298,9 +313,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                         ),
                 ),
               ),
-              
+
               const Spacer(),
-              
+
               // Help text
               Container(
                 padding: const EdgeInsets.all(16),
@@ -333,4 +348,4 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       ),
     );
   }
-} 
+}

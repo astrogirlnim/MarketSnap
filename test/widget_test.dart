@@ -12,11 +12,8 @@ import 'package:marketsnap/core/services/background_sync_service.dart';
 // Create a testable version of the app without the global dependencies
 class TestableMarketSnapApp extends StatelessWidget {
   final BackgroundSyncService? backgroundSyncService;
-  
-  const TestableMarketSnapApp({
-    super.key,
-    this.backgroundSyncService,
-  });
+
+  const TestableMarketSnapApp({super.key, this.backgroundSyncService});
 
   @override
   Widget build(BuildContext context) {
@@ -61,9 +58,7 @@ class _TestableMyHomePageState extends State<TestableMyHomePage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
-            Text(
-              'You have pushed the button this many times:',
-            ),
+            Text('You have pushed the button this many times:'),
           ],
         ),
       ),
@@ -77,7 +72,9 @@ class _TestableMyHomePageState extends State<TestableMyHomePage> {
 }
 
 void main() {
-  testWidgets('MarketSnap app loads and shows welcome screen', (WidgetTester tester) async {
+  testWidgets('MarketSnap app loads and shows welcome screen', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const TestableMarketSnapApp());
 
@@ -94,7 +91,9 @@ void main() {
     expect(find.byType(AppBar), findsOneWidget);
   });
 
-  testWidgets('App has correct theme configuration', (WidgetTester tester) async {
+  testWidgets('App has correct theme configuration', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const TestableMarketSnapApp());
 

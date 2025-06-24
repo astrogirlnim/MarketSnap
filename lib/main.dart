@@ -13,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
+import 'features/capture/presentation/screens/camera_preview_screen.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -26,15 +27,13 @@ Future<void> main() async {
   debugPrint('[main] Environment variables loaded.');
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // In debug mode, point to the local emulators
   if (kDebugMode) {
     try {
       debugPrint('[main] Debug mode detected, using local emulators.');
-      
+
       // Configure emulators with proper error handling and platform-specific logic
       try {
         // For iOS simulator, we need to be more careful with emulator configuration
@@ -42,7 +41,7 @@ Future<void> main() async {
           debugPrint('[main] Configuring emulators for iOS simulator...');
           // Add a longer delay to ensure Firebase is fully initialized on iOS
           await Future.delayed(const Duration(milliseconds: 500));
-          
+
           // Try to configure Auth emulator with iOS-specific error handling
           try {
             await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
@@ -60,35 +59,86 @@ Future<void> main() async {
       } catch (e) {
         debugPrint('[main] Auth emulator configuration failed: $e');
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint('[main] iOS emulator configuration failure is non-fatal, continuing...');
+          debugPrint(
+            '[main] iOS emulator configuration failure is non-fatal, continuing...',
+          );
         }
       }
-      
+
       try {
         FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
       }
-      
+
       try {
         await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
         debugPrint('[main] Storage emulator configured.');
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
-      
+
       debugPrint('[main] Firebase emulators configured successfully.');
     } catch (e) {
       debugPrint('[main] Error configuring Firebase emulators: $e');
     }
   }
 
-  // Initialize Firebase App Check with the debug provider
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-    appleProvider: AppleProvider.debug,
-  );
+  // Initialize Firebase App Check with proper configuration
+  try {
+    if (kDebugMode) {
+      // Use debug provider for development
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+      );
+      debugPrint('[main] Firebase App Check initialized with debug providers.');
+    } else {
+      // Use production providers for release builds
+      debugPrint('[main] Initializing Firebase App Check for production...');
+
+      try {
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.playIntegrity,
+          appleProvider: AppleProvider.deviceCheck,
+        );
+        debugPrint(
+          '[main] Firebase App Check initialized with production providers.',
+        );
+      } catch (appCheckError) {
+        debugPrint('[main] Production App Check failed: $appCheckError');
+
+        // Fallback to debug provider if production fails
+        debugPrint('[main] Falling back to debug App Check provider...');
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.debug,
+          appleProvider: AppleProvider.debug,
+        );
+        debugPrint(
+          '[main] Firebase App Check initialized with debug fallback.',
+        );
+      }
+    }
+
+    // Verify App Check is working
+    try {
+      final token = await FirebaseAppCheck.instance.getToken(true);
+      if (token != null) {
+        debugPrint('[main] Firebase App Check token obtained successfully.');
+      } else {
+        debugPrint('[main] Warning: Firebase App Check token is null.');
+      }
+    } catch (tokenError) {
+      debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+    }
+  } catch (e) {
+    debugPrint('[main] Firebase App Check initialization failed: $e');
+    debugPrint(
+      '[main] Continuing without App Check - some features may be limited.',
+    );
+    // Continue without App Check if it fails - not critical for basic functionality
+  }
 
   // Initialize authentication service
   try {
@@ -146,31 +196,198 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        debugPrint('[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}');
-        
+        debugPrint(
+          '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
+        );
+
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-        
-        // User is authenticated
+
+        // User is authenticated - redirect to camera preview
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
-          return const MyHomePage(title: 'MarketSnap');
+          debugPrint(
+            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera',
+          );
+          return const CameraPreviewScreen();
         }
-        
-        // User is not authenticated
+
+        // User is not authenticated - show auth screen with demo option in debug mode
         debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
-        return const AuthWelcomeScreen();
+        return kDebugMode
+            ? const DevelopmentAuthScreen()
+            : const AuthWelcomeScreen();
       },
     );
   }
 }
 
+/// Development authentication screen with demo mode option
+class DevelopmentAuthScreen extends StatelessWidget {
+  const DevelopmentAuthScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Main auth screen
+          const AuthWelcomeScreen(),
+
+          // Development demo button overlay
+          Positioned(
+            bottom: 100,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade300, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.developer_mode,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Development Mode',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Skip authentication and test camera functionality directly',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        debugPrint(
+                          '[DevelopmentAuthScreen] Demo mode selected - navigating to camera',
+                        );
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const DevelopmentCameraWrapper(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.camera_alt, color: Colors.orange),
+                      label: const Text(
+                        'Demo Camera',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Development wrapper for camera testing without authentication
+class DevelopmentCameraWrapper extends StatelessWidget {
+  const DevelopmentCameraWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Camera preview screen
+          const CameraPreviewScreen(),
+
+          // Development overlay banner
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: Colors.orange.withValues(alpha: 0.9),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'DEMO MODE - Authentication Bypassed',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // Navigate back to auth screen
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const DevelopmentAuthScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Back to Auth',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Development/Testing page - keeping for potential future use but not the main flow
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -231,7 +448,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final user = authService.currentUser;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -293,9 +510,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     radius: 16,
                     backgroundColor: Colors.deepPurple.shade600,
                     child: Text(
-                      (user?.phoneNumber?.isNotEmpty == true 
-                          ? user!.phoneNumber!.substring(user.phoneNumber!.length - 2)
-                          : user?.email?.substring(0, 1).toUpperCase()) ?? 'U',
+                      (user?.phoneNumber?.isNotEmpty == true
+                              ? user!.phoneNumber!.substring(
+                                  user.phoneNumber!.length - 2,
+                                )
+                              : user?.email?.substring(0, 1).toUpperCase()) ??
+                          'U',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -350,9 +570,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              const Text("Background Sync", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Background Sync",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               if (_lastExecutionInfo != null) ...[
                 Card(
                   margin: const EdgeInsets.all(16),
@@ -361,16 +584,28 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Last Execution Info", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          "Last Execution Info",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
-                        Text('Platform: ${_lastExecutionInfo!["platform"] ?? "N/A"}'),
-                        Text('Executed: ${_lastExecutionInfo!["executed"] ?? "N/A"}'),
+                        Text(
+                          'Platform: ${_lastExecutionInfo!["platform"] ?? "N/A"}',
+                        ),
+                        Text(
+                          'Executed: ${_lastExecutionInfo!["executed"] ?? "N/A"}',
+                        ),
                         if (_lastExecutionInfo!['executionTime'] != null)
                           Text('Time: ${_lastExecutionInfo!['executionTime']}'),
                         if (_lastExecutionInfo!['note'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
-                            child: Text('Note: ${_lastExecutionInfo!['note']}', style: const TextStyle(fontStyle: FontStyle.italic)),
+                            child: Text(
+                              'Note: ${_lastExecutionInfo!['note']}',
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ),
                       ],
                     ),

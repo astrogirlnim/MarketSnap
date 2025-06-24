@@ -52,11 +52,13 @@ class HiveService {
       encryptionCipher: cipher,
     );
     debugPrint('[HiveService] "$userSettingsBoxName" box opened.');
-    
+
     // Ensure user settings has a default value if the box is new
     if (userSettingsBox.isEmpty) {
-        debugPrint('[HiveService] UserSettings box is empty. Seeding with default settings.');
-        await userSettingsBox.put('settings', UserSettings());
+      debugPrint(
+        '[HiveService] UserSettings box is empty. Seeding with default settings.',
+      );
+      await userSettingsBox.put('settings', UserSettings());
     }
 
     debugPrint('[HiveService] Hive initialization complete.');
@@ -75,4 +77,4 @@ class HiveService {
     debugPrint('[HiveService] Closing all Hive boxes.');
     await Hive.close();
   }
-} 
+}
