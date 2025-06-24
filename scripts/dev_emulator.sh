@@ -442,7 +442,7 @@ run_flutter_ios() {
     while [ $wait_count -lt $max_wait ]; do
         local flutter_devices_output=$(flutter devices 2>/dev/null)
         log "DEBUG" "Flutter devices output: $flutter_devices_output"
-        if echo "$flutter_devices_output" | grep -F "$ios_flutter_device_id" > /dev/null; then
+        if echo "$flutter_devices_output" | grep -F "$ios_flutter_device_id"; then
             log "SUCCESS" "✅ Flutter recognizes iOS Simulator"
             device_detected=true
             break
