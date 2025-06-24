@@ -28,6 +28,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Create a dummy .env file to satisfy asset requirements for analyzer and tests
       - name: Create dummy .env file
         run: touch .env
 
