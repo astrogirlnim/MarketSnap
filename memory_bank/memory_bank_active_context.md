@@ -4,65 +4,68 @@
 
 ---
 
-## Current Focus
+## Current Work Focus
 
-We have successfully completed **Phase 3.1.1: Authentication Flow**. The phone/email OTP authentication flow is now fully implemented, tested, and working correctly with Firebase Auth and emulator support.
+**Phase 3.1: Auth & Profile Screens**
 
-### ✅ Phase 3.1.1 Complete - Recent Achievements:
+We're implementing the user interface layer for authentication and vendor profile management.
 
--   **Authentication Service:** Comprehensive `AuthService` class implementing both phone and email authentication flows with Firebase Auth.
--   **Phone Authentication:** Complete phone number verification with SMS OTP flow, supporting international numbers and auto-verification.
--   **Email Authentication:** Magic link email authentication as an alternative to phone authentication.
--   **Authentication Screens:** Beautiful, modern UI screens for welcome, phone entry, OTP verification, and email authentication.
--   **Auth State Management:** Integrated `StreamBuilder` with Firebase Auth state changes for automatic routing between authenticated and non-authenticated states.
--   **Cross-platform Support:** Works on both iOS and Android with proper permissions and emulator integration.
--   **Firebase Emulator Integration:** Full support for local testing with Firebase Auth emulator.
--   **Error Handling:** Comprehensive error mapping and user-friendly error messages.
--   **Modern UI:** Material 3 design system with responsive layouts and accessibility considerations.
+1. **Phone/Email OTP Authentication Flow** ✅ **COMPLETED**
+   - ✅ Firebase Auth integration with OTP verification implemented
+   - ✅ Authentication screens created (AuthWelcomeScreen, PhoneAuthScreen, EmailAuthScreen, OTPVerificationScreen)
+   - ✅ Cross-platform support for iOS and Android with platform-specific handling
+   - ✅ Firebase emulator integration working for local development
+   - ✅ Network security configuration for Android cleartext HTTP to emulators
+   - ✅ iOS-specific crash prevention and fallback mechanisms
+
+2. **Profile Form Implementation** 📋 **NEXT**
+   - Vendor profile creation/editing (stall name, market city, avatar upload)
+   - Offline caching validation in Hive
 
 ## Recent Changes
 
--   **`firebase.json.template`:** Updated to include the necessary `functions` and `emulators` configurations for local development.
--   **`lib/main.dart`:** Modified to correctly initialize and connect to Firebase emulators during development builds.
--   **`functions/src/index.ts`:** Implemented the `sendFollowerPush` and `fanOutBroadcast` functions using Firebase Functions v2 syntax.
--   **`functions/src/test/index.test.ts`:** Created a robust testing suite that properly mocks the Firebase Admin SDK for isolated unit tests.
+- **✅ Authentication Implementation Complete:** Full authentication flow implemented with AuthService, all auth screens, and comprehensive error handling
+- **✅ Cross-Platform Bug Fixes:** Resolved Android cleartext HTTP issue with network security config and iOS Firebase Auth crashes with platform-specific handling
+- **✅ Firebase Emulator Integration:** Working seamlessly with both Android and iOS platforms
+
+## Current Status
+
+**Authentication is fully functional:**
+- ✅ Android: Phone and email authentication working with Firebase emulators
+- ✅ iOS: Email authentication working; phone auth disabled in simulator with user-friendly messaging
+- ✅ Comprehensive error handling and user feedback
+- ✅ Clean architecture with proper separation of concerns
 
 ## Next Steps
 
-1.  **Begin Phase 2.4 (Cloud Functions - AI Prep):**
-    -   Scaffold `generateCaption`, `getRecipeSnippet`, and `vectorSearchFAQ` functions with placeholder/dummy return values.
-    -   Configure a new environment variable for the OpenAI API key, but leave the feature flag disabled until Phase 4.
-2.  **Move to Phase 3 (Interface Layer):**
-    -   Once Phase 2 is fully complete, we will begin building the user-facing widgets and screens.
+1. ✅ ~~Complete authentication screens implementation~~ **DONE**
+2. ✅ ~~Test authentication flow on both platforms with Firebase emulators~~ **DONE**
+3. 📋 **NEXT:** Implement profile form (stall name, market city, avatar upload)
+4. 📋 **NEXT:** Validate offline caching of profile in Hive
+5. 📋 **NEXT:** Begin media capture UI development
 
-## Blockers
+---
 
-_All previous blockers resolved._
+## Technical Implementation Details
 
-# Active Context (Now)
+- **AuthService:** Comprehensive Firebase Auth service with phone and email support
+- **Cross-Platform Handling:** Platform-specific logic for iOS emulator limitations
+- **Network Security:** Android network security config allows Firebase emulator connections
+- **Error Handling:** User-friendly error messages and graceful fallbacks
+- **UI/UX:** Material Design 3 with responsive design and accessibility considerations
 
-- **Background sync (WorkManager) is now fully functional on both Android and iOS.**
-  - Android: Execution is tracked and can be verified in-app.
-  - iOS: Execution must be verified via console logs due to platform limitations (SharedPreferences not available in background isolate).
-- All test UI and debug buttons have been removed; the implementation is now production-ready.
-- Documentation and checklist updated to reflect the final state and manual verification approach for iOS.
+## Project Status Overview
 
-**Current Sprint:** Phase 1 – Foundation (Week of June 24 2025)
+- **✅ Phase 1 - Foundation:** Complete
+- **✅ Phase 2 - Data Layer:** Complete
+- **🔄 Phase 3 - Interface Layer:** In Progress (Auth complete, Profile next)
+- **📋 Phase 4 - Implementation Layer:** Pending
 
-### In Progress
-- Flutter project bootstrap.
-- Firebase project creation & SDK integration.
-- Hive box scaffolding.
+## Known Issues / Notes
 
-### Next Up
-1. Register `SyncPendingMediaTask` WorkManager job.
-2. Add unit tests for queue persistence.
-3. Import LUT assets & set CI size gate.
+- iOS phone authentication disabled in simulator due to platform limitations
+- Firebase emulators must be running for local development
+- All authentication flows tested and working with proper error handling
 
-### Recently Completed
-- PRD v1.1 approved.
-- MVP checklist generated and reformatted to nested checkboxes.
 
-### Blockers
-_None identified._
 
