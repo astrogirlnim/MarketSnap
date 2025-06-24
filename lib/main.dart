@@ -13,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
+import 'features/capture/presentation/screens/camera_preview_screen.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -157,10 +158,10 @@ class AuthWrapper extends StatelessWidget {
           );
         }
         
-        // User is authenticated
+        // User is authenticated - redirect to camera preview
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
-          return const MyHomePage(title: 'MarketSnap');
+          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera');
+          return const CameraPreviewScreen();
         }
         
         // User is not authenticated
@@ -171,6 +172,7 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
+// Development/Testing page - keeping for potential future use but not the main flow
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 

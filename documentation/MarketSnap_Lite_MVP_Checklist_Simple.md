@@ -75,8 +75,8 @@ Legend:
   - [ ] Profile form: stall name, market city, avatar upload.
   - [ ] Validate offline caching of profile in Hive.
 
-- [ ] **2. Capture & Review UI**
-  - [ ] Camera preview with photo shutter.
+- [~] **2. Capture & Review UI**
+  - [X] Camera preview with photo shutter. ✅ **COMPLETED** - Full camera preview with photo capture, cross-platform support, flash controls, camera switching, and modern UI.
   - [ ] 5‑sec video record button with live countdown.
   - [ ] Review screen → apply LUT filter → "Post" button.
 
