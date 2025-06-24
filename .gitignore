@@ -14,6 +14,23 @@ build/
 !/marketsnap/ios/Pods/Pods.xcodeproj/
 !/marketsnap/ios/Pods/Target\ Support\ Files/
 
+# iOS
+ios/build/
+ios/Runner.xcworkspace/
+ios/Runner.xcodeproj/
+ios/Runner.app/
+ios/Runner.app.dSYM.zip
+ios/Runner.app.dSYM/
+ios/Runner.app.dSYM/Contents/
+ios/Runner.app.dSYM/Contents/Info.plist
+ios/Runner.app.dSYM/Contents/Resources/
+ios/Runner.app.dSYM/Contents/Resources/DWARF/
+
+
+# Flutter logs
+flutter_android.log
+flutter_ios.log
+
 # Rider
 .idea/
 

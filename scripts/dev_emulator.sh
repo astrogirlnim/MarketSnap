@@ -441,7 +441,8 @@ run_flutter_ios() {
     
     while [ $wait_count -lt $max_wait ]; do
         local flutter_devices_output=$(flutter devices 2>/dev/null)
-        if echo "$flutter_devices_output" | grep -q -E "(iOS.*Simulator|apple_ios_simulator)"; then
+        log "DEBUG" "Flutter devices output: $flutter_devices_output"
+        if echo "$flutter_devices_output" | grep -F "$ios_flutter_device_id" > /dev/null; then
             log "SUCCESS" "✅ Flutter recognizes iOS Simulator"
             device_detected=true
             break
@@ -527,7 +528,7 @@ run_flutter_android() {
     while [ $wait_count -lt $max_wait ]; do
         local flutter_devices_output=$(flutter devices 2>/dev/null)
         
-        if [[ -n "$android_device_id" ]] && echo "$flutter_devices_output" | grep -q "$android_device_id"; then
+        if [[ -n "$android_device_id" ]] && echo "$flutter_devices_output" | grep -F "$android_device_id"; then
             log "SUCCESS" "✅ Flutter recognizes Android Emulator: $android_device_id"
             device_detected=true
             break
