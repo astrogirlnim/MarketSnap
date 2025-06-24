@@ -221,6 +221,32 @@ flutter build ios --release
    - Android: Check NDK installation and licenses
    - iOS: Verify Xcode and simulator setup
 
+4. **iOS Build Failure: 'Flutter/Flutter.h' not found or 'Dart compiler exited unexpectedly'**
+   - This project requires two specific modifications to the default iOS project structure.
+   - **Symptom 1:** Build fails with `'Flutter/Flutter.h' file not found`.
+   - **Symptom 2:** Build succeeds, but the app crashes on launch with `the Dart compiler exited unexpectedly.`
+   - **Solution:**
+        1.  **Framework Search Paths**: Ensure your `ios/Podfile`'s `post_install` script explicitly adds the Flutter framework to the search paths. This is a non-standard modification required for this project's dependencies to link correctly.
+            ```ruby
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                flutter_additional_ios_build_settings(target)
+                target.build_configurations.each do |config|
+                  config.build_settings['FRAMEWORK_SEARCH_PATHS'] = [
+                    '$(inherited)',
+                    '${PODS_ROOT}/../Flutter'
+                  ]
+                end
+              end
+            end
+            ```
+        2.  **Profile Configuration**: The `pod install` command may show a warning about the `profile` configuration. To fix this, create a new file at `ios/Flutter/Profile.xcconfig` and add the following lines to it:
+            ```
+            #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"
+            #include "Generated.xcconfig"
+            ```
+        3.  After making these changes, run `flutter clean`, then delete the `ios/Pods`, `ios/Podfile.lock`, and `ios/Runner.xcworkspace` directories and run `flutter pub get` and `pod install` from the `ios` directory.
+
 ### Development Resources
 
 - [Flutter Documentation](https://docs.flutter.dev/)
