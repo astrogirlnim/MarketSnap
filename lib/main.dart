@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/hive_service.dart';
@@ -107,9 +106,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void _checkBackgroundExecution() async {
     debugPrint('[UI] Checking background execution status...');
     final info = await backgroundSyncService.getLastExecutionInfo();
-    setState(() {
-      _lastExecutionInfo = info;
-    });
+    if (mounted) {
+      setState(() {
+        _lastExecutionInfo = info;
+      });
+    }
     debugPrint('[UI] Background execution info: $info');
   }
 
@@ -117,33 +118,22 @@ class _MyHomePageState extends State<MyHomePage> {
     debugPrint('[UI] Scheduling one-time background task...');
     try {
       await backgroundSyncService.scheduleOneTimeSyncTask();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('One-time background task scheduled!')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('One-time background task scheduled!')),
+        );
+      }
     } catch (e) {
       debugPrint('[UI] Error scheduling one-time task: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error scheduling task: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error scheduling task: $e')),
+        );
+      }
     }
   }
 
-  void _showPlatformInfo() {
-    final info = backgroundSyncService.getPlatformInfo();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Background Task Info - ${Platform.operatingSystem.toUpperCase()}'),
-        content: Text(info),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +146,11 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            const Text(
+              'Welcome to MarketSnap!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'You have pushed the button this many times:',
             ),
