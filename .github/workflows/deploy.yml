@@ -41,6 +41,63 @@ jobs:
       - name: Create dummy .env file
         run: touch .env
 
+      - name: Generate Firebase options file for validation
+        run: |
+          # Install Firebase CLI and FlutterFire CLI
+          npm install -g firebase-tools
+          dart pub global activate flutterfire_cli
+          export PATH="$PATH":"$HOME/.pub-cache/bin"
+          # Generate firebase.json from template with dummy values for validation
+          export FIREBASE_PROJECT_ID="dummy-project"
+          export ANDROID_APP_ID="1:123456789:android:dummy"
+          export IOS_APP_ID="1:123456789:ios:dummy"
+          envsubst < firebase.json.template > firebase.json
+          # Generate firebase_options.dart using FlutterFire CLI
+          flutterfire configure --project=dummy-project --platforms=android,ios --out=lib/firebase_options.dart --yes || echo "FlutterFire configure failed, creating dummy file"
+          # If FlutterFire fails, create a minimal dummy file for validation
+          if [ ! -f "lib/firebase_options.dart" ]; then
+            mkdir -p lib
+            cat > lib/firebase_options.dart << 'EOF'
+          // Dummy Firebase options for CI validation
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+          
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web platform not supported');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError('Platform not supported');
+              }
+            }
+          
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:android:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+            );
+          
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:ios:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+              iosBundleId: 'com.example.marketsnap',
+            );
+          }
+          EOF
+            echo "✅ Created dummy firebase_options.dart for validation"
+          fi
+
       - name: Run analyzer
         run: flutter analyze
 
@@ -102,6 +159,16 @@ jobs:
           # Generate firebase.json from template with environment variables
           envsubst < firebase.json.template > firebase.json
           echo "✅ Generated firebase.json from template with environment variables"
+
+      - name: Generate Firebase options file
+        run: |
+          # Install Firebase CLI and FlutterFire CLI
+          npm install -g firebase-tools
+          dart pub global activate flutterfire_cli
+          export PATH="$PATH":"$HOME/.pub-cache/bin"
+          # Generate firebase_options.dart using FlutterFire CLI
+          flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart --yes
+          echo "✅ Generated lib/firebase_options.dart"
 
       - name: Build Android APK
         run: flutter build apk --release

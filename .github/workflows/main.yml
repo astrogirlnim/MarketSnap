@@ -25,7 +25,7 @@ jobs:
           node-version: '20'
       - name: Create dummy .env file
         run: touch .env
-      - name: Generate firebase.json from template
+      - name: Generate Firebase configuration files
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           ANDROID_APP_ID: ${{ secrets.ANDROID_APP_ID }}
@@ -36,6 +36,60 @@ jobs:
           # Generate firebase.json from template with environment variables
           envsubst < firebase.json.template > firebase.json
           echo "✅ Generated firebase.json from template with environment variables"
+          
+          # Install Firebase CLI and FlutterFire CLI
+          npm install -g firebase-tools
+          dart pub global activate flutterfire_cli
+          export PATH="$PATH":"$HOME/.pub-cache/bin"
+          
+          # Try to generate firebase_options.dart, fallback to dummy if it fails
+          if [ -n "$FIREBASE_PROJECT_ID" ] && [ "$FIREBASE_PROJECT_ID" != "" ]; then
+            flutterfire configure --project=$FIREBASE_PROJECT_ID --platforms=android,ios --out=lib/firebase_options.dart --yes || echo "FlutterFire configure failed, creating dummy file"
+          fi
+          
+          # If FlutterFire fails or no project ID, create a minimal dummy file for validation
+          if [ ! -f "lib/firebase_options.dart" ]; then
+            mkdir -p lib
+            cat > lib/firebase_options.dart << 'EOF'
+          // Dummy Firebase options for CI validation
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+          
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web platform not supported');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError('Platform not supported');
+              }
+            }
+          
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:android:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+            );
+          
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:ios:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+              iosBundleId: 'com.example.marketsnap',
+            );
+          }
+          EOF
+            echo "✅ Created dummy firebase_options.dart for validation"
+          fi
       - name: Install Flutter dependencies
         run: flutter pub get
       - name: Install, lint, and build functions
