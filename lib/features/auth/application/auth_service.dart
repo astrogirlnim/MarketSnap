@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
@@ -33,37 +34,78 @@ class AuthService {
   }) async {
     debugPrint('[AuthService] Starting phone verification for: $phoneNumber');
     
+    // iOS-specific handling to prevent crashes
+    if (Platform.isIOS) {
+      debugPrint('[AuthService] iOS platform detected, applying iOS-specific phone auth handling');
+      
+      // Check if we're running in emulator mode
+      if (kDebugMode) {
+        debugPrint('[AuthService] Debug mode on iOS - checking emulator connectivity');
+        
+        // For iOS emulator, we might need to handle phone auth differently
+        try {
+          // Add a small delay to ensure iOS Firebase Auth is ready
+          await Future.delayed(const Duration(milliseconds: 200));
+        } catch (e) {
+          debugPrint('[AuthService] iOS preparation delay failed: $e');
+        }
+      }
+    }
+    
     String? verificationId;
     
-    await _firebaseAuth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        debugPrint('[AuthService] Phone verification completed automatically');
-        if (onVerificationCompleted != null) {
-          onVerificationCompleted(credential);
-        } else {
-          // Auto-sign in if credential is complete
-          await signInWithPhoneCredential(credential);
-        }
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        debugPrint('[AuthService] Phone verification failed: ${e.code} - ${e.message}');
+    try {
+      await _firebaseAuth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          debugPrint('[AuthService] Phone verification completed automatically');
+          try {
+            if (onVerificationCompleted != null) {
+              onVerificationCompleted(credential);
+            } else {
+              // Auto-sign in if credential is complete
+              await signInWithPhoneCredential(credential);
+            }
+          } catch (e) {
+            debugPrint('[AuthService] Error in verification completed callback: $e');
+            onVerificationFailed('Authentication failed: $e');
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          debugPrint('[AuthService] Phone verification failed: ${e.code} - ${e.message}');
+          String errorMessage = _getPhoneAuthErrorMessage(e);
+          onVerificationFailed(errorMessage);
+        },
+        codeSent: (String verId, int? resendToken) {
+          debugPrint('[AuthService] SMS code sent. Verification ID: $verId');
+          verificationId = verId;
+          onCodeSent(verId, resendToken);
+        },
+        codeAutoRetrievalTimeout: (String verId) {
+          debugPrint('[AuthService] Code auto-retrieval timeout for: $verId');
+          if (onCodeAutoRetrievalTimeout != null) {
+            onCodeAutoRetrievalTimeout(verId);
+          }
+        },
+        timeout: const Duration(seconds: 60),
+      );
+    } catch (e) {
+      debugPrint('[AuthService] Phone verification exception: $e');
+      
+      // iOS-specific error handling
+      if (Platform.isIOS && e.toString().contains('nil')) {
+        onVerificationFailed('iOS phone verification is not available in the current environment. Please try email authentication instead.');
+        return '';
+      }
+      
+      // Handle any unexpected errors during phone verification setup
+      if (e is FirebaseAuthException) {
         String errorMessage = _getPhoneAuthErrorMessage(e);
         onVerificationFailed(errorMessage);
-      },
-      codeSent: (String verId, int? resendToken) {
-        debugPrint('[AuthService] SMS code sent. Verification ID: $verId');
-        verificationId = verId;
-        onCodeSent(verId, resendToken);
-      },
-      codeAutoRetrievalTimeout: (String verId) {
-        debugPrint('[AuthService] Code auto-retrieval timeout for: $verId');
-        if (onCodeAutoRetrievalTimeout != null) {
-          onCodeAutoRetrievalTimeout(verId);
-        }
-      },
-      timeout: const Duration(seconds: 60),
-    );
+      } else {
+        onVerificationFailed('Phone verification failed: $e');
+      }
+    }
     
     return verificationId ?? '';
   }
@@ -243,6 +285,12 @@ class AuthService {
         return 'This phone number is already associated with another account.';
       case 'user-disabled':
         return 'This account has been disabled. Please contact support.';
+      case 'unknown':
+        // Handle emulator connection issues
+        if (e.message?.contains('Cleartext HTTP traffic') == true) {
+          return 'Development mode: Firebase emulator connection issue. Please ensure emulators are running and network configuration is correct.';
+        }
+        return e.message ?? 'Phone authentication failed. Please try again.';
       default:
         return e.message ?? 'Phone authentication failed. Please try again.';
     }
@@ -269,6 +317,12 @@ class AuthService {
         return 'The email link is incomplete. Please request a new one.';
       case 'too-many-requests':
         return 'Too many email requests. Please wait before trying again.';
+      case 'unknown':
+        // Handle emulator connection issues
+        if (e.message?.contains('Cleartext HTTP traffic') == true) {
+          return 'Development mode: Firebase emulator connection issue. Please ensure emulators are running and network configuration is correct.';
+        }
+        return e.message ?? 'Email authentication failed. Please try again.';
       default:
         return e.message ?? 'Email authentication failed. Please try again.';
     }

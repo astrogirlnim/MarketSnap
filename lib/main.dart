@@ -34,9 +34,50 @@ Future<void> main() async {
   if (kDebugMode) {
     try {
       debugPrint('[main] Debug mode detected, using local emulators.');
-      await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-      await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+      
+      // Configure emulators with proper error handling and platform-specific logic
+      try {
+        // For iOS simulator, we need to be more careful with emulator configuration
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          debugPrint('[main] Configuring emulators for iOS simulator...');
+          // Add a longer delay to ensure Firebase is fully initialized on iOS
+          await Future.delayed(const Duration(milliseconds: 500));
+          
+          // Try to configure Auth emulator with iOS-specific error handling
+          try {
+            await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+            debugPrint('[main] iOS Auth emulator configured successfully.');
+          } catch (iosAuthError) {
+            debugPrint('[main] iOS Auth emulator failed: $iosAuthError');
+            // For iOS, we'll continue without the emulator if it fails
+            debugPrint('[main] Continuing without Auth emulator on iOS...');
+          }
+        } else {
+          // Android configuration (working fine)
+          await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+          debugPrint('[main] Auth emulator configured.');
+        }
+      } catch (e) {
+        debugPrint('[main] Auth emulator configuration failed: $e');
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          debugPrint('[main] iOS emulator configuration failure is non-fatal, continuing...');
+        }
+      }
+      
+      try {
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        debugPrint('[main] Firestore emulator configured.');
+      } catch (e) {
+        debugPrint('[main] Firestore emulator configuration failed: $e');
+      }
+      
+      try {
+        await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+        debugPrint('[main] Storage emulator configured.');
+      } catch (e) {
+        debugPrint('[main] Storage emulator configuration failed: $e');
+      }
+      
       debugPrint('[main] Firebase emulators configured successfully.');
     } catch (e) {
       debugPrint('[main] Error configuring Firebase emulators: $e');

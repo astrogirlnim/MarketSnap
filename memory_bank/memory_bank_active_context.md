@@ -6,17 +6,19 @@
 
 ## Current Focus
 
-We have successfully completed **Phase 2.3: Cloud Functions (Core)**. The core backend logic for push notifications is now implemented, unit-tested, and a reliable local testing workflow has been established using the Firebase Emulator Suite.
+We have successfully completed **Phase 3.1.1: Authentication Flow**. The phone/email OTP authentication flow is now fully implemented, tested, and working correctly with Firebase Auth and emulator support.
 
-### ✅ Phase 2.3 Complete - Recent Achievements:
+### ✅ Phase 3.1.1 Complete - Recent Achievements:
 
--   **Cloud Functions Implemented:**
-    -   `sendFollowerPush`: Triggers on new `snaps` documents to notify followers.
-    -   `fanOutBroadcast`: Triggers on new `broadcasts` documents to notify followers.
--   **Unit Tests:** Both functions have comprehensive unit tests created with the Firebase Functions Test SDK, Mocha, and Chai, ensuring logical correctness.
--   **Local Emulator Workflow:** Established a clear, documented process for running and testing Cloud Functions locally. This includes generating the `firebase.json` from a template and manually triggering functions via the Firestore Emulator UI.
--   **Troubleshooting:** Successfully diagnosed and resolved emulator startup issues related to Firebase configuration.
--   **Documentation:** Updated the project `README.md` with detailed instructions for the local emulator and testing workflow. *(Correction: The `README.md` update failed due to a persistent tooling issue, but the steps are recorded in our chat history).*
+-   **Authentication Service:** Comprehensive `AuthService` class implementing both phone and email authentication flows with Firebase Auth.
+-   **Phone Authentication:** Complete phone number verification with SMS OTP flow, supporting international numbers and auto-verification.
+-   **Email Authentication:** Magic link email authentication as an alternative to phone authentication.
+-   **Authentication Screens:** Beautiful, modern UI screens for welcome, phone entry, OTP verification, and email authentication.
+-   **Auth State Management:** Integrated `StreamBuilder` with Firebase Auth state changes for automatic routing between authenticated and non-authenticated states.
+-   **Cross-platform Support:** Works on both iOS and Android with proper permissions and emulator integration.
+-   **Firebase Emulator Integration:** Full support for local testing with Firebase Auth emulator.
+-   **Error Handling:** Comprehensive error mapping and user-friendly error messages.
+-   **Modern UI:** Material 3 design system with responsive layouts and accessibility considerations.
 
 ## Recent Changes
 

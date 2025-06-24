@@ -71,7 +71,7 @@ Legend:
 **Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
 - [ ] **1. Auth & Profile Screens**
-  - [ ] Phone/email OTP flow using `firebase_auth`.
+  - [X] Phone/email OTP flow using `firebase_auth`.
   - [ ] Profile form: stall name, market city, avatar upload.
   - [ ] Validate offline caching of profile in Hive.
 
