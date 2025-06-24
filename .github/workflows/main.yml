@@ -69,12 +69,13 @@ jobs:
           echo "✅ Created dummy lib/firebase_options.dart for validation"
       - name: Install Flutter dependencies
         run: flutter pub get
-      - name: Install, lint, and build functions
+      - name: Install, lint, build, and test functions
         working-directory: ./functions
         run: |
           npm install
           npm run lint
           npm run build
+          npm test
       - name: Analyze Flutter project
         run: flutter analyze
       - name: Run Flutter tests

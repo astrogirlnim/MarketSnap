@@ -55,10 +55,10 @@ Legend:
   - [X] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
   - [X] Configure TTL lifecycle rule (30 days hard delete).
 
-- [ ] **3. Cloud Functions (Core)**
-  - [ ] `sendFollowerPush` – on `snaps` create → FCM multicast.
-  - [ ] `fanOutBroadcast` – on `broadcasts` create → FCM.
-  - [ ] Unit tests with Firebase Functions Test SDK.
+- [X] **3. Cloud Functions (Core)**
+  - [X] `sendFollowerPush` – on `snaps` create → FCM multicast.
+  - [X] `fanOutBroadcast` – on `broadcasts` create → FCM.
+  - [X] Unit tests with Firebase Functions Test SDK.
 
 - [ ] **4. Cloud Functions (AI Phase 2 Prep)**
   - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.

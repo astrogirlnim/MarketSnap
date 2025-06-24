@@ -1,60 +1,40 @@
 # Active Context
 
-*Last Updated: June 24, 2025*
+*Last Updated: June 25, 2025*
 
 ---
 
 ## Current Focus
 
-We have successfully completed **Phase 2.2: Storage Buckets & Configuration** and are now ready to begin **Phase 2.3: Cloud Functions (Core)**.
+We have successfully completed **Phase 2.3: Cloud Functions (Core)**. The core backend logic for push notifications is now implemented, unit-tested, and a reliable local testing workflow has been established using the Firebase Emulator Suite.
 
-### ✅ Phase 2.2 Complete - Recent Achievements:
+### ✅ Phase 2.3 Complete - Recent Achievements:
 
--   **CI/CD Pipeline Fixed:** Resolved Firebase authentication errors in the CI/CD pipeline, ensuring stable and reliable automated builds and validations.
--   **Firebase Configuration Security:** Implemented environment-based configuration using `.env` file and `flutter_dotenv`, eliminating hardcoded API keys from source code.
--   **Firebase Options Integration:** Generated and integrated `lib/firebase_options.dart` using FlutterFire CLI for proper cross-platform Firebase initialization.
--   **HiveService Fix:** Resolved initialization parameter mismatch in `main.dart` to properly align with service implementation.
--   **Development Environment Stability:** Restored emulator script compatibility and verified cross-platform builds (Android & iOS).
--   **Build Verification:** Successfully tested both Android APK and iOS app builds to ensure no regressions.
+-   **Cloud Functions Implemented:**
+    -   `sendFollowerPush`: Triggers on new `snaps` documents to notify followers.
+    -   `fanOutBroadcast`: Triggers on new `broadcasts` documents to notify followers.
+-   **Unit Tests:** Both functions have comprehensive unit tests created with the Firebase Functions Test SDK, Mocha, and Chai, ensuring logical correctness.
+-   **Local Emulator Workflow:** Established a clear, documented process for running and testing Cloud Functions locally. This includes generating the `firebase.json` from a template and manually triggering functions via the Firestore Emulator UI.
+-   **Troubleshooting:** Successfully diagnosed and resolved emulator startup issues related to Firebase configuration.
+-   **Documentation:** Updated the project `README.md` with detailed instructions for the local emulator and testing workflow. *(Correction: The `README.md` update failed due to a persistent tooling issue, but the steps are recorded in our chat history).*
 
 ## Recent Changes
 
--   **Security Hardening:** All Firebase configuration now uses environment variables with no sensitive data in version control.
--   **Firebase Options Generated:** Used `flutterfire configure` to create proper platform-specific Firebase configuration.
--   **Build System Validation:** Confirmed that both Android and iOS builds compile successfully with new configuration.
--   **Development Workflow:** Restored full development emulator functionality with proper Firebase backend integration.
+-   **`firebase.json.template`:** Updated to include the necessary `functions` and `emulators` configurations for local development.
+-   **`lib/main.dart`:** Modified to correctly initialize and connect to Firebase emulators during development builds.
+-   **`functions/src/index.ts`:** Implemented the `sendFollowerPush` and `fanOutBroadcast` functions using Firebase Functions v2 syntax.
+-   **`functions/src/test/index.test.ts`:** Created a robust testing suite that properly mocks the Firebase Admin SDK for isolated unit tests.
 
 ## Next Steps
 
-1.  **Begin Phase 2.3 (Cloud Functions - Core):**
-    -   Implement `sendFollowerPush` function for FCM notifications when snaps are created
-    -   Implement `fanOutBroadcast` function for FCM notifications when broadcasts are created
-    -   Add unit tests using Firebase Functions Test SDK
-2.  **Prepare for Phase 2.4 (Cloud Functions - AI Prep):**
-    -   Scaffold AI helper functions with dummy returns
-    -   Set up environment variables for OpenAI integration
+1.  **Begin Phase 2.4 (Cloud Functions - AI Prep):**
+    -   Scaffold `generateCaption`, `getRecipeSnippet`, and `vectorSearchFAQ` functions with placeholder/dummy return values.
+    -   Configure a new environment variable for the OpenAI API key, but leave the feature flag disabled until Phase 4.
+2.  **Move to Phase 3 (Interface Layer):**
+    -   Once Phase 2 is fully complete, we will begin building the user-facing widgets and screens.
 
-## Blockers Resolved
+## Blockers
 
-- ✅ **Firebase Configuration Missing:** `lib/firebase_options.dart` has been generated and integrated
-- ✅ **HiveService Initialization Error:** Parameter mismatch in `main.dart` has been fixed
-- ✅ **Android Build Failures:** All compilation errors resolved, builds working correctly
-
-## Current Sprint: Phase 2.3 – Cloud Functions (Core) (Week of June 24, 2025)
-
-### Ready to Start
-1. Implement `sendFollowerPush` Cloud Function
-2. Implement `fanOutBroadcast` Cloud Function  
-3. Add comprehensive unit tests for both functions
-4. Test functions with local Firebase Emulator Suite
-
-### Recently Completed ✅
-- Phase 2.2: Storage Buckets & Configuration
-- Firebase security configuration with environment variables
-- Development environment stability improvements
-- Cross-platform build verification
-
-### Blockers
 _All previous blockers resolved._
 
 # Active Context (Now)

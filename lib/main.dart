@@ -7,6 +7,10 @@ import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -22,6 +26,19 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // In debug mode, point to the local emulators
+  if (kDebugMode) {
+    try {
+      debugPrint('[main] Debug mode detected, using local emulators.');
+      await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+      await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+      debugPrint('[main] Firebase emulators configured successfully.');
+    } catch (e) {
+      debugPrint('[main] Error configuring Firebase emulators: $e');
+    }
+  }
 
   // Initialize Firebase App Check with the debug provider
   await FirebaseAppCheck.instance.activate(
