@@ -37,22 +37,22 @@ log() {
     
     case "$level" in
         "INFO")
-            echo -e "${CYAN}[${timestamp}] INFO:${NC} $message"
+            echo -e "${CYAN}[${timestamp}] INFO:${NC} $message" >&2
             ;;
         "SUCCESS")
-            echo -e "${GREEN}[${timestamp}] SUCCESS:${NC} $message"
+            echo -e "${GREEN}[${timestamp}] SUCCESS:${NC} $message" >&2
             ;;
         "WARNING")  
-            echo -e "${YELLOW}[${timestamp}] WARNING:${NC} $message"
+            echo -e "${YELLOW}[${timestamp}] WARNING:${NC} $message" >&2
             ;;
         "ERROR")
-            echo -e "${RED}[${timestamp}] ERROR:${NC} $message"
+            echo -e "${RED}[${timestamp}] ERROR:${NC} $message" >&2
             ;;
         "DEBUG")
-            echo -e "${PURPLE}[${timestamp}] DEBUG:${NC} $message"
+            echo -e "${PURPLE}[${timestamp}] DEBUG:${NC} $message" >&2
             ;;
         *)
-            echo -e "${BLUE}[${timestamp}] LOG:${NC} $message"
+            echo -e "${BLUE}[${timestamp}] LOG:${NC} $message" >&2
             ;;
     esac
 }
@@ -397,29 +397,17 @@ launch_android_emulator() {
 
 # Function to get booted iOS simulator device ID for Flutter
 get_booted_ios_device_id() {
-    # Wait a moment for Flutter to detect the device
-    sleep 3
-    
-    # Get the iOS simulator device ID that Flutter recognizes
     local flutter_devices
     flutter_devices=$(flutter devices 2>/dev/null)
     
-    # Try to find the iOS device ID (UUID) from the flutter devices output
-    # This looks for a line containing "ios" and "CoreSimulator" and then extracts the UUID.
-    # This is more robust than looking for "(simulator)" which can be on a different line.
     local ios_device_id
     ios_device_id=$(echo "$flutter_devices" | grep "ios" | grep "CoreSimulator" | grep -o -E '[A-F0-9]{8}-([A-F0-9]{4}-){3}[A-F0-9]{12}' | head -1)
 
-    # Fallback to generic iOS simulator ID if parsing fails
     if [[ -z "$ios_device_id" ]]; then
-        log "DEBUG" "No specific iOS device UUID found, using generic 'apple_ios_simulator' ID as fallback."
-        ios_device_id="apple_ios_simulator"
+        echo "apple_ios_simulator"
     else
-        log "DEBUG" "Flutter detected iOS device with UUID: $ios_device_id"
+        echo "$ios_device_id"
     fi
-    
-    echo "$ios_device_id"
-    return 0
 }
 
 # Function to run Flutter app on iOS
@@ -431,7 +419,8 @@ run_flutter_ios() {
     # No need for flutter clean here, moved to the beginning
     
     # Get the booted iOS device ID for Flutter
-    local ios_flutter_device_id=$(get_booted_ios_device_id)
+    local ios_flutter_device_id
+    ios_flutter_device_id=$(get_booted_ios_device_id)
     log "DEBUG" "Using iOS device ID for Flutter: $ios_flutter_device_id"
     
     # Wait for Flutter to recognize the iOS device with better detection
@@ -490,21 +479,11 @@ get_flutter_android_device_id() {
     local flutter_devices
     flutter_devices=$(flutter devices 2>/dev/null)
 
-    # Try to parse the emulator-xxxx ID from the flutter devices output
-    # This looks for a line with "emulator-" and extracts the ID (e.g., emulator-5554)
     local android_device_id
     android_device_id=$(echo "$flutter_devices" | grep -o -E 'emulator-[0-9]+' | head -1)
     
     if [[ -z "$android_device_id" ]]; then
-        # Fallback to adb if parsing from flutter devices fails
-        log "DEBUG" "Could not parse Android device ID from 'flutter devices', falling back to 'adb devices'."
-        android_device_id=$(get_android_device_id) # Uses the existing adb function
-    fi
-
-    if [[ -z "$android_device_id" ]]; then
-        log "WARNING" "⚠️ No specific Android device ID found. The script might fail."
-    else
-        log "DEBUG" "Flutter detected Android device with ID: $android_device_id"
+        android_device_id=$(get_android_device_id)
     fi
 
     echo "$android_device_id"
@@ -524,6 +503,7 @@ run_flutter_android() {
     local device_detected=false
     local android_device_id
     android_device_id=$(get_flutter_android_device_id)
+    log "DEBUG" "Using Android device ID for Flutter: $android_device_id"
     
     while [ $wait_count -lt $max_wait ]; do
         local flutter_devices_output=$(flutter devices 2>/dev/null)
