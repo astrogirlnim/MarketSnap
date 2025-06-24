@@ -64,6 +64,11 @@ Legend:
   - [X] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.
   - [X] Environment var for OpenAI key; leave disabled flag until Phase 4.
 
+- [ ] **5. Messages & Notifications**
+  - [ ] Define `messages` collection with 24 h TTL composite index.
+  - [ ] Firestore security rules: only `fromUid` and `toUid` may read/write.
+  - [ ] Cloud Function `sendMessageNotification` – on new `messages` doc → FCM to recipient.
+
 
 ---
 
@@ -89,6 +94,11 @@ Legend:
   - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.
   - [ ] External link to support email.
   - [ ] Display free‑storage indicator (≥ 100 MB check).
+
+- [ ] **5. Messaging UI**
+  - [ ] Conversation list showing recent chats (24 h TTL badge).
+  - [ ] Chat screen with send/receive bubbles and read indicator.
+  - [ ] Deep-link from push notification to open chat thread.
 
 
 ---
@@ -125,6 +135,11 @@ Legend:
   - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.
   - [ ] On snap view, call `getRecipeSnippet` for produce keyword.
   - [ ] Render collapsible FAQ card below story.
+
+- [ ] **7. Ephemeral Messaging Logic**
+  - [ ] Message send service → write to `messages` + trigger push.
+  - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
+  - [ ] Unit test: conversation auto-deletes after 24 h.
 
 
 ---
