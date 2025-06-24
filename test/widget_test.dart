@@ -41,12 +41,8 @@ class TestableMyHomePage extends StatefulWidget {
 }
 
 class _TestableMyHomePageState extends State<TestableMyHomePage> {
-  int _counter = 0;
-
   void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+    // Placeholder for increment functionality in tests
   }
 
   @override
