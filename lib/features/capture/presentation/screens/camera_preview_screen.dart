@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
@@ -63,6 +64,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   String? _errorMessage;
   FlashMode _currentFlashMode = FlashMode.off;
 
+  // Video recording state
+  bool _isRecordingVideo = false;
+  int _recordingCountdown = 0;
+  StreamSubscription<int>? _countdownSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +80,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _countdownSubscription?.cancel();
     debugPrint('[CameraPreviewScreen] Disposing camera preview screen');
     super.dispose();
   }
@@ -158,8 +165,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Capture a photo using the camera service
   Future<void> _capturePhoto() async {
-    if (_isTakingPhoto) {
-      debugPrint('[CameraPreviewScreen] Photo capture already in progress');
+    if (_isTakingPhoto || _isRecordingVideo) {
+      debugPrint(
+        '[CameraPreviewScreen] Photo capture blocked - operation in progress',
+      );
       return;
     }
 
@@ -227,6 +236,216 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         });
       }
     }
+  }
+
+  /// Start video recording with 5-second countdown
+  Future<void> _startVideoRecording() async {
+    if (_isTakingPhoto || _isRecordingVideo) {
+      debugPrint(
+        '[CameraPreviewScreen] Video recording blocked - operation in progress',
+      );
+      return;
+    }
+
+    debugPrint('[CameraPreviewScreen] Starting video recording...');
+
+    try {
+      // Provide haptic feedback
+      await _cameraService.provideCameraFeedback();
+
+      // Start video recording
+      final success = await _cameraService.startVideoRecording();
+
+      if (success) {
+        setState(() {
+          _isRecordingVideo = true;
+          _recordingCountdown = _cameraService.maxRecordingDuration;
+        });
+
+        // Listen to countdown updates
+        _countdownSubscription = _cameraService.countdownStream?.listen(
+          (remainingTime) {
+            debugPrint(
+              '[CameraPreviewScreen] Countdown update: $remainingTime seconds remaining',
+            );
+
+            if (mounted) {
+              setState(() {
+                _recordingCountdown = remainingTime;
+              });
+            }
+
+            // Auto-stop when countdown reaches 0 (handled by service, but we update UI)
+            if (remainingTime <= 0) {
+              debugPrint(
+                '[CameraPreviewScreen] Countdown finished, video should be stopping',
+              );
+              _handleVideoRecordingComplete();
+            }
+          },
+          onError: (error) {
+            debugPrint('[CameraPreviewScreen] Countdown stream error: $error');
+          },
+          onDone: () {
+            debugPrint('[CameraPreviewScreen] Countdown stream completed');
+            _handleVideoRecordingComplete();
+          },
+        );
+
+        debugPrint(
+          '[CameraPreviewScreen] Video recording started successfully',
+        );
+      } else {
+        throw Exception(
+          _cameraService.lastError ?? 'Failed to start video recording',
+        );
+      }
+    } catch (e) {
+      debugPrint('[CameraPreviewScreen] Video recording start failed: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Failed to start video recording: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // Reset state on error
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingCountdown = 0;
+      });
+    }
+  }
+
+  /// Stop video recording manually (before 5 seconds)
+  Future<void> _stopVideoRecording() async {
+    if (!_isRecordingVideo) {
+      debugPrint('[CameraPreviewScreen] No video recording to stop');
+      return;
+    }
+
+    debugPrint('[CameraPreviewScreen] Manually stopping video recording...');
+
+    try {
+      // Stop video recording
+      final videoPath = await _cameraService.stopVideoRecording();
+
+      if (videoPath != null) {
+        debugPrint(
+          '[CameraPreviewScreen] Video recorded successfully: $videoPath',
+        );
+
+        // Show success feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Video recorded successfully! Duration: ${_cameraService.recordingDuration}s',
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        throw Exception(_cameraService.lastError ?? 'Failed to save video');
+      }
+    } catch (e) {
+      debugPrint('[CameraPreviewScreen] Video recording stop failed: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Failed to save video: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+
+    _handleVideoRecordingComplete();
+  }
+
+  /// Handle video recording completion (auto or manual stop)
+  void _handleVideoRecordingComplete() {
+    debugPrint('[CameraPreviewScreen] Handling video recording completion...');
+
+    // Cancel countdown subscription
+    _countdownSubscription?.cancel();
+    _countdownSubscription = null;
+
+    // Reset UI state
+    if (mounted) {
+      setState(() {
+        _isRecordingVideo = false;
+        _recordingCountdown = 0;
+      });
+    }
+
+    debugPrint('[CameraPreviewScreen] Video recording completion handled');
+  }
+
+  /// Cancel video recording without saving
+  Future<void> _cancelVideoRecording() async {
+    if (!_isRecordingVideo) {
+      debugPrint('[CameraPreviewScreen] No video recording to cancel');
+      return;
+    }
+
+    debugPrint('[CameraPreviewScreen] Cancelling video recording...');
+
+    try {
+      await _cameraService.cancelVideoRecording();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.cancel, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Video recording cancelled'),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        '[CameraPreviewScreen] Video recording cancellation failed: $e',
+      );
+    }
+
+    _handleVideoRecordingComplete();
   }
 
   /// Switch between front and back cameras
@@ -412,9 +631,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                       width: 1,
                     ),
                   ),
-                  child: const Text(
-                    'Tap the shutter to capture a test photo',
-                    style: TextStyle(
+                  child: Text(
+                    _isRecordingVideo
+                        ? 'Recording video... $_recordingCountdown seconds left'
+                        : 'Tap red button for 5-sec video or photo button',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
@@ -463,61 +684,226 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           ),
         ),
         child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Flash toggle button
-              _buildControlButton(
-                onPressed: _cameraService.hasFlash ? _toggleFlash : null,
-                icon: _getFlashIcon(),
-                label: 'Flash',
-              ),
+              // Recording countdown display
+              if (_isRecordingVideo) _buildRecordingCountdown(),
 
-              // Photo capture button
-              GestureDetector(
-                onTap: _isTakingPhoto ? null : _capturePhoto,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    border: Border.all(color: Colors.white, width: 4),
+              const SizedBox(height: 16),
+
+              // Control buttons row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Flash toggle button
+                  _buildControlButton(
+                    onPressed: _cameraService.hasFlash && !_isRecordingVideo
+                        ? _toggleFlash
+                        : null,
+                    icon: _getFlashIcon(),
+                    label: 'Flash',
                   ),
-                  child: _isTakingPhoto
-                      ? const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.black,
-                              ),
-                            ),
-                          ),
-                        )
-                      : Container(
-                          margin: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
+
+                  // Main capture button (photo or video)
+                  _buildMainCaptureButton(),
+
+                  // Camera switch button
+                  _buildControlButton(
+                    onPressed:
+                        (_cameraService.cameras?.length ?? 0) > 1 &&
+                            !_isTakingPhoto &&
+                            !_isRecordingVideo
+                        ? _switchCamera
+                        : null,
+                    icon: Icons.cameraswitch,
+                    label: 'Switch',
+                  ),
+                ],
               ),
 
-              // Camera switch button
-              _buildControlButton(
-                onPressed: (_cameraService.cameras?.length ?? 0) > 1
-                    ? _switchCamera
-                    : null,
-                icon: Icons.cameraswitch,
-                label: 'Switch',
-              ),
+              const SizedBox(height: 16),
+
+              // Mode selector (Photo/Video)
+              if (!_isRecordingVideo && !_isTakingPhoto) _buildModeSelector(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Build recording countdown display
+  Widget _buildRecordingCountdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25),
+        color: Colors.red.withValues(alpha: 0.9),
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Recording indicator (pulsing red dot)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.5, end: 1.0),
+            duration: const Duration(milliseconds: 500),
+            builder: (context, value, child) {
+              return Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: value),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 12),
+
+          // Countdown text
+          Text(
+            'REC $_recordingCountdown',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Cancel button
+          GestureDetector(
+            onTap: _cancelVideoRecording,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build main capture button (adapts based on mode)
+  Widget _buildMainCaptureButton() {
+    return GestureDetector(
+      onTap: _isRecordingVideo
+          ? _stopVideoRecording
+          : _isTakingPhoto
+          ? null
+          : _startVideoRecording,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _isRecordingVideo ? Colors.red : Colors.white,
+          border: Border.all(
+            color: _isRecordingVideo ? Colors.white : Colors.white,
+            width: 4,
+          ),
+        ),
+        child: _isTakingPhoto
+            ? const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                  ),
+                ),
+              )
+            : _isRecordingVideo
+            ? const Icon(Icons.stop, color: Colors.white, size: 32)
+            : Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red,
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// Build mode selector (Photo/Video)
+  Widget _buildModeSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.black.withValues(alpha: 0.5),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Photo mode button
+          GestureDetector(
+            onTap: () => _capturePhoto(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Photo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Video mode button (currently selected)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.red.withValues(alpha: 0.8),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.videocam, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  'Video (5s)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
