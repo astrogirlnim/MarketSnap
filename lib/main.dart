@@ -15,10 +15,6 @@ import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
 
-// Development bypass flag - set to true to skip auth and go directly to camera
-// ⚠️ ONLY FOR LOCAL DEVELOPMENT - DO NOT SET TO TRUE IN PRODUCTION
-const bool kDevelopmentBypassAuth = kDebugMode && true; // Change to false to test normal auth flow
-
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
 late final HiveService hiveService;
@@ -89,11 +85,55 @@ Future<void> main() async {
     }
   }
 
-  // Initialize Firebase App Check with the debug provider
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-    appleProvider: AppleProvider.debug,
-  );
+  // Initialize Firebase App Check with proper configuration
+  try {
+    if (kDebugMode) {
+      // Use debug provider for development
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+      );
+      debugPrint('[main] Firebase App Check initialized with debug providers.');
+    } else {
+      // Use production providers for release builds
+      debugPrint('[main] Initializing Firebase App Check for production...');
+      
+      try {
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.playIntegrity,
+          appleProvider: AppleProvider.deviceCheck,
+        );
+        debugPrint('[main] Firebase App Check initialized with production providers.');
+      } catch (appCheckError) {
+        debugPrint('[main] Production App Check failed: $appCheckError');
+        
+        // Fallback to debug provider if production fails
+        debugPrint('[main] Falling back to debug App Check provider...');
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.debug,
+          appleProvider: AppleProvider.debug,
+        );
+        debugPrint('[main] Firebase App Check initialized with debug fallback.');
+      }
+    }
+    
+    // Verify App Check is working
+    try {
+      final token = await FirebaseAppCheck.instance.getToken(true);
+      if (token != null) {
+        debugPrint('[main] Firebase App Check token obtained successfully.');
+      } else {
+        debugPrint('[main] Warning: Firebase App Check token is null.');
+      }
+    } catch (tokenError) {
+      debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+    }
+    
+  } catch (e) {
+    debugPrint('[main] Firebase App Check initialization failed: $e');
+    debugPrint('[main] Continuing without App Check - some features may be limited.');
+    // Continue without App Check if it fails - not critical for basic functionality
+  }
 
   // Initialize authentication service
   try {
@@ -122,11 +162,6 @@ Future<void> main() async {
 
   debugPrint('[main] Firebase & App Check initialized.');
 
-  // Log development bypass status
-  if (kDevelopmentBypassAuth) {
-    debugPrint('[main] 🚨 DEVELOPMENT BYPASS ENABLED - Skipping authentication for camera testing');
-  }
-
   runApp(const MyApp());
 }
 
@@ -153,12 +188,6 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Development bypass - go directly to camera for testing
-    if (kDevelopmentBypassAuth) {
-      debugPrint('[AuthWrapper] 🚨 Development bypass enabled - going directly to camera');
-      return const DevelopmentCameraWrapper();
-    }
-
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
@@ -179,10 +208,107 @@ class AuthWrapper extends StatelessWidget {
           return const CameraPreviewScreen();
         }
         
-        // User is not authenticated
+        // User is not authenticated - show auth screen with demo option in debug mode
         debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
-        return const AuthWelcomeScreen();
+        return kDebugMode ? const DevelopmentAuthScreen() : const AuthWelcomeScreen();
       },
+    );
+  }
+}
+
+/// Development authentication screen with demo mode option
+class DevelopmentAuthScreen extends StatelessWidget {
+  const DevelopmentAuthScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Main auth screen
+          const AuthWelcomeScreen(),
+          
+          // Development demo button overlay
+          Positioned(
+            bottom: 100,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade300, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.developer_mode, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Development Mode',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Skip authentication and test camera functionality directly',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        debugPrint('[DevelopmentAuthScreen] Demo mode selected - navigating to camera');
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const DevelopmentCameraWrapper(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.camera_alt, color: Colors.orange),
+                      label: const Text(
+                        'Demo Camera',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -215,7 +341,7 @@ class DevelopmentCameraWrapper extends StatelessWidget {
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'DEVELOPMENT MODE - Authentication Bypassed',
+                        'DEMO MODE - Authentication Bypassed',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -225,29 +351,15 @@ class DevelopmentCameraWrapper extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        // Show instructions for disabling bypass
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Development Bypass'),
-                            content: const Text(
-                              'To test normal authentication flow:\n\n'
-                              '1. Open lib/main.dart\n'
-                              '2. Change kDevelopmentBypassAuth to false\n'
-                              '3. Hot restart the app (press R)\n\n'
-                              'This bypass is only available in debug mode.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('OK'),
-                              ),
-                            ],
+                        // Navigate back to auth screen
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const DevelopmentAuthScreen(),
                           ),
                         );
                       },
                       child: const Text(
-                        'Info',
+                        'Back to Auth',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

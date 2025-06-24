@@ -262,6 +262,8 @@ class AuthService {
   
   /// Maps Firebase Auth phone authentication errors to user-friendly messages
   String _getPhoneAuthErrorMessage(FirebaseAuthException e) {
+    debugPrint('[AuthService] Processing phone auth error: ${e.code} - ${e.message}');
+    
     switch (e.code) {
       case 'invalid-phone-number':
         return 'The phone number format is invalid. Please check and try again.';
@@ -285,19 +287,38 @@ class AuthService {
         return 'This phone number is already associated with another account.';
       case 'user-disabled':
         return 'This account has been disabled. Please contact support.';
+      case 'app-check-token-invalid':
+        return 'App verification failed. Please try again or contact support if the problem persists.';
+      case 'network-request-failed':
+        return 'Network error (such as timeout, interrupted connection or unreachable host) has occurred.';
+      case 'internal-error':
+        // Handle the specific "CONFIGURATION NOT FOUND" error
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
+        return 'An internal error occurred. Please try again.';
       case 'unknown':
-        // Handle emulator connection issues
+        // Handle various unknown errors
         if (e.message?.contains('Cleartext HTTP traffic') == true) {
           return 'Development mode: Firebase emulator connection issue. Please ensure emulators are running and network configuration is correct.';
         }
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
         return e.message ?? 'Phone authentication failed. Please try again.';
       default:
+        // Check for configuration errors in any error code
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
         return e.message ?? 'Phone authentication failed. Please try again.';
     }
   }
   
   /// Maps Firebase Auth email authentication errors to user-friendly messages
   String _getEmailAuthErrorMessage(FirebaseAuthException e) {
+    debugPrint('[AuthService] Processing email auth error: ${e.code} - ${e.message}');
+    
     switch (e.code) {
       case 'invalid-email':
         return 'The email address format is invalid. Please check and try again.';
@@ -317,13 +338,30 @@ class AuthService {
         return 'The email link is incomplete. Please request a new one.';
       case 'too-many-requests':
         return 'Too many email requests. Please wait before trying again.';
+      case 'app-check-token-invalid':
+        return 'App verification failed. Please try again or contact support if the problem persists.';
+      case 'network-request-failed':
+        return 'Network error (such as timeout, interrupted connection or unreachable host) has occurred.';
+      case 'internal-error':
+        // Handle the specific "CONFIGURATION NOT FOUND" error
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
+        return 'An internal error occurred. Please try again.';
       case 'unknown':
-        // Handle emulator connection issues
+        // Handle various unknown errors
         if (e.message?.contains('Cleartext HTTP traffic') == true) {
           return 'Development mode: Firebase emulator connection issue. Please ensure emulators are running and network configuration is correct.';
         }
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
         return e.message ?? 'Email authentication failed. Please try again.';
       default:
+        // Check for configuration errors in any error code
+        if (e.message?.contains('CONFIGURATION NOT FOUND') == true) {
+          return 'App configuration error. Please ensure the app is properly set up and try again.';
+        }
         return e.message ?? 'Email authentication failed. Please try again.';
     }
   }
