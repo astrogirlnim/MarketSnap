@@ -405,9 +405,10 @@ get_booted_ios_device_id() {
     flutter_devices=$(flutter devices 2>/dev/null)
     
     # Try to find the iOS device ID (UUID) from the flutter devices output
-    # This looks for a line containing "ios" and "(simulator)" and then extracts the UUID.
+    # This looks for a line containing "ios" and "CoreSimulator" and then extracts the UUID.
+    # This is more robust than looking for "(simulator)" which can be on a different line.
     local ios_device_id
-    ios_device_id=$(echo "$flutter_devices" | grep "ios" | grep "(simulator)" | grep -o -E '[A-F0-9]{8}-([A-F0-9]{4}-){3}[A-F0-9]{12}' | head -1)
+    ios_device_id=$(echo "$flutter_devices" | grep "ios" | grep "CoreSimulator" | grep -o -E '[A-F0-9]{8}-([A-F0-9]{4}-){3}[A-F0-9]{12}' | head -1)
 
     # Fallback to generic iOS simulator ID if parsing fails
     if [[ -z "$ios_device_id" ]]; then
@@ -461,7 +462,8 @@ run_flutter_ios() {
     mkdir -p "$(dirname "scripts/flutter_ios.log")"
     
     # Run Flutter on iOS with better error handling
-    log "INFO" "🚀 Launching Flutter app on iOS Simulator..."
+    log "INFO" "🚀 Preparing to launch Flutter on iOS Simulator..."
+    log "INFO" "Command: flutter run -d \"$ios_flutter_device_id\" --debug --hot"
     
     # Use timeout-style approach for deployment
     (
@@ -552,7 +554,8 @@ run_flutter_android() {
     mkdir -p "$(dirname "scripts/flutter_android.log")"
     
     # Run Flutter on Android with better error handling
-    log "INFO" "🚀 Launching Flutter app on Android Emulator..."
+    log "INFO" "🚀 Preparing to launch Flutter on Android Emulator..."
+    log "INFO" "Command: flutter run -d \"$android_device_id\" --debug --hot"
     
     # Use timeout-style approach for deployment
     (
