@@ -108,3 +108,5 @@ secrets.yaml
 
 # Firebase configuration files
 **/firebase_options.dart
+firebase.json
+.firebaserc
