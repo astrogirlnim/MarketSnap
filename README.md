@@ -62,10 +62,22 @@ IOS_APP_ID=your_ios_app_id_here
 APP_BUNDLE_ID=your_bundle_id_here
 ```
 
+### Firebase Configuration
+
+The Firebase configuration is automatically generated using the FlutterFire CLI:
+
+```bash
+# Generate Firebase options file
+flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart
+```
+
+This creates `lib/firebase_options.dart` with platform-specific Firebase configuration that is automatically integrated into the app.
+
 ### Security Features
 
 - ✅ **No hardcoded API keys** in source code
 - ✅ **Environment-based configuration** using `flutter_dotenv`
+- ✅ **Firebase options auto-generated** using FlutterFire CLI
 - ✅ **Sensitive files excluded** from version control
 - ✅ **Firebase configuration** loaded securely at runtime
 - ✅ **Clean architecture** following Flutter best practices
@@ -281,10 +293,17 @@ flutter build ios --release
    - Solution: Create `.env` file with required variables
 
 2. **Firebase initialization errors**
-   - Error: `Firebase configuration not found`
-   - Solution: Verify all environment variables are set correctly
+   - Error: `Firebase configuration not found` or `Undefined name 'DefaultFirebaseOptions'`
+   - Solution: 
+     - Verify all environment variables are set correctly
+     - Generate Firebase options file: `flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart`
+     - Ensure `import 'firebase_options.dart';` is present in `main.dart`
 
-3. **Platform-specific build issues**
+3. **HiveService initialization errors**
+   - Error: `Too many positional arguments: 0 allowed, but 1 found`
+   - Solution: Ensure `hiveService.init()` is called without parameters (the service handles path internally)
+
+4. **Platform-specific build issues**
    - Android: Check NDK installation and licenses
    - iOS: Verify Xcode and simulator setup
 

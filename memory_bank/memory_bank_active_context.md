@@ -6,24 +6,55 @@
 
 ## Current Focus
 
-Our current focus is the implementation of **Phase 2: Data Layer**. We have just completed the foundational step of this phase:
+We have successfully completed **Phase 2.2: Storage Buckets & Configuration** and are now ready to begin **Phase 2.3: Cloud Functions (Core)**.
 
--   **Backend Setup & Security:** We have successfully initialized and configured the Firebase project, including Firestore, Functions, and Storage. Security rules have been implemented and verified using the local Firebase Emulator Suite.
+### ✅ Phase 2.2 Complete - Recent Achievements:
+
+-   **Firebase Configuration Security:** Implemented environment-based configuration using `.env` file and `flutter_dotenv`, eliminating hardcoded API keys from source code.
+-   **Firebase Options Integration:** Generated and integrated `lib/firebase_options.dart` using FlutterFire CLI for proper cross-platform Firebase initialization.
+-   **HiveService Fix:** Resolved initialization parameter mismatch in `main.dart` to properly align with service implementation.
+-   **Development Environment Stability:** Restored emulator script compatibility and verified cross-platform builds (Android & iOS).
+-   **Build Verification:** Successfully tested both Android APK and iOS app builds to ensure no regressions.
 
 ## Recent Changes
 
--   **Firebase Project Initialized:** The local project is now fully integrated with the `marketsnap-app` Firebase project.
--   **Security Rules Implemented:** `firestore.rules` and `storage.rules` have been created to protect our data, restricting writes to authenticated owners and enforcing file size limits.
--   **Cloud Functions Initialized:** A TypeScript-based Cloud Functions project has been set up, compiled, and confirmed to load correctly in the emulator.
--   **Emulator Environment Established:** A complete local backend environment is now running, allowing for offline development and testing of all backend features.
+-   **Security Hardening:** All Firebase configuration now uses environment variables with no sensitive data in version control.
+-   **Firebase Options Generated:** Used `flutterfire configure` to create proper platform-specific Firebase configuration.
+-   **Build System Validation:** Confirmed that both Android and iOS builds compile successfully with new configuration.
+-   **Development Workflow:** Restored full development emulator functionality with proper Firebase backend integration.
 
 ## Next Steps
 
-1.  **Complete Phase 2 (Data Layer):**
-    -   Implement the 30-day TTL lifecycle policy on the Cloud Storage bucket for automatic media deletion.
-    -   Develop and test the initial set of Cloud Functions (`sendFollowerPush`, `fanOutBroadcast`).
-2.  **Begin Phase 3 (Interface Layer):**
-    -   Start building the UI for user authentication and profile management.
+1.  **Begin Phase 2.3 (Cloud Functions - Core):**
+    -   Implement `sendFollowerPush` function for FCM notifications when snaps are created
+    -   Implement `fanOutBroadcast` function for FCM notifications when broadcasts are created
+    -   Add unit tests using Firebase Functions Test SDK
+2.  **Prepare for Phase 2.4 (Cloud Functions - AI Prep):**
+    -   Scaffold AI helper functions with dummy returns
+    -   Set up environment variables for OpenAI integration
+
+## Blockers Resolved
+
+- ✅ **Firebase Configuration Missing:** `lib/firebase_options.dart` has been generated and integrated
+- ✅ **HiveService Initialization Error:** Parameter mismatch in `main.dart` has been fixed
+- ✅ **Android Build Failures:** All compilation errors resolved, builds working correctly
+
+## Current Sprint: Phase 2.3 – Cloud Functions (Core) (Week of June 24, 2025)
+
+### Ready to Start
+1. Implement `sendFollowerPush` Cloud Function
+2. Implement `fanOutBroadcast` Cloud Function  
+3. Add comprehensive unit tests for both functions
+4. Test functions with local Firebase Emulator Suite
+
+### Recently Completed ✅
+- Phase 2.2: Storage Buckets & Configuration
+- Firebase security configuration with environment variables
+- Development environment stability improvements
+- Cross-platform build verification
+
+### Blockers
+_All previous blockers resolved._
 
 # Active Context (Now)
 

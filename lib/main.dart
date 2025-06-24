@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'firebase_options.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
@@ -36,9 +37,8 @@ Future<void> main() async {
 
   // Initialize and schedule background sync service
   try {
-    final appDocumentDir = await getApplicationDocumentsDirectory();
     hiveService = HiveService(SecureStorageService());
-    await hiveService.init(appDocumentDir.path);
+    await hiveService.init();
     debugPrint('[main] Hive service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing Hive service: $e');
