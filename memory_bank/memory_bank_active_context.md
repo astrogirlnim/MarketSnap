@@ -1,24 +1,29 @@
 # Active Context
 
-*Updated: June 24, 2025*
+*Last Updated: June 24, 2025*
+
+---
 
 ## Current Focus
-The current focus is completing **Phase 1: Foundation**. We have just completed the implementation of the **Static Asset Pipeline (Phase 1.4)**.
 
-## Next Steps
-With the foundational elements in place, the next immediate step is to begin **Phase 2: Data Layer**. This involves:
-- Defining the Firestore schema and security rules.
-- Configuring Firebase Storage buckets.
-- Scaffolding the core Cloud Functions.
+Our current focus is the implementation of **Phase 2: Data Layer**. We have just completed the foundational step of this phase:
 
-## Blockers
-There are currently no blockers.
+-   **Backend Setup & Security:** We have successfully initialized and configured the Firebase project, including Firestore, Functions, and Storage. Security rules have been implemented and verified using the local Firebase Emulator Suite.
 
 ## Recent Changes
-- Added placeholder assets for LUT filters (`warm`, `cool`, `contrast`).
-- Updated `pubspec.yaml` to include the new assets.
-- Verified that the application build size remains under the 50 MB limit.
-- Documented the implementation in `docs/phase_1_4_implementation_report.md`.
+
+-   **Firebase Project Initialized:** The local project is now fully integrated with the `marketsnap-app` Firebase project.
+-   **Security Rules Implemented:** `firestore.rules` and `storage.rules` have been created to protect our data, restricting writes to authenticated owners and enforcing file size limits.
+-   **Cloud Functions Initialized:** A TypeScript-based Cloud Functions project has been set up, compiled, and confirmed to load correctly in the emulator.
+-   **Emulator Environment Established:** A complete local backend environment is now running, allowing for offline development and testing of all backend features.
+
+## Next Steps
+
+1.  **Complete Phase 2 (Data Layer):**
+    -   Implement the 30-day TTL lifecycle policy on the Cloud Storage bucket for automatic media deletion.
+    -   Develop and test the initial set of Cloud Functions (`sendFollowerPush`, `fanOutBroadcast`).
+2.  **Begin Phase 3 (Interface Layer):**
+    -   Start building the UI for user authentication and profile management.
 
 # Active Context (Now)
 
