@@ -16,61 +16,29 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   debugPrint('[main] Environment variables loaded.');
 
-  // Initialize local storage
+  // Initialize Hive service
   try {
     final secureStorageService = SecureStorageService();
     hiveService = HiveService(secureStorageService);
     await hiveService.init();
     debugPrint('[main] Hive service initialized successfully.');
   } catch (e) {
-    debugPrint('[main] CRITICAL: Failed to initialize Hive. Error: $e');
-    // We could show an error screen here or prevent the app from starting.
-    // For now, we'll just log the error.
+    debugPrint('[main] Error initializing Hive service: $e');
   }
 
-  // Initialize Background Sync Service
+  // Initialize and schedule background sync service
   try {
     backgroundSyncService = BackgroundSyncService();
     await backgroundSyncService.initialize();
     await backgroundSyncService.scheduleSyncTask();
     debugPrint('[main] BackgroundSyncService initialized and task scheduled.');
   } catch (e) {
-    debugPrint('[main] CRITICAL: Failed to initialize BackgroundSyncService. Error: $e');
+    debugPrint('[main] Error initializing BackgroundSyncService: $e');
   }
 
-  FirebaseOptions firebaseOptions;
-
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    firebaseOptions = FirebaseOptions(
-      apiKey: dotenv.env['ANDROID_API_KEY']!,
-      appId: dotenv.env['ANDROID_APP_ID']!,
-      messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-      projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-      storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    );
-  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-    firebaseOptions = FirebaseOptions(
-      apiKey: dotenv.env['IOS_API_KEY']!,
-      appId: dotenv.env['IOS_APP_ID']!,
-      messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-      projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-      storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-      iosBundleId: dotenv.env['APP_BUNDLE_ID']!,
-    );
-  } else {
-    throw UnsupportedError(
-      'Platform ${defaultTargetPlatform.toString()} is not supported for Firebase.',
-    );
-  }
-
-  try {
-    await Firebase.initializeApp(
-      options: firebaseOptions,
-    );
-    debugPrint('[main] Firebase initialized successfully.');
-  } catch (e) {
-    debugPrint('[main] CRITICAL: Failed to initialize Firebase. Error: $e');
-  }
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  debugPrint('[main] Firebase initialized successfully.');
 
   runApp(const MyApp());
 }
@@ -102,13 +70,53 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const MyHomePage(title: 'MarketSnap'),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
+  Map<String, dynamic>? _lastExecutionInfo;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  void _checkBackgroundExecution() async {
+    debugPrint('[UI] Checking background execution status...');
+    final info = await backgroundSyncService.getLastExecutionInfo();
+    setState(() {
+      _lastExecutionInfo = info;
+    });
+    debugPrint('[UI] Background execution info: $info');
+  }
+
+  void _scheduleOneTimeTask() async {
+    debugPrint('[UI] Scheduling one-time background task...');
+    try {
+      await backgroundSyncService.scheduleOneTimeSyncTask();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('One-time background task scheduled!')),
+      );
+    } catch (e) {
+      debugPrint('[UI] Error scheduling one-time task: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,12 +128,50 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: const Text('MarketSnap'),
+        title: Text(widget.title),
       ),
-      body: const Center(
+      body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Text('Welcome to MarketSnap!'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              'You have pushed the button this many times:',
+            ),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _checkBackgroundExecution,
+              child: const Text('Check Background Task Status'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _scheduleOneTimeTask,
+              child: const Text('Schedule One-Time Task'),
+            ),
+            const SizedBox(height: 20),
+            if (_lastExecutionInfo != null) ...[
+              const Text('Background Task Info:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Executed: ${_lastExecutionInfo!['executed']}'),
+              if (_lastExecutionInfo!['executed'] == true) ...[
+                Text('Task: ${_lastExecutionInfo!['taskName']}'),
+                Text('Time: ${_lastExecutionInfo!['executionTime']}'),
+                Text('Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
+              ],
+              if (_lastExecutionInfo!['error'] != null)
+                Text('Error: ${_lastExecutionInfo!['error']}'),
+            ],
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
       ),
     );
   }
