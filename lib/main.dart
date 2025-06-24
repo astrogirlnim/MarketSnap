@@ -15,6 +15,10 @@ import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
 
+// Development bypass flag - set to true to skip auth and go directly to camera
+// ⚠️ ONLY FOR LOCAL DEVELOPMENT - DO NOT SET TO TRUE IN PRODUCTION
+const bool kDevelopmentBypassAuth = kDebugMode && true; // Change to false to test normal auth flow
+
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
 late final HiveService hiveService;
@@ -118,6 +122,11 @@ Future<void> main() async {
 
   debugPrint('[main] Firebase & App Check initialized.');
 
+  // Log development bypass status
+  if (kDevelopmentBypassAuth) {
+    debugPrint('[main] 🚨 DEVELOPMENT BYPASS ENABLED - Skipping authentication for camera testing');
+  }
+
   runApp(const MyApp());
 }
 
@@ -144,6 +153,12 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Development bypass - go directly to camera for testing
+    if (kDevelopmentBypassAuth) {
+      debugPrint('[AuthWrapper] 🚨 Development bypass enabled - going directly to camera');
+      return const DevelopmentCameraWrapper();
+    }
+
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
@@ -168,6 +183,81 @@ class AuthWrapper extends StatelessWidget {
         debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
         return const AuthWelcomeScreen();
       },
+    );
+  }
+}
+
+/// Development wrapper for camera testing without authentication
+class DevelopmentCameraWrapper extends StatelessWidget {
+  const DevelopmentCameraWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Camera preview screen
+          const CameraPreviewScreen(),
+          
+          // Development overlay banner
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: Colors.orange.withValues(alpha: 0.9),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'DEVELOPMENT MODE - Authentication Bypassed',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // Show instructions for disabling bypass
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Development Bypass'),
+                            content: const Text(
+                              'To test normal authentication flow:\n\n'
+                              '1. Open lib/main.dart\n'
+                              '2. Change kDevelopmentBypassAuth to false\n'
+                              '3. Hot restart the app (press R)\n\n'
+                              'This bypass is only available in debug mode.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Info',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
