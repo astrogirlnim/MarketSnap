@@ -60,9 +60,9 @@ Legend:
   - [X] `fanOutBroadcast` – on `broadcasts` create → FCM.
   - [X] Unit tests with Firebase Functions Test SDK.
 
-- [ ] **4. Cloud Functions (AI Phase 2 Prep)**
-  - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.
-  - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4.
+- [X] **4. Cloud Functions (AI Phase 2 Prep)**
+  - [X] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.
+  - [X] Environment var for OpenAI key; leave disabled flag until Phase 4.
 
 
 ---
