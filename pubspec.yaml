@@ -53,6 +53,9 @@ dependencies:
   video_compress: ^3.1.4
   firebase_app_check: ^0.3.0+1
   path: ^1.9.1
+  # Image processing dependencies for LUT filter application
+  image: ^4.3.0
+  flutter_image_compress: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -109,4 +112,4 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # see https://flutter.dev/font-from-package
