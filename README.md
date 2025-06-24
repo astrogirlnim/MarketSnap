@@ -237,11 +237,38 @@ The project includes automated development tools for streamlined cross-platform 
 # 🧹 Comprehensive cleanup on exit
 ```
 
+### Camera Testing Development Bypass
+
+For local development and testing of camera functionality, a development bypass is available to skip authentication:
+
+**To Enable Camera Testing Bypass:**
+1. The bypass is enabled by default in `lib/main.dart`: `const bool kDevelopmentBypassAuth = kDebugMode && true;`
+2. Run the app in debug mode - you'll go directly to the camera preview
+3. An orange banner will indicate "DEVELOPMENT MODE - Authentication Bypassed"
+
+**To Test Normal Authentication Flow:**
+1. Open `lib/main.dart`
+2. Change `kDevelopmentBypassAuth` to `false`
+3. Hot restart the app (press `R` in Flutter console)
+4. Complete the normal phone/email OTP authentication flow
+
+**Security Notes:**
+- ⚠️ The bypass is **ONLY** available in debug mode (`kDebugMode`)
+- It will **NEVER** work in release builds
+- The bypass is clearly marked with warning banners
+- Production builds are completely unaffected
+
 ### Running Local Emulators
 
 For backend development and testing, you can run the Firebase Emulator Suite locally. This allows you to test your Cloud Functions, Firestore rules, and other Firebase features without touching production data.
 
-**Setup Steps:**
+**Quick Start:**
+```bash
+# Start Firebase emulators with automated setup
+./scripts/start_emulators.sh
+```
+
+**Manual Setup Steps:**
 
 1.  **Create Environment File**: Before starting, ensure you have a valid `.env` file in the project root. If you don't have one, copy the format from the "Security Implementation" section and fill in your project's details.
 

@@ -39,4 +39,4 @@ class SecureStorageService {
     await _secureStorage.delete(key: _hiveEncryptionKey);
     debugPrint('[SecureStorageService] Key deleted.');
   }
-} 
+}

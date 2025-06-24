@@ -49,11 +49,11 @@ class PendingMediaItem extends HiveObject {
     required this.mediaType,
     this.caption,
     this.location,
-  })  : id = _uuid.v4(),
-        timestamp = DateTime.now();
+  }) : id = _uuid.v4(),
+       timestamp = DateTime.now();
 
   @override
   String toString() {
     return 'PendingMediaItem(id: $id, type: $mediaType, path: $filePath, queuedAt: $timestamp)';
   }
-} 
+}

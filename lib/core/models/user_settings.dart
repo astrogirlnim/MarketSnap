@@ -31,4 +31,4 @@ class UserSettings extends HiveObject {
   String toString() {
     return 'UserSettings(enableCoarseLocation: $enableCoarseLocation, autoCompressVideo: $autoCompressVideo, saveToDeviceDefault: $saveToDeviceDefault)';
   }
-} 
+}

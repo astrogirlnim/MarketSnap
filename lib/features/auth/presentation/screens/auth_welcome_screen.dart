@@ -13,7 +13,7 @@ class AuthWelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Check if phone auth should be disabled on iOS emulator
     final bool isIOSEmulator = Platform.isIOS && kDebugMode;
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -42,19 +42,18 @@ class AuthWelcomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 'Snap, Share, Sell',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              
+
               // Phone authentication button
               if (!isIOSEmulator) ...[
                 ElevatedButton.icon(
                   onPressed: () {
-                    debugPrint('[AuthWelcomeScreen] Navigating to phone authentication');
+                    debugPrint(
+                      '[AuthWelcomeScreen] Navigating to phone authentication',
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -75,11 +74,13 @@ class AuthWelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               // Email authentication button
               ElevatedButton.icon(
                 onPressed: () {
-                  debugPrint('[AuthWelcomeScreen] Navigating to email authentication');
+                  debugPrint(
+                    '[AuthWelcomeScreen] Navigating to email authentication',
+                  );
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -90,7 +91,9 @@ class AuthWelcomeScreen extends StatelessWidget {
                 icon: const Icon(Icons.email),
                 label: const Text('Continue with Email'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isIOSEmulator ? Colors.deepPurple : Colors.grey.shade700,
+                  backgroundColor: isIOSEmulator
+                      ? Colors.deepPurple
+                      : Colors.grey.shade700,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -98,7 +101,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // iOS emulator warning
               if (isIOSEmulator) ...[
                 const SizedBox(height: 24),
@@ -111,11 +114,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                   ),
                   child: const Column(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.orange,
-                        size: 24,
-                      ),
+                      Icon(Icons.info_outline, color: Colors.orange, size: 24),
                       SizedBox(height: 8),
                       Text(
                         'Development Mode',
@@ -127,26 +126,20 @@ class AuthWelcomeScreen extends StatelessWidget {
                       SizedBox(height: 4),
                       Text(
                         'Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
               ],
-              
+
               const SizedBox(height: 24),
-              
+
               // Terms and privacy
               const Text(
                 'By continuing, you agree to our Terms of Service and Privacy Policy',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -155,4 +148,4 @@ class AuthWelcomeScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}
