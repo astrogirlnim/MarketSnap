@@ -4,6 +4,7 @@ import * as chai from "chai";
 import * as sinon from "sinon";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
+// import * as test from "firebase-functions-test";
 
 // Initialize firebase-functions-test - using require is important
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -13,7 +14,11 @@ const testEnv = require("firebase-functions-test")();
 sinon.stub(functions, "logger");
 
 // Import the functions AFTER stubbing
-import {sendFollowerPush, fanOutBroadcast} from "../index";
+import {
+  sendFollowerPush,
+  fanOutBroadcast,
+  sendMessageNotification,
+} from "../index";
 
 const expect = chai.expect;
 
@@ -204,5 +209,65 @@ describe("Cloud Functions: MarketSnap", () => {
       });
       expect(sendEachForMulticastStub.called).to.be.false;
     });
+  });
+
+  describe("sendMessageNotification", () => {
+    it("should handle message creation event", async () => {
+      // Mock Firestore data for a new message
+      const message = testEnv.firestore.makeDocumentSnapshot(
+        {
+          fromUid: "test-sender-id",
+          toUid: "test-recipient-id",
+          text: "Hello! Are your apples organic?",
+          conversationId: "test-sender-id_test-recipient-id",
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+          isRead: false,
+        },
+        "messages/test-message-id"
+      );
+
+      // Create a mock function
+      const wrapped = testEnv.wrap(sendMessageNotification);
+
+      // Mock the event
+      const event = {
+        data: message,
+        params: {
+          messageId: "test-message-id",
+        },
+      };
+
+      // This should not throw an error
+      await wrapped(event);
+    });
+
+    it("should handle message with missing required fields gracefully",
+      async () => {
+      // Mock Firestore data with missing fields
+        const invalidMessage = testEnv.firestore.makeDocumentSnapshot(
+          {
+            fromUid: "test-sender-id",
+            // Missing toUid, text, conversationId
+            createdAt: new Date(),
+            isRead: false,
+          },
+          "messages/test-invalid-message-id"
+        );
+
+        // Create a mock function
+        const wrapped = testEnv.wrap(sendMessageNotification);
+
+        // Mock the event
+        const event = {
+          data: invalidMessage,
+          params: {
+            messageId: "test-invalid-message-id",
+          },
+        };
+
+        // This should not throw an error (should handle gracefully)
+        await wrapped(event);
+      });
   });
 });
