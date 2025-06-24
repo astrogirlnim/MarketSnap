@@ -135,3 +135,15 @@ The Cloud Functions have a comprehensive, production-ready unit testing suite lo
 - **Hive + Drift** chosen for speed and encryption vs. SQLite.
 - **pgvector micro instance** satisfies vector search under budget; fallback Annoy in‑memory.
 
+### AI Helper Functions (Phase 2 Scaffolding)
+- **Purpose**: To provide a clear, scalable, and secure way to integrate future AI features.
+- **Pattern**: A disabled-aware wrapper function, `createAIHelper`, is used to scaffold the AI functions.
+- **Configuration**:
+  - The functions are enabled/disabled via an `AI_FUNCTIONS_ENABLED` environment variable.
+  - The `OPENAI_API_KEY` is loaded from the root `.env` file using the `dotenv` package for local emulation. This prevents the need to commit secrets or manage separate environment files for the `functions` directory.
+- **Functions Created**:
+  - `generateCaption`
+  - `getRecipeSnippet`
+  - `vectorSearchFAQ`
+- **Current State**: All functions are disabled by default and return dummy JSON payloads. They are ready for full implementation in Phase 4.
+
