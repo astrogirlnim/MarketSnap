@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../application/auth_service.dart';
-import 'otp_verification_screen.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
@@ -48,7 +46,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     try {
       debugPrint('[EmailAuthScreen] Sending magic link to: ${_emailController.text.trim()}');
       
-      await _authService.signInWithEmailLink(_emailController.text.trim());
+      await _authService.sendEmailSignInLinkSimple(_emailController.text.trim());
       
       setState(() {
         _emailSent = true;
@@ -141,14 +139,14 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                 ] else ...[
                   // Email sent success state
                   MarketSnapCard(
-                    backgroundColor: AppColors.leafGreen.withOpacity(0.1),
+                    backgroundColor: AppColors.leafGreen.withValues(alpha: 0.1),
                     child: Column(
                       children: [
                         Container(
                           height: 80,
                           width: 80,
                           decoration: BoxDecoration(
-                            color: AppColors.leafGreen.withOpacity(0.2),
+                            color: AppColors.leafGreen.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(40),
                           ),
                           child: const Icon(
@@ -225,7 +223,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
 
                 // Help text
                 MarketSnapCard(
-                  backgroundColor: AppColors.marketBlue.withOpacity(0.05),
+                  backgroundColor: AppColors.marketBlue.withValues(alpha: 0.05),
                   child: Column(
                     children: [
                       const Icon(

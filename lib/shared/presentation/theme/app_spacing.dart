@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// MarketSnap Spacing System
 /// Based on the design system defined in snap_design.md
 /// Uses a 4px grid system for consistent spacing

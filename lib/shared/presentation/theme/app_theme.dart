@@ -22,8 +22,8 @@ class AppTheme {
       dividerTheme: _dividerTheme,
       scaffoldBackgroundColor: AppColors.cornsilk,
       visualDensity: VisualDensity.adaptivePlatformDensity,
-      splashColor: AppColors.marketBlue.withOpacity(0.1),
-      highlightColor: AppColors.marketBlue.withOpacity(0.05),
+      splashColor: AppColors.marketBlue.withValues(alpha: 0.1),
+      highlightColor: AppColors.marketBlue.withValues(alpha: 0.05),
     );
   }
 
@@ -44,8 +44,8 @@ class AppTheme {
       dividerTheme: _dividerThemeDark,
       scaffoldBackgroundColor: AppColors.backgroundDark,
       visualDensity: VisualDensity.adaptivePlatformDensity,
-      splashColor: AppColors.marketBlueDark.withOpacity(0.1),
-      highlightColor: AppColors.marketBlueDark.withOpacity(0.05),
+      splashColor: AppColors.marketBlueDark.withValues(alpha: 0.1),
+      highlightColor: AppColors.marketBlueDark.withValues(alpha: 0.05),
     );
   }
 
@@ -89,7 +89,7 @@ class AppTheme {
         backgroundColor: AppColors.marketBlue,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: AppColors.marketBlue.withOpacity(0.3),
+        shadowColor: AppColors.marketBlue.withValues(alpha: 0.3),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -112,7 +112,7 @@ class AppTheme {
         backgroundColor: AppColors.marketBlueDark,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: AppColors.marketBlueDark.withOpacity(0.3),
+        shadowColor: AppColors.marketBlueDark.withValues(alpha: 0.3),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -313,11 +313,11 @@ class AppTheme {
   }
 
   // Card Theme
-  static CardTheme get _cardTheme {
-    return CardTheme(
+  static CardThemeData get _cardTheme {
+    return CardThemeData(
       color: AppColors.eggshell,
       elevation: 2,
-      shadowColor: AppColors.soilCharcoal.withOpacity(0.1),
+      shadowColor: AppColors.soilCharcoal.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(
@@ -329,11 +329,11 @@ class AppTheme {
     );
   }
 
-  static CardTheme get _cardThemeDark {
-    return CardTheme(
+  static CardThemeData get _cardThemeDark {
+    return CardThemeData(
       color: AppColors.surfaceDark,
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(
