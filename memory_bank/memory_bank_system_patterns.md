@@ -84,9 +84,9 @@ graph TD
 ```
 Flutter App ─ Hive Queue ─ WorkManager → Firebase Storage
                              ↓              ↓
-                          Firestore ← Cloud Functions → FCM
+                          Firestore ← Cloud Functions → FCM
                                              ↓
-                                 (Phase 2) pgvector + GPT‑4
+                                 (Phase 2) pgvector + GPT‑4
 ```
 
 ### Key Patterns
@@ -95,11 +95,43 @@ Flutter App ─ Hive Queue ─ WorkManager → Firebase Storage
 - **Idempotent Uploads:** Each queue item carries UUID; Cloud Function ignores duplicates.
 - **TTL‑Based Ephemerality:** `expiresAt` field + Firestore index + scheduled CF cleanup.
 - **Fan‑Out Push:** On snap create, `sendFollowerPush` multicasts to FCM tokens stored in `followers` sub‑collection.
-- **Feature Flags:** Phase 2 AI endpoints behind remote‑config switch.
+- **Feature Flags:** Phase 2 AI endpoints behind remote‑config switch.
+
+## Cloud Functions Architecture
+
+The Cloud Functions are written in TypeScript and leverage the Firebase Functions v2 SDK for event-driven, serverless logic. They are essential for tasks that should not be run on the client, such as sending mass push notifications.
+
+### Core Functions
+1.  **`sendFollowerPush`**
+    -   **Trigger:** `onDocumentCreated("vendors/{vendorId}/snaps/{snapId}")`
+    -   **Logic:** When a new document is added to a vendor's `snaps` sub-collection, this function is triggered.
+        1.  It retrieves the vendor's `stallName` for the notification title.
+        2.  It fetches all FCM tokens from the vendor's `followers` sub-collection using the `getFollowerTokens` helper.
+        3.  It constructs a notification payload containing the vendor's name and the snap's text.
+        4.  It uses `admin.messaging().sendEachForMulticast()` to send the push notification to all followers.
+        5.  It includes robust logging for success and failure cases, including identifying and logging invalid/failed FCM tokens.
+
+2.  **`fanOutBroadcast`**
+    -   **Trigger:** `onDocumentCreated("vendors/{vendorId}/broadcasts/{broadcastId}")`
+    -   **Logic:** When a new broadcast message is created, this function follows a similar pattern to `sendFollowerPush`.
+        1.  It retrieves the vendor's `stallName`.
+        2.  It gets all follower FCM tokens.
+        3.  It constructs a notification payload with the broadcast message.
+        4.  It sends the message to all followers via FCM.
+
+### Testing Strategy
+
+The Cloud Functions have a comprehensive, production-ready unit testing suite located in `functions/src/test/index.test.ts`.
+
+-   **Frameworks:** We use **Mocha** as the test runner, **Chai** for assertions, and **Sinon** for creating spies and stubs.
+-   **Offline First:** The tests are designed to run completely offline, without any actual connection to Firebase services.
+-   **Targeted Stubbing:** Instead of mocking entire Firebase services, we use a more robust strategy of stubbing only the specific methods needed for a test (e.g., `admin.firestore().collection`, `admin.messaging().sendEachForMulticast`). This preserves the internal structure of the Firebase Admin SDK, preventing errors with the `firebase-functions-test` library.
+-   **Test Coverage:** The tests cover successful execution, edge cases (like a vendor having no followers), and failure scenarios (like a missing message in a broadcast).
+-   **Execution:** Tests are run via the `npm test` command within the `functions` directory.
 
 ## Design Decisions
 
-- **Flutter 3** for single codebase; avoids React Native install size.
+- **Flutter 3** for single codebase; avoids React Native install size.
 - **Hive + Drift** chosen for speed and encryption vs. SQLite.
 - **pgvector micro instance** satisfies vector search under budget; fallback Annoy in‑memory.
 
