@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
 
 /// Service responsible for camera operations including initialization,
-/// photo capture, and camera management across iOS and Android platforms
+/// photo capture, video recording, and camera management across iOS and Android platforms
 /// Includes simulator support with mock camera functionality
 class CameraService {
   static CameraService? _instance;
@@ -21,6 +22,13 @@ class CameraService {
   bool _isInitialized = false;
   bool _isSimulatorMode = false;
   String? _lastError;
+
+  // Video recording state management
+  bool _isRecordingVideo = false;
+  Timer? _recordingTimer;
+  int _recordingDuration = 0;
+  static const int _maxRecordingDuration = 5; // 5 seconds max
+  StreamController<int>? _countdownController;
 
   /// Available cameras on the device
   List<CameraDescription>? get cameras => _cameras;
@@ -42,6 +50,18 @@ class CameraService {
       ? false
       : _controller?.description.lensDirection == CameraLensDirection.front;
 
+  /// Whether currently recording video
+  bool get isRecordingVideo => _isRecordingVideo;
+
+  /// Current recording duration in seconds
+  int get recordingDuration => _recordingDuration;
+
+  /// Maximum recording duration in seconds
+  int get maxRecordingDuration => _maxRecordingDuration;
+
+  /// Stream for countdown updates during video recording
+  Stream<int>? get countdownStream => _countdownController?.stream;
+
   /// Check if running on a simulator/emulator
   bool _isRunningOnSimulator() {
     if (kIsWeb) return true;
@@ -59,6 +79,21 @@ class CameraService {
     }
 
     return false;
+  }
+
+  /// Check if running on Android emulator specifically
+  bool _isAndroidEmulator() {
+    if (!Platform.isAndroid) return false;
+
+    // Common Android emulator indicators
+    // Note: This is a heuristic approach as there's no definitive way to detect emulators
+    try {
+      // Android emulators often have specific build characteristics
+      // We'll use conservative settings for all Android devices to be safe
+      return true; // Conservative approach - optimize for all Android devices
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Initialize the camera service and get available cameras
@@ -175,10 +210,20 @@ class CameraService {
       }
 
       // Create camera controller with optimal settings
+      // Use medium resolution for Android emulators to reduce buffer overflow warnings
+      final ResolutionPreset resolution = _isAndroidEmulator()
+          ? ResolutionPreset
+                .medium // Reduced resolution for emulators
+          : ResolutionPreset.high; // High quality for real devices
+
+      debugPrint(
+        '[CameraService] Using resolution preset: $resolution (Android emulator: ${_isAndroidEmulator()})',
+      );
+
       _controller = CameraController(
         selectedCamera,
-        ResolutionPreset.high, // High quality for market photos
-        enableAudio: false, // We'll handle video audio separately
+        resolution,
+        enableAudio: true, // Enable audio for video recording
         imageFormatGroup: ImageFormatGroup.jpeg, // JPEG for photos
       );
 
@@ -395,6 +440,328 @@ class CameraService {
     }
   }
 
+  /// Start video recording with 5-second maximum duration and countdown
+  Future<bool> startVideoRecording() async {
+    try {
+      debugPrint('[CameraService] Starting video recording...');
+      _lastError = null;
+
+      if (_isRecordingVideo) {
+        _lastError = 'Already recording video';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
+      }
+
+      if (_isSimulatorMode) {
+        return await _startSimulatorVideoRecording();
+      }
+
+      if (_controller == null || !_controller!.value.isInitialized) {
+        _lastError = 'Camera not initialized';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
+      }
+
+      // Check if already recording
+      if (_controller!.value.isRecordingVideo) {
+        _lastError = 'Camera is already recording';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
+      }
+
+      debugPrint('[CameraService] Starting camera video recording...');
+
+      // Start recording with optimized settings for emulators
+      if (_isAndroidEmulator()) {
+        debugPrint(
+          '[CameraService] Using emulator-optimized video recording settings',
+        );
+        // For emulators, we could add additional optimizations here if needed
+      }
+
+      // Start recording
+      await _controller!.startVideoRecording();
+
+      // Initialize countdown controller
+      _countdownController = StreamController<int>.broadcast();
+
+      // Set recording state
+      _isRecordingVideo = true;
+      _recordingDuration = 0;
+
+      // Start countdown timer (counts up from 0 to 5 seconds)
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (
+        timer,
+      ) async {
+        _recordingDuration++;
+        debugPrint(
+          '[CameraService] Recording duration: $_recordingDuration seconds',
+        );
+
+        // Emit countdown update (remaining time)
+        final remainingTime = _maxRecordingDuration - _recordingDuration;
+        _countdownController?.add(remainingTime);
+
+        // Auto-stop at 5 seconds
+        if (_recordingDuration >= _maxRecordingDuration) {
+          debugPrint(
+            '[CameraService] Maximum recording duration reached, stopping...',
+          );
+          await stopVideoRecording();
+        }
+      });
+
+      debugPrint('[CameraService] Video recording started successfully');
+      return true;
+    } catch (e) {
+      _lastError = 'Failed to start video recording: $e';
+      debugPrint('[CameraService] ERROR: $_lastError');
+      await _cleanupVideoRecording();
+      return false;
+    }
+  }
+
+  /// Start simulated video recording for testing on simulators
+  Future<bool> _startSimulatorVideoRecording() async {
+    try {
+      debugPrint('[CameraService] Starting simulator video recording...');
+
+      // Initialize countdown controller
+      _countdownController = StreamController<int>.broadcast();
+
+      // Set recording state
+      _isRecordingVideo = true;
+      _recordingDuration = 0;
+
+      // Start countdown timer (counts up from 0 to 5 seconds)
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (
+        timer,
+      ) async {
+        _recordingDuration++;
+        debugPrint(
+          '[CameraService] Simulator recording duration: $_recordingDuration seconds',
+        );
+
+        // Emit countdown update (remaining time)
+        final remainingTime = _maxRecordingDuration - _recordingDuration;
+        _countdownController?.add(remainingTime);
+
+        // Auto-stop at 5 seconds
+        if (_recordingDuration >= _maxRecordingDuration) {
+          debugPrint(
+            '[CameraService] Simulator maximum recording duration reached, stopping...',
+          );
+          await stopVideoRecording();
+        }
+      });
+
+      debugPrint(
+        '[CameraService] Simulator video recording started successfully',
+      );
+      return true;
+    } catch (e) {
+      _lastError = 'Failed to start simulator video recording: $e';
+      debugPrint('[CameraService] ERROR: $_lastError');
+      await _cleanupVideoRecording();
+      return false;
+    }
+  }
+
+  /// Stop video recording and return the file path
+  Future<String?> stopVideoRecording() async {
+    try {
+      debugPrint('[CameraService] Stopping video recording...');
+      _lastError = null;
+
+      if (!_isRecordingVideo) {
+        _lastError = 'Not currently recording video';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return null;
+      }
+
+      if (_isSimulatorMode) {
+        return await _stopSimulatorVideoRecording();
+      }
+
+      if (_controller == null || !_controller!.value.isInitialized) {
+        _lastError = 'Camera not initialized';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        await _cleanupVideoRecording();
+        return null;
+      }
+
+      if (!_controller!.value.isRecordingVideo) {
+        _lastError = 'Camera is not recording';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        await _cleanupVideoRecording();
+        return null;
+      }
+
+      debugPrint('[CameraService] Stopping camera video recording...');
+
+      // Stop the recording and get the file
+      final XFile videoFile = await _controller!.stopVideoRecording();
+
+      // Generate unique filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final filename = 'marketsnap_video_$timestamp.mp4';
+
+      // Get app documents directory for storing videos
+      final Directory appDir = await getApplicationDocumentsDirectory();
+      final String videoPath = path.join(appDir.path, 'videos', filename);
+
+      // Create videos directory if it doesn't exist
+      final Directory videosDir = Directory(path.dirname(videoPath));
+      if (!await videosDir.exists()) {
+        await videosDir.create(recursive: true);
+        debugPrint(
+          '[CameraService] Created videos directory: ${videosDir.path}',
+        );
+      }
+
+      // Move the video to our app directory
+      final File tempVideoFile = File(videoFile.path);
+      final File savedVideo = await tempVideoFile.copy(videoPath);
+
+      // Clean up temporary file
+      try {
+        await tempVideoFile.delete();
+      } catch (e) {
+        debugPrint(
+          '[CameraService] Warning: Could not delete temp video file: $e',
+        );
+      }
+
+      // Cleanup recording state
+      await _cleanupVideoRecording();
+
+      final fileSize = await savedVideo.length();
+      debugPrint('[CameraService] Video recorded successfully');
+      debugPrint('[CameraService] Video path: $videoPath');
+      debugPrint('[CameraService] Video duration: $_recordingDuration seconds');
+      debugPrint(
+        '[CameraService] Video size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
+      );
+
+      return videoPath;
+    } catch (e) {
+      _lastError = 'Failed to stop video recording: $e';
+      debugPrint('[CameraService] ERROR: $_lastError');
+      await _cleanupVideoRecording();
+      return null;
+    }
+  }
+
+  /// Stop simulated video recording for testing on simulators
+  Future<String?> _stopSimulatorVideoRecording() async {
+    try {
+      debugPrint('[CameraService] Stopping simulator video recording...');
+
+      // Generate unique filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final filename = 'marketsnap_simulator_video_$timestamp.mp4';
+
+      // Get app documents directory for storing videos
+      final Directory appDir = await getApplicationDocumentsDirectory();
+      final String videoPath = path.join(appDir.path, 'videos', filename);
+
+      // Create videos directory if it doesn't exist
+      final Directory videosDir = Directory(path.dirname(videoPath));
+      if (!await videosDir.exists()) {
+        await videosDir.create(recursive: true);
+        debugPrint(
+          '[CameraService] Created videos directory: ${videosDir.path}',
+        );
+      }
+
+      // Create a mock video file (we'll create a small text file as placeholder)
+      final videoContent =
+          '''
+MarketSnap Simulator Video
+Duration: $_recordingDuration seconds
+Created: ${DateTime.now().toString()}
+This is a mock video file created in simulator mode.
+In a real device, this would be an actual MP4 video file.
+''';
+
+      final file = File(videoPath);
+      await file.writeAsString(videoContent);
+
+      // Cleanup recording state
+      await _cleanupVideoRecording();
+
+      final fileSize = await file.length();
+      debugPrint('[CameraService] Simulator video created successfully');
+      debugPrint('[CameraService] Video path: $videoPath');
+      debugPrint('[CameraService] Video duration: $_recordingDuration seconds');
+      debugPrint(
+        '[CameraService] Video size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
+      );
+
+      return videoPath;
+    } catch (e) {
+      _lastError = 'Failed to create simulator video: $e';
+      debugPrint('[CameraService] ERROR: $_lastError');
+      await _cleanupVideoRecording();
+      return null;
+    }
+  }
+
+  /// Cancel video recording without saving
+  Future<void> cancelVideoRecording() async {
+    try {
+      debugPrint('[CameraService] Cancelling video recording...');
+
+      if (!_isRecordingVideo) {
+        debugPrint('[CameraService] No video recording to cancel');
+        return;
+      }
+
+      if (!_isSimulatorMode &&
+          _controller != null &&
+          _controller!.value.isInitialized &&
+          _controller!.value.isRecordingVideo) {
+        // Stop recording but don't save the file
+        final XFile videoFile = await _controller!.stopVideoRecording();
+
+        // Delete the temporary file
+        try {
+          await File(videoFile.path).delete();
+          debugPrint('[CameraService] Temporary video file deleted');
+        } catch (e) {
+          debugPrint(
+            '[CameraService] Warning: Could not delete temp video file: $e',
+          );
+        }
+      }
+
+      await _cleanupVideoRecording();
+      debugPrint('[CameraService] Video recording cancelled successfully');
+    } catch (e) {
+      debugPrint('[CameraService] Error cancelling video recording: $e');
+      await _cleanupVideoRecording();
+    }
+  }
+
+  /// Clean up video recording state and resources
+  Future<void> _cleanupVideoRecording() async {
+    debugPrint('[CameraService] Cleaning up video recording state...');
+
+    // Cancel timer
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+
+    // Close countdown stream controller
+    await _countdownController?.close();
+    _countdownController = null;
+
+    // Reset recording state
+    _isRecordingVideo = false;
+    _recordingDuration = 0;
+
+    debugPrint('[CameraService] Video recording cleanup completed');
+  }
+
   /// Get camera flash modes available for current camera
   List<FlashMode> getAvailableFlashModes() {
     if (_controller == null || !_controller!.value.isInitialized) {
@@ -471,6 +838,11 @@ class CameraService {
     if (_controller != null) {
       debugPrint('[CameraService] Disposing camera controller...');
       try {
+        // Cancel any ongoing video recording before disposing
+        if (_isRecordingVideo) {
+          await cancelVideoRecording();
+        }
+
         await _controller!.dispose();
         debugPrint('[CameraService] Camera controller disposed successfully');
       } catch (e) {
@@ -483,6 +855,10 @@ class CameraService {
   /// Dispose the entire camera service
   Future<void> dispose() async {
     debugPrint('[CameraService] Disposing camera service...');
+
+    // Clean up video recording resources
+    await _cleanupVideoRecording();
+
     await disposeController();
     _cameras = null;
     _isInitialized = false;

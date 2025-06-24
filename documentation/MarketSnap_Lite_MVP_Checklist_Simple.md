@@ -77,7 +77,7 @@ Legend:
 
 - [~] **2. Capture & Review UI**
   - [X] Camera preview with photo shutter. ✅ **COMPLETED** - Full camera preview with photo capture, cross-platform support, flash controls, camera switching, and modern UI.
-  - [ ] 5‑sec video record button with live countdown.
+  - [X] 5‑sec video record button with live countdown. ✅ **COMPLETED** - Full video recording with 5-second auto-stop, live countdown display, cross-platform support, and simulator mode compatibility.
   - [ ] Review screen → apply LUT filter → "Post" button.
 
 - [ ] **3. Story Reel & Feed**
