@@ -7,7 +7,7 @@
 This checklist breaks the MVP into four engineering phases. Complete every sub‑item in strict order; each sub‑item is an **independent, testable task** for your AI pair‑programmer.
 
 ### Phases Overview
-- [ ] **Phase 1:** Foundation  
+- [X] **Phase 1:** Foundation  
 - [ ] **Phase 2:** Data Layer  
 - [ ] **Phase 3:** Interface Layer  
 - [ ] **Phase 4:** Implementation Layer  
@@ -22,34 +22,34 @@ Legend:
 
 | Feature | Sub‑tasks |
 |---------|-----------|
-| **1. Flutter Project Bootstrap** | - [ ] Initialise Flutter 3 project with null‑safety enabled.<br> - [ ] Add core packages: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `workmanager`, `hive`, `path_provider`, `image_picker`, `camera`, `video_player`, `flutter_video_compress`.<br> - [ ] Configure Android & iOS Firebase SDKs with staging project IDs. |
-| **2. Local Data Stores** | - [ ] Create Hive boxes for `pendingMediaQueue` and `userSettings`.<br> - [ ] Implement encryption key generation & storage in secure storage.<br> - [ ] Write baseline unit test: enqueue/dequeue survives hot restart. |
-| **3. WorkManager Jobs** | - [ ] Register background sync job (`SyncPendingMediaTask`).<br> - [ ] Configure exponential back‑off policy.<br> - [ ] Add unit test: task executes when connectivity changes. |
-| **4. Static Asset Pipeline** | - [ ] Add warm/cool/contrast LUT PNGs to asset bundle.<br> - [ ] Verify build size stays < 50 MB release APK/IPA.<br> - [ ] CI step: fail build if assets exceed limit. |
+| **1. Flutter Project Bootstrap** | - [X] Initialise Flutter 3 project with null‑safety enabled.<br> - [X] Add core packages: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `workmanager`, `hive`, `path_provider`, `image_picker`, `camera`, `video_player`, `flutter_video_compress`.<br> - [X] Configure Android & iOS Firebase SDKs with staging project IDs. |
+| **2. Local Data Stores** | - [X] Create Hive boxes for `pendingMediaQueue` and `userSettings`.<br> - [X] Implement encryption key generation & storage in secure storage.<br> - [X] Write baseline unit test: enqueue/dequeue survives hot restart. |
+| **3. WorkManager Jobs** | - [X] Register background sync job (`SyncPendingMediaTask`).<br> - [X] Configure exponential back‑off policy.<br> - [X] Add unit test: task executes when connectivity changes. |
+| **4. Static Asset Pipeline** | - [X] Add warm/cool/contrast LUT PNGs to asset bundle.<br> - [X] Verify build size stays < 50 MB release APK/IPA.<br> - [X] CI step: fail build if assets exceed limit. |
 
 ---
 
 ## Phase 2 – Data Layer  
-**Criteria:** Schemas, rules & serverless endpoints. *Depends on Phase 1.*
+**Criteria:** Schemas, rules & serverless endpoints. *Depends on Phase 1.*
 
 | Feature | Sub‑tasks |
 |---------|-----------|
 | **1. Firestore Schema & Security** | - [ ] Define collections: `vendors`, `snaps`, `broadcasts`, `followers` with indexes.<br> - [ ] Write Firebase rules restricting each document to `request.auth.uid` vendor.<br> - [ ] Add emulator test verifying unauthenticated write is rejected. |
-| **2. Storage Buckets** | - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).<br> - [ ] Configure TTL lifecycle rule (30 days hard delete). |
+| **2. Storage Buckets** | - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).<br> - [ ] Configure TTL lifecycle rule (30 days hard delete). |
 | **3. Cloud Functions (Core)** | - [ ] `sendFollowerPush` – on `snaps` create → FCM multicast.<br> - [ ] `fanOutBroadcast` – on `broadcasts` create → FCM.<br> - [ ] Unit tests with Firebase Functions Test SDK. |
-| **4. Cloud Functions (AI Phase 2 Prep)** | - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.<br> - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4. |
+| **4. Cloud Functions (AI Phase 2 Prep)** | - [ ] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.<br> - [ ] Environment var for OpenAI key; leave disabled flag until Phase 4. |
 
 ---
 
 ## Phase 3 – Interface Layer  
-**Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
+**Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
 | Feature | Sub‑tasks |
 |---------|-----------|
 | **1. Auth & Profile Screens** | - [ ] Phone/email OTP flow using `firebase_auth`.<br> - [ ] Profile form: stall name, market city, avatar upload.<br> - [ ] Validate offline caching of profile in Hive. |
-| **2. Capture & Review UI** | - [ ] Camera preview with photo shutter.<br> - [ ] 5‑sec video record button with live countdown.<br> - [ ] Review screen → apply LUT filter → “Post” button. |
-| **3. Story Reel & Feed** | - [ ] Horizontal story carousel per vendor with 24 h TTL badge.<br> - [ ] Vertical feed showing latest three snaps per followed vendor.<br> - [ ] Thumbnail placeholder until media downloads completes. |
-| **4. Settings & Help** | - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.<br> - [ ] External link to support email.<br> - [ ] Display free‑storage indicator (≥ 100 MB check). |
+| **2. Capture & Review UI** | - [ ] Camera preview with photo shutter.<br> - [ ] 5‑sec video record button with live countdown.<br> - [ ] Review screen → apply LUT filter → "Post" button. |
+| **3. Story Reel & Feed** | - [ ] Horizontal story carousel per vendor with 24 h TTL badge.<br> - [ ] Vertical feed showing latest three snaps per followed vendor.<br> - [ ] Thumbnail placeholder until media downloads completes. |
+| **4. Settings & Help** | - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.<br> - [ ] External link to support email.<br> - [ ] Display free‑storage indicator (≥ 100 MB check). |
 
 ---
 
@@ -58,19 +58,19 @@ Legend:
 
 | Feature | Sub‑tasks |
 |---------|-----------|
-| **1. Offline Media Queue Logic** | - [ ] Serialize photo/video + metadata into Hive queue.<br> - [ ] WorkManager uploads when network available; writes `snaps` doc + Storage file.<br> - [ ] Delete queue item on 200 response; retry on failure. |
+| **1. Offline Media Queue Logic** | - [ ] Serialize photo/video + metadata into Hive queue.<br> - [ ] WorkManager uploads when network available; writes `snaps` doc + Storage file.<br> - [ ] Delete queue item on 200 response; retry on failure. |
 | **2. Push Notification Flow** | - [ ] Request FCM permissions; save token in `followers` sub‑coll.<br> - [ ] On message click, deep‑link to snap/story.<br> - [ ] Fallback in‑app banner if system push disabled. |
-| **3. Broadcast Text & Location Tagging** | - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.<br> - [ ] Implement coarse location rounding (0.1°) before upload.<br> - [ ] Filter feed by distance if location data present. |
-| **4. Save‑to‑Device** | - [ ] Persist posted media to OS gallery via `image_gallery_saver`.<br> - [ ] Check free space ≥ 100 MB else show toast error.<br> - [ ] Unit test: saved file survives app uninstall. |
-| **5. AI Caption Helper (Phase 2)** | - [ ] Call `generateCaption` CF; display spinner max 2 s.<br> - [ ] Allow vendor edit before final post.<br> - [ ] Cache caption keyed by media hash. |
-| **6. Recipe & FAQ Snippets (Phase 2)** | - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.<br> - [ ] On snap view, call `getRecipeSnippet` for produce keyword.<br> - [ ] Render collapsible FAQ card below story. |
+| **3. Broadcast Text & Location Tagging** | - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.<br> - [ ] Implement coarse location rounding (0.1°) before upload.<br> - [ ] Filter feed by distance if location data present. |
+| **4. Save‑to‑Device** | - [ ] Persist posted media to OS gallery via `image_gallery_saver`.<br> - [ ] Check free space ≥ 100 MB else show toast error.<br> - [ ] Unit test: saved file survives app uninstall. |
+| **5. AI Caption Helper (Phase 2)** | - [ ] Call `generateCaption` CF; display spinner max 2 s.<br> - [ ] Allow vendor edit before final post.<br> - [ ] Cache caption keyed by media hash. |
+| **6. Recipe & FAQ Snippets (Phase 2)** | - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.<br> - [ ] On snap view, call `getRecipeSnippet` for produce keyword.<br> - [ ] Render collapsible FAQ card below story. |
 
 ---
 
 ### Implementation Rules
 - **Feature Independence:** each sub‑task is self‑contained, rollback‑safe, and unit‑tested.  
-- **Parallelism:** Phase 1 first; Phases 2 & 3 can overlap; Phase 4 starts after Phase 1 complete.  
-- **Status Markers:** `[ ]` Not Started  /  `[~]` In Progress  /  `[X]` Completed  /  `[!]` Blocked.
+- **Parallelism:** Phase 1 first; Phases 2 & 3 can overlap; Phase 4 starts after Phase 1 complete.  
+- **Status Markers:** `[ ]` Not Started  /   `[~]` In Progress  /   `[X]` Completed  /   `[!]` Blocked.
 
 ---
 

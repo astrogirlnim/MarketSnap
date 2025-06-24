@@ -1,3 +1,25 @@
+# Active Context
+
+*Updated: June 24, 2025*
+
+## Current Focus
+The current focus is completing **Phase 1: Foundation**. We have just completed the implementation of the **Static Asset Pipeline (Phase 1.4)**.
+
+## Next Steps
+With the foundational elements in place, the next immediate step is to begin **Phase 2: Data Layer**. This involves:
+- Defining the Firestore schema and security rules.
+- Configuring Firebase Storage buckets.
+- Scaffolding the core Cloud Functions.
+
+## Blockers
+There are currently no blockers.
+
+## Recent Changes
+- Added placeholder assets for LUT filters (`warm`, `cool`, `contrast`).
+- Updated `pubspec.yaml` to include the new assets.
+- Verified that the application build size remains under the 50 MB limit.
+- Documented the implementation in `docs/phase_1_4_implementation_report.md`.
+
 # Active Context (Now)
 
 - **Background sync (WorkManager) is now fully functional on both Android and iOS.**
