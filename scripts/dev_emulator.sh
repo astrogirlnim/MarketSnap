@@ -94,6 +94,21 @@ check_prerequisites() {
     log "SUCCESS" "✅ All prerequisites met"
 }
 
+# Function to clean and prepare Flutter project
+prepare_flutter_project() {
+    log "INFO" "🧹 Cleaning and preparing Flutter project..."
+    cd "$PROJECT_DIR"
+    
+    # Run flutter clean and pub get to ensure a fresh state
+    flutter clean > /dev/null 2>&1
+    log "DEBUG" "Flutter clean completed"
+    
+    flutter pub get > /dev/null 2>&1
+    log "DEBUG" "Flutter pub get completed"
+    
+    log "SUCCESS" "✅ Flutter project is clean and ready"
+}
+
 # Function to setup environment variables
 setup_environment() {
     log "INFO" "🔧 Setting up environment variables..."
@@ -318,6 +333,8 @@ check_android_emulator_status() {
             return 1  # Still booting
         else
             log "DEBUG" "Android emulator fully booted (bootanim: '$init_svc_bootanim')"
+            # Add a small delay to ensure all services are up
+            sleep 2
             return 0  # Fully booted
         fi
     else
@@ -342,7 +359,7 @@ launch_android_emulator() {
     log "DEBUG" "Android Emulator launched with PID: $ANDROID_EMU_PID"
     
     # Wait for Android Emulator to be ready (optimized for fast boot)
-    local max_wait=10  # Reduced to 10 seconds for fast emulator boot
+    local max_wait=45  # Increased to 45 seconds for more reliability
     local wait_count=0
     
     while [ $wait_count -lt $max_wait ]; do
@@ -370,7 +387,7 @@ launch_android_emulator() {
             log "DEBUG" "Waiting for Android Emulator to boot... ($wait_count/$max_wait)"
         fi
         
-        sleep 3
+        sleep 2 # Changed from 3 to 2
         ((wait_count++))
     done
     
@@ -384,30 +401,20 @@ get_booted_ios_device_id() {
     sleep 3
     
     # Get the iOS simulator device ID that Flutter recognizes
-    local flutter_devices=$(flutter devices 2>/dev/null)
+    local flutter_devices
+    flutter_devices=$(flutter devices 2>/dev/null)
     
-    # Try multiple patterns to find iOS device
-    local ios_device_id=""
-    
-    # Pattern 1: Look for iOS Simulator with device ID in parentheses
-    ios_device_id=$(echo "$flutter_devices" | grep -E "iOS.*Simulator" | grep -o "([A-F0-9-]*)" | head -1 | tr -d "()" || true)
-    
-    # Pattern 2: Look for apple_ios_simulator
+    # Try to find the iOS device ID (UUID) from the flutter devices output
+    # This looks for a line containing "ios" and "(simulator)" and then extracts the UUID.
+    local ios_device_id
+    ios_device_id=$(echo "$flutter_devices" | grep "ios" | grep "(simulator)" | grep -o -E '[A-F0-9]{8}-([A-F0-9]{4}-){3}[A-F0-9]{12}' | head -1)
+
+    # Fallback to generic iOS simulator ID if parsing fails
     if [[ -z "$ios_device_id" ]]; then
-        ios_device_id=$(echo "$flutter_devices" | grep -o "apple_ios_simulator" | head -1 || true)
-    fi
-    
-    # Pattern 3: Extract device ID from flutter devices output more carefully
-    if [[ -z "$ios_device_id" ]]; then
-        ios_device_id=$(echo "$flutter_devices" | grep -E "iOS.*Simulator" | awk '{for(i=1;i<=NF;i++) if($i ~ /^[A-F0-9-]{36}$/) print $i}' | head -1 || true)
-    fi
-    
-    # Fallback to generic iOS simulator ID
-    if [[ -z "$ios_device_id" ]]; then
-        log "DEBUG" "No specific iOS device ID found, using generic iOS simulator ID"
+        log "DEBUG" "No specific iOS device UUID found, using generic 'apple_ios_simulator' ID as fallback."
         ios_device_id="apple_ios_simulator"
     else
-        log "DEBUG" "Flutter detected iOS device: $ios_device_id"
+        log "DEBUG" "Flutter detected iOS device with UUID: $ios_device_id"
     fi
     
     echo "$ios_device_id"
@@ -420,9 +427,7 @@ run_flutter_ios() {
     
     cd "$PROJECT_DIR"
     
-    # Clean any previous builds for fresh start
-    log "DEBUG" "Cleaning Flutter build cache for iOS..."
-    flutter clean > /dev/null 2>&1 || true
+    # No need for flutter clean here, moved to the beginning
     
     # Get the booted iOS device ID for Flutter
     local ios_flutter_device_id=$(get_booted_ios_device_id)
@@ -477,31 +482,48 @@ run_flutter_ios() {
     fi
 }
 
+# Function to get flutter android device id
+get_flutter_android_device_id() {
+    local flutter_devices
+    flutter_devices=$(flutter devices 2>/dev/null)
+
+    # Try to parse the emulator-xxxx ID from the flutter devices output
+    # This looks for a line with "emulator-" and extracts the ID (e.g., emulator-5554)
+    local android_device_id
+    android_device_id=$(echo "$flutter_devices" | grep -o -E 'emulator-[0-9]+' | head -1)
+    
+    if [[ -z "$android_device_id" ]]; then
+        # Fallback to adb if parsing from flutter devices fails
+        log "DEBUG" "Could not parse Android device ID from 'flutter devices', falling back to 'adb devices'."
+        android_device_id=$(get_android_device_id) # Uses the existing adb function
+    fi
+
+    if [[ -z "$android_device_id" ]]; then
+        log "WARNING" "⚠️ No specific Android device ID found. The script might fail."
+    else
+        log "DEBUG" "Flutter detected Android device with ID: $android_device_id"
+    fi
+
+    echo "$android_device_id"
+}
+
 # Function to run Flutter app on Android
 run_flutter_android() {
     log "INFO" "🤖 Starting Flutter app on Android..."
     
     cd "$PROJECT_DIR"
     
+    # No need for flutter clean here
+    
     # Wait for Android device to be available with better detection
     local max_wait=30
     local wait_count=0
     local device_detected=false
-    local android_device_id=""
+    local android_device_id
+    android_device_id=$(get_flutter_android_device_id)
     
     while [ $wait_count -lt $max_wait ]; do
         local flutter_devices_output=$(flutter devices 2>/dev/null)
-        
-        # Try to find Android emulator (multiple possible patterns)
-        android_device_id=$(echo "$flutter_devices_output" | grep -E "(emulator-[0-9]+|android)" | head -1 | awk '{print $NF}' | tr -d '()' || true)
-        
-        # Also try to get the device ID from ADB if Flutter detection fails
-        if [[ -z "$android_device_id" ]]; then
-            local adb_device_id=$(get_android_device_id)
-            if [[ -n "$adb_device_id" ]] && echo "$flutter_devices_output" | grep -q "$adb_device_id"; then
-                android_device_id="$adb_device_id"
-            fi
-        fi
         
         if [[ -n "$android_device_id" ]] && echo "$flutter_devices_output" | grep -q "$android_device_id"; then
             log "SUCCESS" "✅ Flutter recognizes Android Emulator: $android_device_id"
@@ -511,21 +533,15 @@ run_flutter_android() {
         
         if [[ $wait_count -eq 0 ]] || [[ $((wait_count % 5)) -eq 0 ]]; then
             log "DEBUG" "Waiting for Android device to be available... ($wait_count/$max_wait)"
-            log "DEBUG" "ADB device ID: $(get_android_device_id)"
+            log "DEBUG" "Target device ID: $android_device_id"
         fi
         sleep 2
         ((wait_count++))
     done
     
-    # Fallback to ADB device ID if Flutter detection failed
     if [[ -z "$android_device_id" ]]; then
-        android_device_id=$(get_android_device_id)
-        if [[ -n "$android_device_id" ]]; then
-            log "WARNING" "⚠️  Using ADB device ID as fallback: $android_device_id"
-        else
-            android_device_id="emulator-$ANDROID_PORT"
-            log "WARNING" "⚠️  Using default fallback Android device ID: $android_device_id"
-        fi
+        log "ERROR" "❌ Could not determine Android device ID. Skipping deployment."
+        return
     fi
     
     if ! $device_detected; then
@@ -708,40 +724,55 @@ main() {
     # Step 1: Check prerequisites
     check_prerequisites
     
-    # Step 2: Setup environment
+    # Step 2: Clean and prepare project
+    prepare_flutter_project
+    
+    # Step 3: Setup environment
     setup_environment
     
-    # Step 3: Check emulators
+    # Step 4: Check emulators
     check_emulators
     
-    # Step 4: Launch iOS Simulator
+    # Step 5: Run Flutter Doctor for diagnostics
+    log "INFO" "🩺 Running 'flutter doctor -v' for diagnostics..."
+    flutter doctor -v
+    log "SUCCESS" "✅ Flutter Doctor check completed"
+    
+    # Step 6: Launch iOS Simulator
     log "INFO" "🍎 Starting iOS Simulator setup..."
     if ! launch_ios_simulator; then
         log "ERROR" "❌ Failed to launch iOS Simulator"
         exit 1
     fi
     
-    # Step 5: Launch Android Emulator  
+    # Step 7: Launch Android Emulator  
     log "INFO" "🤖 Starting Android Emulator setup..."
     if ! launch_android_emulator; then
         log "ERROR" "❌ Failed to launch Android Emulator"
         exit 1
     fi
     
-    # Step 6: Wait for all emulators to be fully ready and Flutter to recognize them
+    # Step 8: Wait for all emulators to be fully ready and Flutter to recognize them
     log "INFO" "⏳ Waiting for Flutter to recognize all devices..."
-    sleep 5
+    sleep 10 # Increased wait time
     
     # Verify Flutter can see both devices
-    local max_device_wait=30
+    local max_device_wait=60 # Increased wait time
     local device_wait_count=0
     local ios_detected=false
     local android_detected=false
     
     while [ $device_wait_count -lt $max_device_wait ]; do
-        local flutter_devices=$(flutter devices 2>/dev/null)
+        local flutter_devices
+        flutter_devices=$(flutter devices 2>/dev/null)
         
-        if echo "$flutter_devices" | grep -q -E "(iOS.*Simulator|apple_ios_simulator)"; then
+        log "DEBUG" "Attempting device recognition ($((device_wait_count+1))/$max_device_wait)..."
+        log "DEBUG" "Current flutter devices output:"
+        echo "$flutter_devices" | while IFS= read -r line; do
+            log "DEBUG" "  $line"
+        done
+
+        if echo "$flutter_devices" | grep -q -E "(iOS|iPhone.*Simulator|apple_ios_simulator)"; then
             ios_detected=true
         fi
         
@@ -749,7 +780,7 @@ main() {
         local android_device_id=$(get_android_device_id)
         if [[ -n "$android_device_id" ]] && echo "$flutter_devices" | grep -q "$android_device_id"; then
             android_detected=true
-        elif echo "$flutter_devices" | grep -q "emulator-"; then
+        elif echo "$flutter_devices" | grep -q -E "(emulator-|Android SDK)"; then
             android_detected=true
         fi
         
@@ -758,47 +789,56 @@ main() {
             break
         fi
         
-        log "DEBUG" "Waiting for Flutter device recognition... iOS: $ios_detected, Android: $android_detected ($device_wait_count/$max_device_wait)"
-        sleep 2
+        log "INFO" "⏳ Waiting for Flutter device recognition... iOS: $ios_detected, Android: $android_detected"
+        sleep 5
         ((device_wait_count++))
     done
     
     if ! $ios_detected; then
-        log "WARNING" "⚠️  Flutter may not have detected iOS Simulator"
+        log "WARNING" "⚠️  Flutter could not detect the iOS Simulator after $max_device_wait seconds."
     fi
     
     if ! $android_detected; then
-        log "WARNING" "⚠️  Flutter may not have detected Android Emulator"
+        log "WARNING" "⚠️  Flutter could not detect the Android Emulator after $max_device_wait seconds."
     fi
     
-    # Step 7: Deploy Flutter on iOS
-    log "INFO" "📱 Deploying Flutter app to iOS..."
-    run_flutter_ios
+    # Proceed even if one is not detected, run_flutter will fail with more logs
     
-    # Step 8: Wait before deploying to Android
+    # Step 9: Deploy Flutter on iOS
+    if $ios_detected; then
+        log "INFO" "📱 Deploying Flutter app to iOS..."
+        run_flutter_ios
+    else
+        log "ERROR" "❌ Skipping iOS deployment as device was not detected."
+    fi
+    
+    # Step 10: Wait before deploying to Android
     log "INFO" "⏳ Waiting before deploying to Android..."
     sleep 8
     
-    # Step 9: Deploy Flutter on Android
-    log "INFO" "🤖 Deploying Flutter app to Android..."
-    run_flutter_android
+    # Step 11: Deploy Flutter on Android
+    if $android_detected; then
+        log "INFO" "🤖 Deploying Flutter app to Android..."
+        run_flutter_android
+    else
+        log "ERROR" "❌ Skipping Android deployment as device was not detected."
+    fi
     
-    # Step 10: Wait for apps to initialize
+    # Step 12: Wait for apps to initialize
     log "INFO" "⏳ Waiting for Flutter apps to initialize..."
     sleep 10
     
-    # Step 11: Display connection info
-    log "SUCCESS" "🎉 Both emulators launched and Flutter apps deployed!"
+    # Step 13: Display connection info
+    log "SUCCESS" "🎉 Development environment is up!"
     log "INFO" "📱 iOS Simulator: Check Simulator app"
     log "INFO" "🤖 Android Emulator: $(get_android_device_id || echo "Running")"
     log "INFO" "📝 iOS logs: scripts/flutter_ios.log"
     log "INFO" "📝 Android logs: scripts/flutter_android.log"
-    log "INFO" "🔄 Hot reload: Press 'r' in either terminal"
-    log "INFO" "🔄 Hot restart: Press 'R' in either terminal"
-    log "INFO" "🛑 To stop Flutter apps: Press CTRL+C"
-    log "INFO" "📱 Note: Simulators will remain running until you press CTRL-C"
+    log "INFO" "🔄 Hot reload: Press 'r' in either terminal where flutter is running"
+    log "INFO" "🔄 Hot restart: Press 'R' in either terminal where flutter is running"
+    log "INFO" "🛑 To stop Flutter apps and emulators: Press CTRL+C"
     
-    # Step 12: Monitor processes continuously
+    # Step 14: Monitor processes continuously
     monitor_flutter_processes
 }
 
