@@ -25,10 +25,10 @@ Legend:
   - [X] Add core packages: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `workmanager`, `hive`, `path_provider`, `image_picker`, `camera`, `video_player`, `video_compress`.
   - [X] Configure Android & iOS Firebase SDKs with staging project IDs.
 
-- [ ] **2. Local Data Stores**
-  - [ ] Create Hive boxes for `pendingMediaQueue` and `userSettings`.
-  - [ ] Implement encryption key generation & storage in secure storage.
-  - [ ] Write baseline unit test: enqueue/dequeue survives hot restart.
+- [X] **2. Local Data Stores**
+  - [X] Create Hive boxes for `pendingMediaQueue` and `userSettings`.
+  - [X] Implement encryption key generation & storage in secure storage.
+  - [X] Write baseline unit test: enqueue/dequeue survives hot restart.
 
 - [ ] **3. WorkManager Jobs**
   - [ ] Register background sync job (`SyncPendingMediaTask`).
