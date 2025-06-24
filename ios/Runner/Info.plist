@@ -55,5 +55,9 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>MarketSnap uses the local network to connect to developer tools for debugging and performance profiling during development. This is not used in the release version of the app.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>MarketSnap needs access to your camera to take photos and videos for your market stall posts.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MarketSnap needs access to your photo library to save and share your market stall photos.</string>
 </dict>
 </plist>
