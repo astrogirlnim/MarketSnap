@@ -1,0 +1,208 @@
+// Import 'mocha' to make sure the test runner is loaded
+import "mocha";
+import * as chai from "chai";
+import * as sinon from "sinon";
+import * as admin from "firebase-admin";
+import * as functions from "firebase-functions";
+
+// Initialize firebase-functions-test - using require is important
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const testEnv = require("firebase-functions-test")();
+
+// Stub the logger before importing the functions
+sinon.stub(functions, "logger");
+
+// Import the functions AFTER stubbing
+import {sendFollowerPush, fanOutBroadcast} from "../index";
+
+const expect = chai.expect;
+
+describe("Cloud Functions: MarketSnap", () => {
+  let collectionStub: sinon.SinonStub;
+  let docStub: sinon.SinonStub;
+  let getStub: sinon.SinonStub;
+  let sendEachForMulticastStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    // Stub Firebase admin initialization.
+    // This is important for offline testing.
+    sinon.stub(admin, "initializeApp");
+
+    // Stub the chain of Firestore calls
+    getStub = sinon.stub();
+    docStub = sinon.stub();
+    // Default stub for doc()
+    docStub.returns({get: getStub});
+
+    collectionStub = sinon.stub(admin.firestore(), "collection").returns({
+      doc: docStub,
+      get: getStub,
+    } as any);
+
+    // Stub the messaging call
+    sendEachForMulticastStub = sinon.stub(
+      admin.messaging(),
+      "sendEachForMulticast"
+    );
+  });
+
+  afterEach(() => {
+    // Restore all stubs
+    sinon.restore();
+    testEnv.cleanup();
+  });
+
+  describe("sendFollowerPush", () => {
+    it("should send notifications to all followers on a new snap", async () => {
+      // Setup mock data
+      const vendorData = {stallName: "The Best Veggies"};
+      const followersData = [
+        {id: "follower1", data: () => ({fcmToken: "token1"})},
+        {id: "follower2", data: () => ({fcmToken: "token2"})},
+      ];
+      const snapData = {text: "Fresh carrots are in!"};
+
+      // Configure stubs for this test case
+      docStub.withArgs("vendor1").returns({
+        get: () => Promise.resolve({
+          exists: true,
+          data: () => vendorData,
+        }),
+      });
+
+      const followersCollectionRef = {
+        get: () => Promise.resolve({
+          empty: false,
+          docs: followersData,
+          forEach: (callback: (doc: any) => void) =>
+            followersData.forEach(callback),
+        }),
+      };
+      collectionStub.withArgs("vendors/vendor1/followers")
+        .returns(followersCollectionRef as any);
+
+      sendEachForMulticastStub.resolves({
+        successCount: 2,
+        failureCount: 0,
+      });
+
+      // Create the test event data
+      const snap = testEnv.firestore.makeDocumentSnapshot(
+        snapData,
+        "vendors/vendor1/snaps/snap1"
+      );
+      const wrapped = testEnv.wrap(sendFollowerPush);
+
+      // Execute the function
+      await wrapped({
+        data: snap,
+        params: {vendorId: "vendor1", snapId: "snap1"},
+      });
+
+      // Assertions
+      expect(sendEachForMulticastStub.calledOnce).to.be.true;
+      const callArgs = sendEachForMulticastStub.firstCall.args[0];
+      expect(callArgs.tokens).to.deep.equal(["token1", "token2"]);
+      expect(callArgs.notification.title)
+        .to.equal("The Best Veggies has a new Snap!");
+      expect(callArgs.notification.body).to.equal("Fresh carrots are in!");
+    });
+
+    it("should not send notifications if vendor has no followers", async () => {
+      const vendorData = {stallName: "The Best Veggies"};
+      docStub.withArgs("vendor1").returns({
+        get: () => Promise.resolve({
+          exists: true,
+          data: () => vendorData,
+        }),
+      });
+
+      const followersCollectionRef = {
+        get: () => Promise.resolve({
+          empty: true,
+          docs: [],
+          forEach: () => [],
+        }),
+      };
+      collectionStub.withArgs("vendors/vendor1/followers")
+        .returns(followersCollectionRef as any);
+
+      const wrapped = testEnv.wrap(sendFollowerPush);
+      const snap = testEnv.firestore.makeDocumentSnapshot(
+        {},
+        "vendors/vendor1/snaps/snap1"
+      );
+
+      await wrapped({
+        data: snap,
+        params: {vendorId: "vendor1", snapId: "snap1"},
+      });
+
+      expect(sendEachForMulticastStub.called).to.be.false;
+    });
+  });
+
+  describe("fanOutBroadcast", () => {
+    it("should send a broadcast to all followers", async () => {
+      const vendorData = {stallName: "Fruit Stand"};
+      const followersData = [
+        {id: "follower1", data: () => ({fcmToken: "token1"})},
+      ];
+      const broadcastData = {message: "Closing in 15 minutes!"};
+
+      docStub.withArgs("vendor1").returns({
+        get: () => Promise.resolve({
+          exists: true,
+          data: () => vendorData,
+        }),
+      });
+
+      const followersCollectionRef = {
+        get: () => Promise.resolve({
+          empty: false,
+          docs: followersData,
+          forEach: (callback: (doc: any) => void) =>
+            followersData.forEach(callback),
+        }),
+      };
+      collectionStub.withArgs("vendors/vendor1/followers")
+        .returns(followersCollectionRef as any);
+
+      sendEachForMulticastStub.resolves({
+        successCount: 1,
+        failureCount: 0,
+      });
+
+      const wrapped = testEnv.wrap(fanOutBroadcast);
+      const broadcast = testEnv.firestore.makeDocumentSnapshot(
+        broadcastData,
+        "vendors/vendor1/broadcasts/broadcast1"
+      );
+
+      await wrapped({
+        data: broadcast,
+        params: {vendorId: "vendor1", broadcastId: "broadcast1"},
+      });
+
+      expect(sendEachForMulticastStub.calledOnce).to.be.true;
+      const callArgs = sendEachForMulticastStub.firstCall.args[0];
+      expect(callArgs.tokens).to.deep.equal(["token1"]);
+      expect(callArgs.notification.title)
+        .to.equal("Message from Fruit Stand");
+      expect(callArgs.notification.body).to.equal("Closing in 15 minutes!");
+    });
+
+    it("should not send a broadcast if the message is missing", async () => {
+      const broadcast = testEnv.firestore.makeDocumentSnapshot(
+        {message: ""},
+        "vendors/vendor1/broadcasts/broadcast1"
+      );
+      const wrapped = testEnv.wrap(fanOutBroadcast);
+      await wrapped({
+        data: broadcast,
+        params: {vendorId: "vendor1", broadcastId: "broadcast1"},
+      });
+      expect(sendEachForMulticastStub.called).to.be.false;
+    });
+  });
+});

@@ -3,5 +3,295 @@
  *
  * @see {@link https://firebase.google.com/docs/functions}
  */
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import {logger} from "firebase-functions";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
 
-// We will add our functions here later.
+// Initialize Firebase Admin SDK
+admin.initializeApp();
+const db = admin.firestore();
+const messaging = admin.messaging();
+
+logger.log("Cold start: Initialized Firebase Admin SDK.");
+
+/**
+ * Retrieves all FCM tokens for a given vendor's followers.
+ * @param {string} vendorId The ID of the vendor.
+ * @return {Promise<string[]>} A promise that resolves with an array of
+ * FCM tokens.
+ */
+const getFollowerTokens = async (vendorId: string): Promise<string[]> => {
+  logger.log(`[getFollowerTokens] Starting for vendorId: ${vendorId}`);
+  const tokens: string[] = [];
+  try {
+    const followersSnapshot = await db
+      .collection(`vendors/${vendorId}/followers`)
+      .get();
+
+    if (followersSnapshot.empty) {
+      logger.log(
+        `[getFollowerTokens] No followers found for vendor: ${vendorId}`
+      );
+      return [];
+    }
+
+    followersSnapshot.forEach((doc) => {
+      const follower = doc.data();
+      // Assuming the FCM token is stored in a field named 'fcmToken'
+      if (follower.fcmToken) {
+        tokens.push(follower.fcmToken);
+        logger.log(
+          `[getFollowerTokens] Found token for follower ${doc.id}: ` +
+            `${follower.fcmToken.substring(0, 10)}...`
+        );
+      } else {
+        logger.warn(
+          `[getFollowerTokens] Follower ${doc.id} for vendor ` +
+            `${vendorId} is missing an fcmToken.`
+        );
+      }
+    });
+
+    logger.log(
+      `[getFollowerTokens] Successfully retrieved ${tokens.length} tokens ` +
+        `for vendor ${vendorId}.`
+    );
+  } catch (error) {
+    logger.error(
+      `[getFollowerTokens] Error retrieving tokens for vendor ${vendorId}:`,
+      error
+    );
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to retrieve follower tokens."
+    );
+  }
+  return tokens;
+};
+
+/**
+ * Cloud Function to send a push notification when a new snap is created.
+ */
+export const sendFollowerPush = onDocumentCreated(
+  "vendors/{vendorId}/snaps/{snapId}",
+  async (event) => {
+    const {vendorId, snapId} = event.params;
+    const snap = event.data;
+    if (!snap) {
+      logger.error("[sendFollowerPush] No data associated with the event.");
+      return;
+    }
+    const snapData = snap.data();
+
+    logger.log(
+      `[sendFollowerPush] Triggered for new snap: ${snapId} ` +
+        `from vendor: ${vendorId}`
+    );
+    logger.log("[sendFollowerPush] Snap data:", snapData);
+
+    try {
+      // 1. Get vendor details for the notification title
+      logger.log(
+        "[sendFollowerPush] Fetching vendor details for " +
+          `vendorId: ${vendorId}`
+      );
+      const vendorDoc = await db.collection("vendors").doc(vendorId).get();
+      if (!vendorDoc.exists) {
+        logger.error(
+          `[sendFollowerPush] Vendor document ${vendorId} not found.`
+        );
+        return;
+      }
+      const vendorData = vendorDoc.data();
+      const stallName = vendorData?.stallName || "A Market Vendor";
+      logger.log(`[sendFollowerPush] Vendor stall name: ${stallName}`);
+
+      // 2. Get all follower tokens
+      const tokens = await getFollowerTokens(vendorId);
+      if (tokens.length === 0) {
+        logger.log(
+          "[sendFollowerPush] No follower tokens found for vendor " +
+            `${vendorId}. Exiting function.`
+        );
+        return;
+      }
+
+      // 3. Construct the notification payload
+      // Using a generic message for now as snapData structure is not
+      // fully defined
+      const snapText = snapData.text || "has posted a new snap!";
+      const payload = {
+        notification: {
+          title: `${stallName} has a new Snap!`,
+          body: snapText,
+        },
+        data: {
+          vendorId: vendorId,
+          snapId: snapId,
+          // This will help the client app navigate to the correct content
+          type: "new_snap",
+        },
+      };
+      logger.log(
+        "[sendFollowerPush] Constructed notification payload:",
+        payload
+      );
+
+      // 4. Send notifications
+      logger.log(
+        `[sendFollowerPush] Sending notifications to ${tokens.length} ` +
+          "followers."
+      );
+      const response = await messaging.sendEachForMulticast({
+        tokens,
+        ...payload,
+      });
+      logger.log(
+        `[sendFollowerPush] Successfully sent ${response.successCount} ` +
+          "messages."
+      );
+
+      if (response.failureCount > 0) {
+        logger.warn(
+          `[sendFollowerPush] Failed to send ${response.failureCount} ` +
+            "messages."
+        );
+        const failedTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            failedTokens.push(tokens[idx]);
+            logger.error(
+              "[sendFollowerPush] Failure for token " +
+                `${tokens[idx].substring(0, 10)}...:`,
+              resp.error
+            );
+          }
+        });
+        // TODO: Implement cleanup for invalid tokens
+        logger.warn("[sendFollowerPush] Failed tokens:", failedTokens);
+      }
+    } catch (error) {
+      logger.error(
+        `[sendFollowerPush] Unexpected error for snap ${snapId}:`,
+        error
+      );
+    }
+  }
+);
+
+/**
+ * Cloud Function to fan out a broadcast message via push notification.
+ */
+export const fanOutBroadcast = onDocumentCreated(
+  "vendors/{vendorId}/broadcasts/{broadcastId}",
+  async (event) => {
+    const {vendorId, broadcastId} = event.params;
+    const broadcast = event.data;
+    if (!broadcast) {
+      logger.error("[fanOutBroadcast] No data associated with the event.");
+      return;
+    }
+    const broadcastData = broadcast.data();
+
+    logger.log(
+      `[fanOutBroadcast] Triggered for new broadcast: ${broadcastId} ` +
+        `from vendor: ${vendorId}`
+    );
+    logger.log("[fanOutBroadcast] Broadcast data:", broadcastData);
+
+    // Check for message content
+    const message = broadcastData.message;
+    if (!message) {
+      logger.error(
+        "[fanOutBroadcast] Broadcast message is empty or missing. Exiting."
+      );
+      return;
+    }
+
+    try {
+      // 1. Get vendor details for the notification title
+      logger.log(
+        "[fanOutBroadcast] Fetching vendor details for " +
+          `vendorId: ${vendorId}`
+      );
+      const vendorDoc = await db.collection("vendors").doc(vendorId).get();
+      if (!vendorDoc.exists) {
+        logger.error(
+          `[fanOutBroadcast] Vendor document ${vendorId} not found.`
+        );
+        return;
+      }
+      const vendorData = vendorDoc.data();
+      const stallName = vendorData?.stallName || "A Market Vendor";
+      logger.log(`[fanOutBroadcast] Vendor stall name: ${stallName}`);
+
+      // 2. Get all follower tokens
+      const tokens = await getFollowerTokens(vendorId);
+
+      if (tokens.length === 0) {
+        logger.log(
+          "[fanOutBroadcast] No follower tokens found for vendor " +
+            `${vendorId}. Exiting function.`
+        );
+        return;
+      }
+
+      // 3. Construct the notification payload
+      const payload = {
+        notification: {
+          title: `Message from ${stallName}`,
+          body: message,
+        },
+        data: {
+          vendorId: vendorId,
+          broadcastId: broadcastId,
+          // This will help the client app navigate to the correct content
+          type: "new_broadcast",
+        },
+      };
+      logger.log(
+        "[fanOutBroadcast] Constructed notification payload:",
+        payload
+      );
+
+      // 4. Send notifications
+      logger.log(
+        `[fanOutBroadcast] Sending broadcast to ${tokens.length} followers.`
+      );
+      const response = await messaging.sendEachForMulticast({
+        tokens,
+        ...payload,
+      });
+
+      logger.log(
+        `[fanOutBroadcast] Successfully sent ${response.successCount} ` +
+          "messages."
+      );
+      if (response.failureCount > 0) {
+        logger.warn(
+          `[fanOutBroadcast] Failed to send ${response.failureCount} ` +
+            "messages."
+        );
+        const failedTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            failedTokens.push(tokens[idx]);
+            logger.error(
+              "[fanOutBroadcast] Failure for token " +
+                `${tokens[idx].substring(0, 10)}...:`,
+              resp.error
+            );
+          }
+        });
+        // TODO: Implement cleanup for invalid tokens
+        logger.warn("[fanOutBroadcast] Failed tokens:", failedTokens);
+      }
+    } catch (error) {
+      logger.error(
+        `[fanOutBroadcast] Unexpected error for broadcast ${broadcastId}:`,
+        error
+      );
+    }
+  }
+);
