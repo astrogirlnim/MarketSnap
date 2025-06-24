@@ -39,6 +39,8 @@
     -   **Emulator UI:** `http://localhost:4000`
 -   **Node.js Version:** The Cloud Functions environment is configured to use **Node.js v20**.
 -   **CI/CD:** GitHub Actions (defined in `.github/workflows/deploy.yml`).
+    -   **Authentication:** The deployment pipeline authenticates to Firebase using a `FIREBASE_SERVICE_ACCOUNT_KEY` stored in GitHub Secrets.
+    -   **Validation Jobs:** For pull request checks, the pipeline generates a *dummy* `firebase_options.dart` file to allow `flutter analyze` to pass without requiring real credentials, ensuring security and speed.
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
