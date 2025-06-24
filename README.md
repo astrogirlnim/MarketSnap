@@ -62,10 +62,34 @@ IOS_APP_ID=your_ios_app_id_here
 APP_BUNDLE_ID=your_bundle_id_here
 ```
 
+### Firebase Configuration
+
+The Firebase configuration uses a template-based system for security:
+
+#### Template System
+- `firebase.json.template` contains the Firebase configuration template with environment variables
+- `firebase.json` is generated from the template using your `.env` file variables
+- `firebase.json` is gitignored to prevent secrets from being committed
+
+#### Automatic Generation
+The `firebase.json` file is automatically generated:
+- **During CI/CD**: Using GitHub Secrets via `envsubst`
+- **During Local Development**: By `./scripts/dev_emulator.sh` using your `.env` file
+
+#### Manual Generation (if needed)
+```bash
+# Generate Firebase options file (creates lib/firebase_options.dart)
+flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart
+
+# Generate firebase.json from template (requires .env file)
+envsubst < firebase.json.template > firebase.json
+```
+
 ### Security Features
 
 - ✅ **No hardcoded API keys** in source code
 - ✅ **Environment-based configuration** using `flutter_dotenv`
+- ✅ **Firebase options auto-generated** using FlutterFire CLI
 - ✅ **Sensitive files excluded** from version control
 - ✅ **Firebase configuration** loaded securely at runtime
 - ✅ **Clean architecture** following Flutter best practices
@@ -157,6 +181,8 @@ If you are setting up the project for the first time after cloning, you will nee
 
 GitHub Actions workflow configured in `.github/workflows/deploy.yml`:
 - **Automated testing** on push/PR to main branch
+- **Secure Firebase Authentication**: Uses a service account (`FIREBASE_SERVICE_ACCOUNT_KEY`) for deployment jobs.
+- **Efficient PR Validation**: Generates dummy config files for pull request checks to ensure speed and security (no secrets needed).
 - **Flutter environment setup** with Java 17
 - **Code validation** with Flutter analyzer and tests
 - **Android APK builds** for streamlined testing (switched from AAB)
@@ -281,14 +307,29 @@ flutter build ios --release
    - Solution: Create `.env` file with required variables
 
 2. **Firebase initialization errors**
-   - Error: `Firebase configuration not found`
-   - Solution: Verify all environment variables are set correctly
+   - Error: `Firebase configuration not found` or `Undefined name 'DefaultFirebaseOptions'`
+   - Solution: 
+     - Verify all environment variables are set correctly
+     - Generate Firebase options file: `flutterfire configure --project=marketsnap-app --platforms=android,ios --out=lib/firebase_options.dart`
+     - Ensure `import 'firebase_options.dart';` is present in `main.dart`
 
-3. **Platform-specific build issues**
+3. **HiveService initialization errors**
+   - Error: `Too many positional arguments: 0 allowed, but 1 found`
+   - Solution: Ensure `hiveService.init()` is called without parameters (the service handles path internally)
+
+4. **Firebase configuration template errors**
+   - Error: `firebase.json not found` when running Firebase commands
+   - Solution: Generate `firebase.json` from template:
+     ```bash
+     # Ensure .env file exists with required variables
+     envsubst < firebase.json.template > firebase.json
+     ```
+
+5. **Platform-specific build issues**
    - Android: Check NDK installation and licenses
    - iOS: Verify Xcode and simulator setup
 
-4. **iOS Build Failure: 'Flutter/Flutter.h' not found or 'Dart compiler exited unexpectedly'**
+6. **iOS Build Failure: 'Flutter/Flutter.h' not found or 'Dart compiler exited unexpectedly'**
    - This project requires two specific modifications to the default iOS project structure.
    - **Symptom 1:** Build fails with `'Flutter/Flutter.h' file not found`.
    - **Symptom 2:** Build succeeds, but the app crashes on launch with `the Dart compiler exited unexpectedly.`

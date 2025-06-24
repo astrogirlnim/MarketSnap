@@ -21,7 +21,7 @@ Legend:
 **Criteria:** Essential build & tooling tasks with zero external dependencies.
 
 - [X] **1. Flutter Project Bootstrap**
-  - [X] Initialise Flutter 3 project with null‑safety enabled.
+  - [X] Initialise Flutter 3 project with null‑safety enabled.
   - [X] Add core packages: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `workmanager`, `hive`, `path_provider`, `image_picker`, `camera`, `video_player`, `video_compress`.
   - [X] Configure Android & iOS Firebase SDKs with staging project IDs.
 
@@ -51,9 +51,9 @@ Legend:
   - [X] Write Firebase rules restricting each document to `request.auth.uid` vendor.
   - [X] Add emulator test verifying unauthenticated write is rejected.
 
-- [ ] **2. Storage Buckets**
-  - [ ] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
-  - [ ] Configure TTL lifecycle rule (30 days hard delete).
+- [X] **2. Storage Buckets**
+  - [X] Create `/vendors/{uid}/snaps/` bucket path policy (max 1 MB object).
+  - [X] Configure TTL lifecycle rule (30 days hard delete).
 
 - [ ] **3. Cloud Functions (Core)**
   - [ ] `sendFollowerPush` – on `snaps` create → FCM multicast.

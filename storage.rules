@@ -9,7 +9,7 @@ service firebase.storage {
     // Allow writes only if the user is authenticated, the path matches their UID,
     // and the file size is less than 1MB.
     match /vendors/{userId}/snaps/{allPaths=**} {
-      allow read;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId
                    && request.resource.size < 1 * 1024 * 1024; // 1 MB
     }

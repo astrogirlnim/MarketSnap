@@ -123,6 +123,83 @@ setup_environment() {
     log "SUCCESS" "✅ Environment variables configured"
 }
 
+# Function to generate firebase.json from template
+generate_firebase_config() {
+    log "INFO" "🔧 Generating firebase.json from template..."
+    
+    # Check if .env file exists
+    if [[ ! -f "$PROJECT_DIR/.env" ]]; then
+        log "ERROR" "❌ .env file not found. Please create .env file with Firebase configuration."
+        exit 1
+    fi
+    
+    # Check if firebase.json.template exists
+    if [[ ! -f "$PROJECT_DIR/firebase.json.template" ]]; then
+        log "ERROR" "❌ firebase.json.template not found. This file is required for generating firebase.json."
+        exit 1
+    fi
+    
+    # Load environment variables from .env file
+    source "$PROJECT_DIR/.env"
+    
+    # Verify required environment variables
+    if [[ -z "$FIREBASE_PROJECT_ID" || -z "$ANDROID_APP_ID" || -z "$IOS_APP_ID" ]]; then
+        log "ERROR" "❌ Missing required environment variables. Please check your .env file."
+        log "ERROR" "Required: FIREBASE_PROJECT_ID, ANDROID_APP_ID, IOS_APP_ID"
+        exit 1
+    fi
+    
+    # Generate firebase.json from template using envsubst
+    if command -v envsubst &> /dev/null; then
+        envsubst < "$PROJECT_DIR/firebase.json.template" > "$PROJECT_DIR/firebase.json"
+        log "SUCCESS" "✅ Generated firebase.json from template with environment variables"
+        log "DEBUG" "Project ID: $FIREBASE_PROJECT_ID"
+        log "DEBUG" "Android App ID: ${ANDROID_APP_ID:0:20}..."
+        log "DEBUG" "iOS App ID: ${IOS_APP_ID:0:20}..."
+    else
+        # Fallback for systems without envsubst
+        log "WARNING" "⚠️  envsubst not found, using sed fallback..."
+        sed -e "s/\${FIREBASE_PROJECT_ID}/$FIREBASE_PROJECT_ID/g" \
+            -e "s/\${ANDROID_APP_ID}/$ANDROID_APP_ID/g" \
+            -e "s/\${IOS_APP_ID}/$IOS_APP_ID/g" \
+            "$PROJECT_DIR/firebase.json.template" > "$PROJECT_DIR/firebase.json"
+        log "SUCCESS" "✅ Generated firebase.json using sed fallback"
+    fi
+    
+    # Generate firebase_options.dart if it doesn't exist
+    if [[ ! -f "$PROJECT_DIR/lib/firebase_options.dart" ]]; then
+        log "INFO" "🔧 Generating firebase_options.dart for local development..."
+        
+        # Check if dart and flutterfire are available
+        if command -v dart &> /dev/null; then
+            log "DEBUG" "Installing FlutterFire CLI..."
+            dart pub global activate flutterfire_cli --quiet &> /dev/null || true
+            
+            # Add pub cache to PATH
+            export PATH="$PATH:$HOME/.pub-cache/bin"
+            
+            if command -v flutterfire &> /dev/null; then
+                log "DEBUG" "Generating firebase_options.dart with FlutterFire CLI..."
+                cd "$PROJECT_DIR"
+                flutterfire configure --project="$FIREBASE_PROJECT_ID" --platforms=android,ios --out=lib/firebase_options.dart --yes &> /dev/null || log "WARNING" "⚠️  FlutterFire configure failed"
+                
+                if [[ -f "$PROJECT_DIR/lib/firebase_options.dart" ]]; then
+                    log "SUCCESS" "✅ Generated firebase_options.dart with FlutterFire CLI"
+                else
+                    log "WARNING" "⚠️  FlutterFire CLI generation failed, will proceed anyway"
+                fi
+            else
+                log "WARNING" "⚠️  FlutterFire CLI not available, skipping firebase_options.dart generation"
+                log "INFO" "💡 You may need to run: flutterfire configure --project=$FIREBASE_PROJECT_ID --platforms=android,ios --out=lib/firebase_options.dart"
+            fi
+        else
+            log "WARNING" "⚠️  Dart CLI not available, skipping firebase_options.dart generation"
+        fi
+    else
+        log "SUCCESS" "✅ firebase_options.dart already exists"
+    fi
+}
+
 # Function to check emulator availability
 check_emulators() {
     log "INFO" "🔍 Checking available emulators..."
@@ -714,29 +791,32 @@ main() {
     # Step 3: Setup environment
     setup_environment
     
-    # Step 4: Check emulators
+    # Step 4: Generate Firebase configuration
+    generate_firebase_config
+    
+    # Step 5: Check emulators
     check_emulators
     
-    # Step 5: Run Flutter Doctor for diagnostics
+    # Step 6: Run Flutter Doctor for diagnostics
     log "INFO" "🩺 Running 'flutter doctor -v' for diagnostics..."
     flutter doctor -v
     log "SUCCESS" "✅ Flutter Doctor check completed"
     
-    # Step 6: Launch iOS Simulator
+    # Step 7: Launch iOS Simulator
     log "INFO" "🍎 Starting iOS Simulator setup..."
     if ! launch_ios_simulator; then
         log "ERROR" "❌ Failed to launch iOS Simulator"
         exit 1
     fi
     
-    # Step 7: Launch Android Emulator  
+    # Step 8: Launch Android Emulator  
     log "INFO" "🤖 Starting Android Emulator setup..."
     if ! launch_android_emulator; then
         log "ERROR" "❌ Failed to launch Android Emulator"
         exit 1
     fi
     
-    # Step 8: Wait for all emulators to be fully ready and Flutter to recognize them
+    # Step 9: Wait for all emulators to be fully ready and Flutter to recognize them
     log "INFO" "⏳ Waiting for Flutter to recognize all devices..."
     sleep 10 # Increased wait time
     
@@ -788,7 +868,7 @@ main() {
     
     # Proceed even if one is not detected, run_flutter will fail with more logs
     
-    # Step 9: Deploy Flutter on iOS
+    # Step 10: Deploy Flutter on iOS
     if $ios_detected; then
         log "INFO" "📱 Deploying Flutter app to iOS..."
         run_flutter_ios
@@ -796,11 +876,11 @@ main() {
         log "ERROR" "❌ Skipping iOS deployment as device was not detected."
     fi
     
-    # Step 10: Wait before deploying to Android
+    # Step 11: Wait before deploying to Android
     log "INFO" "⏳ Waiting before deploying to Android..."
     sleep 8
     
-    # Step 11: Deploy Flutter on Android
+    # Step 12: Deploy Flutter on Android
     if $android_detected; then
         log "INFO" "🤖 Deploying Flutter app to Android..."
         run_flutter_android
@@ -808,11 +888,11 @@ main() {
         log "ERROR" "❌ Skipping Android deployment as device was not detected."
     fi
     
-    # Step 12: Wait for apps to initialize
+    # Step 13: Wait for apps to initialize
     log "INFO" "⏳ Waiting for Flutter apps to initialize..."
     sleep 10
     
-    # Step 13: Display connection info
+    # Step 14: Display connection info
     log "SUCCESS" "🎉 Development environment is up!"
     log "INFO" "📱 iOS Simulator: Check Simulator app"
     log "INFO" "🤖 Android Emulator: $(get_android_device_id || echo "Running")"
@@ -822,7 +902,7 @@ main() {
     log "INFO" "🔄 Hot restart: Press 'R' in either terminal where flutter is running"
     log "INFO" "🛑 To stop Flutter apps and emulators: Press CTRL+C"
     
-    # Step 14: Monitor processes continuously
+    # Step 15: Monitor processes continuously
     monitor_flutter_processes
 }
 

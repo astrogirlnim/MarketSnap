@@ -25,6 +25,48 @@ jobs:
           node-version: '20'
       - name: Create dummy .env file
         run: touch .env
+      - name: Create dummy Firebase options for validation
+        run: |
+          mkdir -p lib
+          cat > lib/firebase_options.dart << 'EOF'
+          // Dummy Firebase options for CI validation
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+          
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web platform not supported');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError('Platform not supported');
+              }
+            }
+          
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:android:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+            );
+          
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'dummy-key',
+              appId: '1:123456789:ios:dummy',
+              messagingSenderId: '123456789',
+              projectId: 'dummy-project',
+              storageBucket: 'dummy-project.appspot.com',
+              iosBundleId: 'com.example.marketsnap',
+            );
+          }
+          EOF
+          echo "✅ Created dummy lib/firebase_options.dart for validation"
       - name: Install Flutter dependencies
         run: flutter pub get
       - name: Install, lint, and build functions
