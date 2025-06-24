@@ -347,7 +347,9 @@ export const sendMessageNotification = onDocumentCreated(
     const {messageId} = event.params;
     const message = event.data;
     if (!message) {
-      logger.error("[sendMessageNotification] No data associated with the event.");
+      logger.error(
+        "[sendMessageNotification] No data associated with the event."
+      );
       return;
     }
     const messageData = message.data();
@@ -362,7 +364,8 @@ export const sendMessageNotification = onDocumentCreated(
     if (!fromUid || !toUid || !text || !conversationId) {
       logger.error(
         "[sendMessageNotification] Missing required fields in message data. " +
-        `fromUid: ${fromUid}, toUid: ${toUid}, text: ${text}, conversationId: ${conversationId}`
+        `fromUid: ${fromUid}, toUid: ${toUid}, text: ${text}, ` +
+        `conversationId: ${conversationId}`
       );
       return;
     }
@@ -370,7 +373,8 @@ export const sendMessageNotification = onDocumentCreated(
     try {
       // 1. Get sender details for the notification
       logger.log(
-        `[sendMessageNotification] Fetching sender details for fromUid: ${fromUid}`
+        "[sendMessageNotification] Fetching sender details for " +
+        `fromUid: ${fromUid}`
       );
       const senderDoc = await db.collection("vendors").doc(fromUid).get();
       if (!senderDoc.exists) {
@@ -380,25 +384,28 @@ export const sendMessageNotification = onDocumentCreated(
         return;
       }
       const senderData = senderDoc.data();
-      const senderName = senderData?.stallName || senderData?.displayName || "Someone";
+      const senderName = senderData?.stallName ||
+        senderData?.displayName || "Someone";
       logger.log(`[sendMessageNotification] Sender name: ${senderName}`);
 
       // 2. Get recipient's FCM token
       logger.log(
-        `[sendMessageNotification] Getting FCM token for recipient: ${toUid}`
+        "[sendMessageNotification] Getting FCM token for " +
+        `recipient: ${toUid}`
       );
       const recipientToken = await getUserFCMToken(toUid);
       if (!recipientToken) {
         logger.log(
-          `[sendMessageNotification] No FCM token found for recipient ${toUid}. ` +
-          "Notification will not be sent."
+          "[sendMessageNotification] No FCM token found for " +
+          `recipient ${toUid}. Notification will not be sent.`
         );
         return;
       }
 
       // 3. Construct the notification payload
       // Truncate message if too long for notification
-      const truncatedText = text.length > 100 ? `${text.substring(0, 97)}...` : text;
+      const truncatedText = text.length > 100 ?
+        `${text.substring(0, 97)}...` : text;
       const payload = {
         notification: {
           title: `Message from ${senderName}`,
@@ -420,7 +427,8 @@ export const sendMessageNotification = onDocumentCreated(
 
       // 4. Send notification to recipient
       logger.log(
-        `[sendMessageNotification] Sending message notification to recipient ${toUid}`
+        "[sendMessageNotification] Sending message notification to " +
+        `recipient ${toUid}`
       );
       const response = await messaging.send({
         token: recipientToken,
@@ -428,10 +436,9 @@ export const sendMessageNotification = onDocumentCreated(
       });
 
       logger.log(
-        `[sendMessageNotification] Successfully sent message notification. ` +
+        "[sendMessageNotification] Successfully sent message notification. " +
         `Message ID: ${response}`
       );
-
     } catch (error) {
       logger.error(
         `[sendMessageNotification] Unexpected error for message ${messageId}:`,
