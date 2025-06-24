@@ -66,6 +66,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       
+      - name: Create .env file
+        env:
+          DOTENV: ${{ secrets.DOTENV }}
+        run: echo "$DOTENV" > .env
+
       - name: Build Android App Bundle
         run: flutter build appbundle --release
 
