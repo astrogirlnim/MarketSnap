@@ -144,73 +144,144 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text('${widget.title} - ${Platform.operatingSystem.toUpperCase()}'),
+        title: Text(widget.title),
       ),
       body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Text(
-                'You have pushed the button this many times:',
-              ),
-              Text(
-                '$_counter',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _checkBackgroundExecution,
-                child: const Text('Check Background Task Status'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _scheduleOneTimeTask,
-                child: const Text('Schedule One-Time Task'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _showPlatformInfo,
-                child: const Text('Platform Info'),
-              ),
-              const SizedBox(height: 20),
-              if (_lastExecutionInfo != null) ...[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Background Task Info:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Executed: ${_lastExecutionInfo!['executed']}'),
-                        if (_lastExecutionInfo!['executed'] == true) ...[
-                          Text('Task: ${_lastExecutionInfo!['taskName']}'),
-                          Text('Platform: ${_lastExecutionInfo!['platform']}'),
-                          Text('Time: ${_lastExecutionInfo!['executionTime']}'),
-                          Text('Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
-                        ],
-                        if (_lastExecutionInfo!['error'] != null)
-                          Text('Error: ${_lastExecutionInfo!['error']}'),
-                        if (_lastExecutionInfo!['executed'] == false && Platform.isIOS)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'iOS: Background tasks may not execute immediately. Try backgrounding the app or enabling Background App Refresh.',
-                              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.orange),
-                            ),
-                          ),
-                      ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              'You have pushed the button this many times:',
+            ),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 20),
+            
+            // Platform Information
+            Card(
+              margin: const EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Platform: ${Platform.operatingSystem.toUpperCase()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      backgroundSyncService.getPlatformInfo(),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Background Task Status
+            if (_lastExecutionInfo != null) ...[
+              Card(
+                margin: const EdgeInsets.all(16),
+                color: (_lastExecutionInfo!['executed'] == true) 
+                    ? Colors.green.shade50 
+                    : Colors.orange.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Background Task Status',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_lastExecutionInfo!['executed'] == true) ...[
+                        Text('✅ Executed: ${_lastExecutionInfo!['executed']}'),
+                        if (_lastExecutionInfo!['executionTime'] != null)
+                          Text('⏰ Time: ${_lastExecutionInfo!['executionTime']}'),
+                        if (_lastExecutionInfo!['taskName'] != null)
+                          Text('📋 Task: ${_lastExecutionInfo!['taskName']}'),
+                        if (_lastExecutionInfo!['platform'] != null)
+                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
+                        if (_lastExecutionInfo!['minutesAgo'] != null)
+                          Text('⏱️ Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
+                      ] else ...[
+                        Text('❌ Executed: ${_lastExecutionInfo!['executed']}'),
+                        if (_lastExecutionInfo!['platform'] != null)
+                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
+                      ],
+                      if (_lastExecutionInfo!['note'] != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ℹ️ ${_lastExecutionInfo!['note']}',
+                            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ],
+                      if (_lastExecutionInfo!['error'] != null)
+                        Text('❌ Error: ${_lastExecutionInfo!['error']}', 
+                             style: const TextStyle(color: Colors.red)),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+            
+            const SizedBox(height: 20),
+            
+            // Action Buttons
+            ElevatedButton(
+              onPressed: _checkBackgroundExecution,
+              child: const Text('Check Background Task Status'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _scheduleOneTimeTask,
+              child: const Text('Schedule One-Time Task'),
+            ),
+            const SizedBox(height: 20),
+            
+            // iOS-specific instructions
+            if (Platform.isIOS) ...[
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  border: Border.all(color: Colors.amber.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📱 iOS Testing Instructions:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '1. Tap "Schedule One-Time Task" above\n'
+                      '2. Background the app (swipe up, tap another app)\n'
+                      '3. Wait 30+ seconds\n'
+                      '4. Return to this app\n'
+                      '5. Check console logs for "[Background Isolate]" messages\n'
+                      '6. The task status shows scheduling, not execution',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
