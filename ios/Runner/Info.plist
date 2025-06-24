@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>syncPendingMediaTask</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MarketSnap uses the local network to connect to developer tools for debugging and performance profiling during development. This is not used in the release version of the app.</string>
 </dict>
 </plist>

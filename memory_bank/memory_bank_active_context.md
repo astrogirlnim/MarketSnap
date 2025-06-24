@@ -1,8 +1,14 @@
-# Active Context – "Now"
+# Active Context (Now)
 
-**Current Sprint:** Phase 1 – Foundation (Week of June 24 2025)
+- **Background sync (WorkManager) is now fully functional on both Android and iOS.**
+  - Android: Execution is tracked and can be verified in-app.
+  - iOS: Execution must be verified via console logs due to platform limitations (SharedPreferences not available in background isolate).
+- All test UI and debug buttons have been removed; the implementation is now production-ready.
+- Documentation and checklist updated to reflect the final state and manual verification approach for iOS.
 
-### In Progress
+**Current Sprint:** Phase 1 – Foundation (Week of June 24 2025)
+
+### In Progress
 - Flutter project bootstrap.
 - Firebase project creation & SDK integration.
 - Hive box scaffolding.
