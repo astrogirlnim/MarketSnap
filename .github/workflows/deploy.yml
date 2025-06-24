@@ -91,6 +91,17 @@ jobs:
           DOTENV: ${{ secrets.DOTENV }}
         run: echo "$DOTENV" > .env
 
+      - name: Generate firebase.json from template
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          ANDROID_APP_ID: ${{ secrets.ANDROID_APP_ID }}
+          IOS_APP_ID: ${{ secrets.IOS_APP_ID }}
+        run: |
+          # Install envsubst if not available
+          sudo apt-get update && sudo apt-get install -y gettext-base
+          # Generate firebase.json from environment variables
+          envsubst < firebase.json > firebase.json.tmp && mv firebase.json.tmp firebase.json
+
       - name: Build Android APK
         run: flutter build apk --release
 

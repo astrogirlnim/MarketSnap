@@ -1,10 +1,17 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -16,29 +23,36 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   debugPrint('[main] Environment variables loaded.');
 
-  // Initialize Hive service
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Initialize Firebase App Check with the debug provider
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
+  );
+
+  // Initialize and schedule background sync service
   try {
-    final secureStorageService = SecureStorageService();
-    hiveService = HiveService(secureStorageService);
-    await hiveService.init();
-    debugPrint('[main] Hive service initialized successfully.');
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    hiveService = HiveService(SecureStorageService());
+    await hiveService.init(appDocumentDir.path);
+    debugPrint('[main] Hive service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing Hive service: $e');
   }
 
-  // Initialize and schedule background sync service
   try {
     backgroundSyncService = BackgroundSyncService();
     await backgroundSyncService.initialize();
-    await backgroundSyncService.scheduleSyncTask();
-    debugPrint('[main] BackgroundSyncService initialized and task scheduled.');
+    debugPrint('[main] Background sync service initialized.');
   } catch (e) {
-    debugPrint('[main] Error initializing BackgroundSyncService: $e');
+    debugPrint('[main] Error initializing background sync service: $e');
   }
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
-  debugPrint('[main] Firebase initialized successfully.');
+  debugPrint('[main] Firebase & App Check initialized.');
 
   runApp(const MyApp());
 }
@@ -94,167 +108,84 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final BackgroundSyncService backgroundSyncService = BackgroundSyncService();
   Map<String, dynamic>? _lastExecutionInfo;
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    _checkBackgroundExecution();
+  }
+
+  Future<void> _checkBackgroundExecution() async {
+    final info = await backgroundSyncService.getLastExecutionInfo();
     setState(() {
-      _counter++;
+      _lastExecutionInfo = info;
     });
   }
 
-  void _checkBackgroundExecution() async {
-    debugPrint('[UI] Checking background execution status...');
-    final info = await backgroundSyncService.getLastExecutionInfo();
-    if (mounted) {
-      setState(() {
-        _lastExecutionInfo = info;
-      });
-    }
-    debugPrint('[UI] Background execution info: $info');
-  }
-
-  void _scheduleOneTimeTask() async {
-    debugPrint('[UI] Scheduling one-time background task...');
-    try {
-      await backgroundSyncService.scheduleOneTimeSyncTask();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('One-time background task scheduled!')),
-        );
-      }
-    } catch (e) {
-      debugPrint('[UI] Error scheduling one-time task: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error scheduling task: $e')),
-        );
-      }
-    }
+  Future<void> _scheduleOneTimeTask() async {
+    await backgroundSyncService.scheduleOneTimeSyncTask();
+    setState(() {
+      _lastExecutionInfo = {
+        'executed': false,
+        'note': 'Task scheduled! Check back in a moment.',
+        'platform': Platform.operatingSystem,
+      };
+    });
+    // Check again after a short delay to see if it ran
+    Future.delayed(const Duration(seconds: 10), _checkBackgroundExecution);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Welcome to MarketSnap!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 20),
-            
-            // Platform Information
-            Card(
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Platform: ${Platform.operatingSystem.toUpperCase()}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      backgroundSyncService.getPlatformInfo(),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Background Task Status
-            if (_lastExecutionInfo != null) ...[
-              Card(
-                margin: const EdgeInsets.all(16),
-                color: (_lastExecutionInfo!['executed'] == true) 
-                    ? Colors.green.shade50 
-                    : Colors.orange.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Background Task Status',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      if (_lastExecutionInfo!['executed'] == true) ...[
-                        Text('✅ Executed: ${_lastExecutionInfo!['executed']}'),
-                        if (_lastExecutionInfo!['executionTime'] != null)
-                          Text('⏰ Time: ${_lastExecutionInfo!['executionTime']}'),
-                        if (_lastExecutionInfo!['taskName'] != null)
-                          Text('📋 Task: ${_lastExecutionInfo!['taskName']}'),
-                        if (_lastExecutionInfo!['platform'] != null)
-                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
-                        if (_lastExecutionInfo!['minutesAgo'] != null)
-                          Text('⏱️ Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
-                      ] else ...[
-                        Text('❌ Executed: ${_lastExecutionInfo!['executed']}'),
-                        if (_lastExecutionInfo!['platform'] != null)
-                          Text('📱 Platform: ${_lastExecutionInfo!['platform']}'),
-                      ],
-                      if (_lastExecutionInfo!['note'] != null) ...[
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const SizedBox(height: 20),
+              const Text("Background Sync", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              if (_lastExecutionInfo != null) ...[
+                Card(
+                  margin: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Last Execution Info", style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(4),
+                        Text('Platform: ${_lastExecutionInfo!["platform"] ?? "N/A"}'),
+                        Text('Executed: ${_lastExecutionInfo!["executed"] ?? "N/A"}'),
+                        if (_lastExecutionInfo!['executionTime'] != null)
+                          Text('Time: ${_lastExecutionInfo!['executionTime']}'),
+                        if (_lastExecutionInfo!['note'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text('Note: ${_lastExecutionInfo!['note']}', style: const TextStyle(fontStyle: FontStyle.italic)),
                           ),
-                          child: Text(
-                            'ℹ️ ${_lastExecutionInfo!['note']}',
-                            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                          ),
-                        ),
                       ],
-                      if (_lastExecutionInfo!['error'] != null)
-                        Text('❌ Error: ${_lastExecutionInfo!['error']}', 
-                             style: const TextStyle(color: Colors.red)),
-                    ],
+                    ),
                   ),
                 ),
+              ],
+              ElevatedButton(
+                child: const Text("Schedule One-Time Task"),
+                onPressed: _scheduleOneTimeTask,
               ),
+              ElevatedButton(
+                child: const Text("Refresh Status"),
+                onPressed: _checkBackgroundExecution,
+              ),
+              const SizedBox(height: 20),
             ],
-            
-            const SizedBox(height: 20),
-            
-            // Action Buttons
-            ElevatedButton(
-              onPressed: _checkBackgroundExecution,
-              child: const Text('Check Background Task Status'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _scheduleOneTimeTask,
-              child: const Text('Schedule One-Time Task'),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
