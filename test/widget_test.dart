@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+// This is a basic Flutter widget test for MarketSnap.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -11,20 +11,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:marketsnap/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('MarketSnap app loads and shows welcome screen', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that our app shows the MarketSnap title in the AppBar.
+    expect(find.text('MarketSnap'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify that our app shows the welcome message.
+    expect(find.text('Welcome to MarketSnap!'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that we have a Scaffold structure.
+    expect(find.byType(Scaffold), findsOneWidget);
+
+    // Verify that we have an AppBar.
+    expect(find.byType(AppBar), findsOneWidget);
+  });
+
+  testWidgets('App has correct theme configuration', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+
+    // Verify that the app uses Material3.
+    final MaterialApp materialApp = tester.widget(find.byType(MaterialApp));
+    expect(materialApp.theme?.useMaterial3, isTrue);
+    expect(materialApp.title, equals('MarketSnap'));
   });
 }
