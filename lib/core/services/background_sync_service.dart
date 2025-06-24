@@ -257,6 +257,31 @@ class BackgroundSyncService {
     }
   }
   
+  /// Restart the WorkManager service to pick up updated callback function
+  /// This is useful when the callback function has been updated
+  Future<void> restartWorkManager() async {
+    debugPrint('Restarting WorkManager to pick up updated callback...');
+    
+    try {
+      // Cancel all existing tasks first
+      await cancelAllTasks();
+      
+      // Small delay to ensure cleanup
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Reinitialize WorkManager with the updated callback
+      await initialize();
+      
+      // Reschedule the periodic task
+      await scheduleSyncTask();
+      
+      debugPrint('WorkManager restarted successfully.');
+    } catch (e) {
+      debugPrint('Error restarting WorkManager: $e');
+      rethrow;
+    }
+  }
+  
   /// Get platform-specific information about background task limitations
   String getPlatformInfo() {
     if (Platform.isIOS) {
