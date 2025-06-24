@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import '../../application/camera_service.dart';
+import 'media_review_screen.dart';
+import '../../../../core/models/pending_media.dart';
 
 /// Custom painter for drawing viewfinder grid overlay
 class ViewfinderGridPainter extends CustomPainter {
@@ -190,20 +192,14 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           '[CameraPreviewScreen] Photo captured successfully: $photoPath',
         );
 
-        // Show success feedback
+        // Navigate to review screen
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Photo captured successfully!'),
-                ],
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MediaReviewScreen(
+                mediaPath: photoPath,
+                mediaType: MediaType.photo,
               ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -346,22 +342,14 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           '[CameraPreviewScreen] Video recorded successfully: $videoPath',
         );
 
-        // Show success feedback
+        // Navigate to review screen
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Video recorded successfully! Duration: ${_cameraService.recordingDuration}s',
-                  ),
-                ],
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MediaReviewScreen(
+                mediaPath: videoPath,
+                mediaType: MediaType.video,
               ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
             ),
           );
         }

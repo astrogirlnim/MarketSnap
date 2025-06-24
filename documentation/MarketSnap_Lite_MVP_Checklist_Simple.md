@@ -75,10 +75,10 @@ Legend:
   - [ ] Profile form: stall name, market city, avatar upload.
   - [ ] Validate offline caching of profile in Hive.
 
-- [~] **2. Capture & Review UI**
+- [X] **2. Capture & Review UI**
   - [X] Camera preview with photo shutter. ✅ **COMPLETED** - Full camera preview with photo capture, cross-platform support, flash controls, camera switching, and modern UI.
   - [X] 5‑sec video record button with live countdown. ✅ **COMPLETED** - Full video recording with 5-second auto-stop, live countdown display, cross-platform support, and simulator mode compatibility.
-  - [ ] Review screen → apply LUT filter → "Post" button.
+  - [X] Review screen → apply LUT filter → "Post" button. ✅ **COMPLETED** - Full media review screen with LUT filter application (warm, cool, contrast), caption input, and post functionality. Integrates with Hive queue for background upload.
 
 - [ ] **3. Story Reel & Feed**
   - [ ] Horizontal story carousel per vendor with 24 h TTL badge.

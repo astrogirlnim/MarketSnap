@@ -14,12 +14,14 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
+import 'features/capture/application/lut_filter_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
 late final HiveService hiveService;
 late final BackgroundSyncService backgroundSyncService;
 late final AuthService authService;
+late final LutFilterService lutFilterService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -163,6 +165,15 @@ Future<void> main() async {
     debugPrint('[main] Background sync service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing background sync service: $e');
+  }
+
+  // Initialize LUT filter service
+  try {
+    lutFilterService = LutFilterService.instance;
+    await lutFilterService.initialize();
+    debugPrint('[main] LUT filter service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing LUT filter service: $e');
   }
 
   debugPrint('[main] Firebase & App Check initialized.');
