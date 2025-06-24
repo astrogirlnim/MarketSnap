@@ -24,7 +24,8 @@
     -   Scaffold AI helper Cloud Functions (`generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ`).
 
 -   **Phase 3 - Interface Layer:**
-    -   All UI screens and user flows, including Auth, Profile, Media Capture, and Feeds.
+    -   **✅ Authentication Flow:** Phone/email OTP authentication with Firebase Auth is complete with cross-platform support and emulator integration.
+    -   Profile, Media Capture, and Feed UI screens still needed.
 
 -   **Phase 4 - Implementation Layer:**
     -   All business logic connecting the UI to the backend, including the offline media queue and AI helper features.
@@ -54,7 +55,8 @@
 
 - **Phase 2.4: AI Cloud Functions Scaffolding**
 - **Phase 3: Interface Layer**
-  - [ ] 3.1: Auth & Profile Screens
+  - [~] 3.1: Auth & Profile Screens
+    - [X] 3.1.1: Phone/email OTP flow using `firebase_auth` ✅ **COMPLETED** - Implemented AuthService, AuthWelcomeScreen, PhoneAuthScreen, OTPVerificationScreen, and EmailAuthScreen with cross-platform support, Firebase emulator integration, and platform-specific error handling.
   - [ ] 3.2: Capture & Review UI
   - [ ] 3.3: Story Reel & Feed
   - [ ] 3.4: Settings & Help
