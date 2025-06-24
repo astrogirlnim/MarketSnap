@@ -71,8 +71,8 @@ jobs:
           DOTENV: ${{ secrets.DOTENV }}
         run: echo "$DOTENV" > .env
 
-      - name: Build Android App Bundle
-        run: flutter build appbundle --release
+      - name: Build Android APK
+        run: flutter build apk --release
 
       - name: Deploy to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -80,7 +80,7 @@ jobs:
           appId: ${{ secrets.ANDROID_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           groups: testers
-          file: build/app/outputs/bundle/release/app-release.aab
+          file: build/app/outputs/flutter-apk/app-release.apk
   
 #  deploy_ios:
 #    name: Build and Deploy iOS

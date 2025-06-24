@@ -26,6 +26,9 @@ ios/Runner.app.dSYM/Contents/Info.plist
 ios/Runner.app.dSYM/Contents/Resources/
 ios/Runner.app.dSYM/Contents/Resources/DWARF/
 
+# Snapchat UI Inspiration
+documentation/frontend_snapchat_refs/*
+documentation/frontend_snapchat_refs/
 
 # Flutter logs
 flutter_android.log
