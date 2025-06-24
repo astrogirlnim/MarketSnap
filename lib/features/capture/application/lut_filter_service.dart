@@ -30,6 +30,9 @@ class LutFilterService {
 
   // Cache for loaded LUT data
   final Map<LutFilterType, img.Image?> _loadedLuts = {};
+  
+  // Cache for filter previews to avoid regenerating
+  final Map<String, Uint8List> _previewCache = {};
 
   /// Initialize the service by preloading LUT assets
   Future<void> initialize() async {
@@ -254,16 +257,25 @@ class LutFilterService {
   Future<Uint8List?> getFilterPreview({
     required String inputImagePath,
     required LutFilterType filterType,
-    int previewSize = 100,
+    int previewSize = 64,
   }) async {
+    // If no filter, return null (will show original)
+    if (filterType == LutFilterType.none) {
+      return null;
+    }
+
+    // Create cache key
+    final String cacheKey = '${path.basename(inputImagePath)}_${filterType.name}_$previewSize';
+    
+    // Return cached preview if available
+    if (_previewCache.containsKey(cacheKey)) {
+      debugPrint('[LutFilterService] Returning cached filter preview for: ${filterType.displayName}');
+      return _previewCache[cacheKey];
+    }
+
     debugPrint('[LutFilterService] Generating filter preview for: ${filterType.displayName}');
 
     try {
-      // If no filter, return null (will show original)
-      if (filterType == LutFilterType.none) {
-        return null;
-      }
-
       // Load and resize the input image for preview
       final File inputFile = File(inputImagePath);
       if (!await inputFile.exists()) {
@@ -292,10 +304,13 @@ class LutFilterService {
       // Apply the LUT filter to the preview
       final img.Image filteredPreview = _applyLutToImage(resizedImage, lutImage);
 
-      // Encode as JPEG bytes
-      final Uint8List previewBytes = Uint8List.fromList(img.encodeJpg(filteredPreview, quality: 80));
+      // Encode as JPEG bytes with lower quality for previews
+      final Uint8List previewBytes = Uint8List.fromList(img.encodeJpg(filteredPreview, quality: 60));
       
-      debugPrint('[LutFilterService] Filter preview generated successfully');
+      // Cache the result
+      _previewCache[cacheKey] = previewBytes;
+      
+      debugPrint('[LutFilterService] Filter preview generated and cached successfully');
       return previewBytes;
     } catch (e) {
       debugPrint('[LutFilterService] Error generating filter preview: $e');
@@ -329,9 +344,16 @@ class LutFilterService {
     }
   }
 
+  /// Clear the preview cache (call when memory needs to be freed)
+  void clearPreviewCache() {
+    _previewCache.clear();
+    debugPrint('[LutFilterService] Preview cache cleared');
+  }
+
   /// Dispose of the service and clean up resources
   void dispose() {
     debugPrint('[LutFilterService] Disposing LUT filter service...');
     _loadedLuts.clear();
+    _previewCache.clear();
   }
 } 

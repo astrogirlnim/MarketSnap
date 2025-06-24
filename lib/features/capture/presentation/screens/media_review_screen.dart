@@ -84,6 +84,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       _cleanupFilteredImage();
     }
     
+    // Clear preview cache to free memory
+    _lutFilterService.clearPreviewCache();
+    
     super.dispose();
   }
 
@@ -397,8 +400,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     }
 
     return Container(
-      height: 120,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      height: 100,
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -410,14 +413,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           return GestureDetector(
             onTap: () => _applyFilter(filterType),
             child: Container(
-              width: 80,
+              width: 70,
               margin: const EdgeInsets.only(right: 12),
               child: Column(
                 children: [
                   // Filter preview thumbnail
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
@@ -462,15 +465,27 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       );
     }
 
-    // For other filters, show a preview (simplified for now)
+    // For other filters, show a preview with caching
     return FutureBuilder<Uint8List?>(
       future: _lutFilterService.getFilterPreview(
         inputImagePath: widget.mediaPath,
         filterType: filterType,
-        previewSize: 64,
+        previewSize: 56, // Match the container size
       ),
       builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Show loading indicator while generating preview
+          return Container(
+            color: Colors.grey.shade200,
+            child: const Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        } else if (snapshot.hasData && snapshot.data != null) {
           return Image.memory(
             snapshot.data!,
             fit: BoxFit.cover,
@@ -520,14 +535,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Build caption input section
   Widget _buildCaptionInput() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Add a caption',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: Colors.grey,
             ),
@@ -535,7 +550,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           const SizedBox(height: 8),
           TextField(
             controller: _captionController,
-            maxLines: 3,
+            maxLines: 2,
             maxLength: 200,
             decoration: InputDecoration(
               hintText: 'What\'s the story behind this ${widget.mediaType.name}?',
@@ -558,10 +573,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Build post button
   Widget _buildPostButton() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: SizedBox(
         width: double.infinity,
-        height: 56,
+        height: 50,
         child: ElevatedButton(
           onPressed: _isPosting ? null : _postMedia,
           style: ElevatedButton.styleFrom(
@@ -643,29 +658,40 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Media preview section
-          Expanded(
-            flex: 3,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              child: _buildMediaPreview(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Media preview section - Fixed height
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                child: _buildMediaPreview(),
+              ),
             ),
-          ),
 
-          // Filter selection (only for photos)
-          if (widget.mediaType == MediaType.photo) _buildFilterSelection(),
+            // Scrollable bottom section
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Filter selection (only for photos)
+                    if (widget.mediaType == MediaType.photo) _buildFilterSelection(),
 
-          // Caption input
-          _buildCaptionInput(),
+                    // Caption input
+                    _buildCaptionInput(),
 
-          // Post button
-          _buildPostButton(),
+                    // Post button
+                    _buildPostButton(),
 
-          // Safe area padding
-          const SizedBox(height: 16),
-        ],
+                    // Bottom padding for safe area
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
