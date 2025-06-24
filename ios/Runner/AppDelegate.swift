@@ -8,15 +8,15 @@ import workmanager
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Register the background task
+    // Register plugins first
+    GeneratedPluginRegistrant.register(with: self)
+    
+    // Register the background processing task with the same identifier used in Info.plist
     WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "syncPendingMediaTask")
     
-    // Register for other plugins
-    GeneratedPluginRegistrant.register(with: self)
-
-    // Register a periodic task for iOS
-    WorkmanagerPlugin.registerPeriodicTask(withIdentifier: "1", frequency: NSNumber(value: 900)) // 15 minutes
-
+    // Note: iOS doesn't support true periodic background tasks like Android
+    // The workmanager plugin will simulate periodic behavior using iOS background app refresh
+    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
@@ -108,7 +109,10 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       await backgroundSyncService.scheduleOneTimeSyncTask();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('One-time background task scheduled!')),
+        SnackBar(
+          content: Text('One-time background task scheduled! ${Platform.isIOS ? "(iOS: May take time to execute)" : ""}'),
+          duration: const Duration(seconds: 3),
+        ),
       );
     } catch (e) {
       debugPrint('[UI] Error scheduling one-time task: $e');
@@ -118,54 +122,95 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void _showPlatformInfo() {
+    final info = backgroundSyncService.getPlatformInfo();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Background Task Info - ${Platform.operatingSystem.toUpperCase()}'),
+        content: Text(info),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('${widget.title} - ${Platform.operatingSystem.toUpperCase()}'),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _checkBackgroundExecution,
-              child: const Text('Check Background Task Status'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _scheduleOneTimeTask,
-              child: const Text('Schedule One-Time Task'),
-            ),
-            const SizedBox(height: 20),
-            if (_lastExecutionInfo != null) ...[
-              const Text('Background Task Info:', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Executed: ${_lastExecutionInfo!['executed']}'),
-              if (_lastExecutionInfo!['executed'] == true) ...[
-                Text('Task: ${_lastExecutionInfo!['taskName']}'),
-                Text('Time: ${_lastExecutionInfo!['executionTime']}'),
-                Text('Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Text(
+                'You have pushed the button this many times:',
+              ),
+              Text(
+                '$_counter',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _checkBackgroundExecution,
+                child: const Text('Check Background Task Status'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _scheduleOneTimeTask,
+                child: const Text('Schedule One-Time Task'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _showPlatformInfo,
+                child: const Text('Platform Info'),
+              ),
+              const SizedBox(height: 20),
+              if (_lastExecutionInfo != null) ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Background Task Info:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Executed: ${_lastExecutionInfo!['executed']}'),
+                        if (_lastExecutionInfo!['executed'] == true) ...[
+                          Text('Task: ${_lastExecutionInfo!['taskName']}'),
+                          Text('Platform: ${_lastExecutionInfo!['platform']}'),
+                          Text('Time: ${_lastExecutionInfo!['executionTime']}'),
+                          Text('Minutes ago: ${_lastExecutionInfo!['minutesAgo']}'),
+                        ],
+                        if (_lastExecutionInfo!['error'] != null)
+                          Text('Error: ${_lastExecutionInfo!['error']}'),
+                        if (_lastExecutionInfo!['executed'] == false && Platform.isIOS)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'iOS: Background tasks may not execute immediately. Try backgrounding the app or enabling Background App Refresh.',
+                              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.orange),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
-              if (_lastExecutionInfo!['error'] != null)
-                Text('Error: ${_lastExecutionInfo!['error']}'),
             ],
-          ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(

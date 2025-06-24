@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     debugPrint('[Background Isolate] Native called background task: $task');
     debugPrint('[Background Isolate] Input data: $inputData');
+    debugPrint('[Background Isolate] Platform: ${Platform.operatingSystem}');
     
     try {
       // Store execution timestamp in shared preferences for verification
@@ -22,9 +24,11 @@ void callbackDispatcher() {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       await prefs.setInt('last_background_execution', timestamp);
       await prefs.setString('last_background_task', task);
+      await prefs.setString('last_background_platform', Platform.operatingSystem);
       
       debugPrint('[Background Isolate] Executing background sync task for pending media...');
       debugPrint('[Background Isolate] Timestamp: $timestamp');
+      debugPrint('[Background Isolate] Platform: ${Platform.operatingSystem}');
       
       // Simulate the work that will be done in Phase 4
       // In the future, this will:
@@ -50,10 +54,12 @@ void callbackDispatcher() {
 /// Service responsible for managing background synchronization tasks
 class BackgroundSyncService {
   static const String _uniqueTaskName = syncTaskName;
+  static const String _oneOffTaskName = "${syncTaskName}_oneoff";
   
   /// Initialize the WorkManager plugin
   Future<void> initialize() async {
     debugPrint('Initializing BackgroundSyncService...');
+    debugPrint('Platform: ${Platform.operatingSystem}');
     
     try {
       await Workmanager().initialize(
@@ -69,24 +75,46 @@ class BackgroundSyncService {
   
   /// Schedule a periodic background sync task
   /// This task will run approximately every 15 minutes when the device has network connectivity
+  /// Note: iOS has stricter background execution policies than Android
   Future<void> scheduleSyncTask() async {
     debugPrint('Scheduling periodic background sync task...');
+    debugPrint('Platform: ${Platform.operatingSystem}');
     
     try {
-      await Workmanager().registerPeriodicTask(
-        _uniqueTaskName, // Unique name for this task
-        _uniqueTaskName, // Task identifier passed to callbackDispatcher
-        frequency: const Duration(minutes: 15), // Run every 15 minutes
-        constraints: Constraints(
-          networkType: NetworkType.connected, // Only run when connected to network
-          requiresBatteryNotLow: false, // Can run even if battery is low
-          requiresCharging: false, // Can run when not charging
-          requiresDeviceIdle: false, // Can run when device is active
-        ),
-        backoffPolicy: BackoffPolicy.exponential, // Exponential backoff on failure
-        backoffPolicyDelay: const Duration(seconds: 10), // Initial backoff delay
-        existingWorkPolicy: ExistingWorkPolicy.replace, // Replace existing task
-      );
+      if (Platform.isIOS) {
+        // iOS doesn't support true periodic background tasks
+        // The workmanager plugin will simulate this using background app refresh
+        debugPrint('iOS detected: Using background app refresh simulation');
+        await Workmanager().registerPeriodicTask(
+          _uniqueTaskName,
+          _uniqueTaskName,
+          frequency: const Duration(minutes: 15),
+          constraints: Constraints(
+            networkType: NetworkType.connected,
+            requiresBatteryNotLow: false,
+            requiresCharging: false,
+            requiresDeviceIdle: false,
+          ),
+          existingWorkPolicy: ExistingWorkPolicy.replace,
+        );
+      } else {
+        // Android supports more reliable periodic background tasks
+        debugPrint('Android detected: Using standard WorkManager periodic task');
+        await Workmanager().registerPeriodicTask(
+          _uniqueTaskName,
+          _uniqueTaskName,
+          frequency: const Duration(minutes: 15),
+          constraints: Constraints(
+            networkType: NetworkType.connected,
+            requiresBatteryNotLow: false,
+            requiresCharging: false,
+            requiresDeviceIdle: false,
+          ),
+          backoffPolicy: BackoffPolicy.exponential,
+          backoffPolicyDelay: const Duration(seconds: 10),
+          existingWorkPolicy: ExistingWorkPolicy.replace,
+        );
+      }
       debugPrint('Periodic background sync task scheduled.');
     } catch (e) {
       debugPrint('Error scheduling background sync task: $e');
@@ -95,20 +123,38 @@ class BackgroundSyncService {
   }
   
   /// Schedule a one-time background sync task (useful for immediate sync)
+  /// This is more reliable on iOS than periodic tasks
   Future<void> scheduleOneTimeSyncTask() async {
     debugPrint('Scheduling one-time background sync task...');
+    debugPrint('Platform: ${Platform.operatingSystem}');
     
     try {
-      await Workmanager().registerOneOffTask(
-        "${_uniqueTaskName}_oneoff", // Unique name for one-off task
-        _uniqueTaskName, // Task identifier passed to callbackDispatcher
-        constraints: Constraints(
-          networkType: NetworkType.connected, // Only run when connected to network
-        ),
-        backoffPolicy: BackoffPolicy.exponential, // Exponential backoff on failure
-        backoffPolicyDelay: const Duration(seconds: 5), // Shorter delay for one-off
-        existingWorkPolicy: ExistingWorkPolicy.append, // Don't replace, append
-      );
+      if (Platform.isIOS) {
+        // On iOS, use a unique identifier each time to ensure execution
+        final uniqueId = "${_oneOffTaskName}_${DateTime.now().millisecondsSinceEpoch}";
+        debugPrint('iOS: Using unique task ID: $uniqueId');
+        
+        await Workmanager().registerOneOffTask(
+          uniqueId,
+          _uniqueTaskName, // Still use the same task name for the callback
+          constraints: Constraints(
+            networkType: NetworkType.connected,
+          ),
+          existingWorkPolicy: ExistingWorkPolicy.append,
+        );
+      } else {
+        // Android can reuse the same task ID
+        await Workmanager().registerOneOffTask(
+          _oneOffTaskName,
+          _uniqueTaskName,
+          constraints: Constraints(
+            networkType: NetworkType.connected,
+          ),
+          backoffPolicy: BackoffPolicy.exponential,
+          backoffPolicyDelay: const Duration(seconds: 5),
+          existingWorkPolicy: ExistingWorkPolicy.append,
+        );
+      }
       debugPrint('One-time background sync task scheduled.');
     } catch (e) {
       debugPrint('Error scheduling one-time background sync task: $e');
@@ -123,6 +169,7 @@ class BackgroundSyncService {
       final prefs = await SharedPreferences.getInstance();
       final timestamp = prefs.getInt('last_background_execution');
       final taskName = prefs.getString('last_background_task');
+      final platform = prefs.getString('last_background_platform');
       
       if (timestamp != null) {
         final executionTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -131,6 +178,7 @@ class BackgroundSyncService {
           'timestamp': timestamp,
           'executionTime': executionTime.toString(),
           'taskName': taskName,
+          'platform': platform ?? 'unknown',
           'minutesAgo': DateTime.now().difference(executionTime).inMinutes,
         };
       } else {
@@ -152,6 +200,20 @@ class BackgroundSyncService {
     } catch (e) {
       debugPrint('Error cancelling background sync tasks: $e');
       rethrow;
+    }
+  }
+  
+  /// Get platform-specific information about background task limitations
+  String getPlatformInfo() {
+    if (Platform.isIOS) {
+      return 'iOS: Background tasks are limited and may not execute immediately. '
+             'Enable Background App Refresh in Settings > General > Background App Refresh. '
+             'Tasks are more likely to run when the app is backgrounded and the device is charging.';
+    } else if (Platform.isAndroid) {
+      return 'Android: Background tasks use WorkManager and should execute reliably. '
+             'May be affected by battery optimization settings.';
+    } else {
+      return 'Platform: ${Platform.operatingSystem} - Background task support varies.';
     }
   }
 } 
