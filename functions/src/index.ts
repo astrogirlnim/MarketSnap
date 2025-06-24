@@ -12,7 +12,7 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 
 // Load environment variables from the root of the project
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({path: path.resolve(__dirname, "../../.env")});
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -311,8 +311,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 /**
  * A disabled-aware wrapper for HTTPS callable functions.
  * @param {string} functionName The name of the function for logging.
- * @param {(data: any, context: functions.https.CallableContext) => any} handler
- * The function handler to execute when AI functions are enabled.
+ * @param {function} handler The function handler to execute when AI
+ * functions are enabled.
  * @return {functions.https.HttpsFunction} A callable HTTPS function.
  */
 const createAIHelper = (
@@ -358,6 +358,7 @@ const createAIHelper = (
  */
 export const generateCaption = createAIHelper(
   "generateCaption",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (data, context) => {
     logger.log(
       "[generateCaption] TODO: Implement actual caption generation logic."
@@ -376,6 +377,7 @@ export const generateCaption = createAIHelper(
  */
 export const getRecipeSnippet = createAIHelper(
   "getRecipeSnippet",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (data, context) => {
     logger.log(
       "[getRecipeSnippet] TODO: Implement actual recipe snippet logic."
@@ -394,6 +396,7 @@ export const getRecipeSnippet = createAIHelper(
  */
 export const vectorSearchFAQ = createAIHelper(
   "vectorSearchFAQ",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (data, context) => {
     logger.log(
       "[vectorSearchFAQ] TODO: Implement actual vector search logic."
