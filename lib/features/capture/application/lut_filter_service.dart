@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -33,6 +34,9 @@ class LutFilterService {
   
   // Cache for filter previews to avoid regenerating
   final Map<String, Uint8List> _previewCache = {};
+  
+  // Debounce mechanism for preview generation
+  final Map<String, Timer> _previewDebounceTimers = {};
 
   /// Initialize the service by preloading LUT assets
   Future<void> initialize() async {
@@ -252,7 +256,7 @@ class LutFilterService {
     return outputPath;
   }
 
-  /// Get a preview of what the filter would look like
+  /// Get a preview of what the filter would look like with debouncing
   /// Returns a thumbnail with the filter applied
   Future<Uint8List?> getFilterPreview({
     required String inputImagePath,
@@ -273,8 +277,38 @@ class LutFilterService {
       return _previewCache[cacheKey];
     }
 
-    debugPrint('[LutFilterService] Generating filter preview for: ${filterType.displayName}');
+    // Cancel any existing debounce timer for this cache key
+    _previewDebounceTimers[cacheKey]?.cancel();
+    
+    // Create a completer for the debounced operation
+    final Completer<Uint8List?> completer = Completer<Uint8List?>();
+    
+    // Set up debounced preview generation (50ms delay to batch operations)
+    _previewDebounceTimers[cacheKey] = Timer(const Duration(milliseconds: 50), () async {
+      debugPrint('[LutFilterService] Generating debounced filter preview for: ${filterType.displayName}');
+      
+      try {
+        final result = await _generateFilterPreview(inputImagePath, filterType, previewSize, cacheKey);
+        if (!completer.isCompleted) {
+          completer.complete(result);
+        }
+      } catch (e) {
+        if (!completer.isCompleted) {
+          completer.completeError(e);
+        }
+      }
+    });
 
+    return completer.future;
+  }
+
+  /// Internal method to generate filter preview
+  Future<Uint8List?> _generateFilterPreview(
+    String inputImagePath,
+    LutFilterType filterType,
+    int previewSize,
+    String cacheKey,
+  ) async {
     try {
       // Load and resize the input image for preview
       final File inputFile = File(inputImagePath);
@@ -305,7 +339,7 @@ class LutFilterService {
       final img.Image filteredPreview = _applyLutToImage(resizedImage, lutImage);
 
       // Encode as JPEG bytes with lower quality for previews
-      final Uint8List previewBytes = Uint8List.fromList(img.encodeJpg(filteredPreview, quality: 60));
+      final Uint8List previewBytes = Uint8List.fromList(img.encodeJpg(filteredPreview, quality: 50));
       
       // Cache the result
       _previewCache[cacheKey] = previewBytes;
@@ -346,13 +380,26 @@ class LutFilterService {
 
   /// Clear the preview cache (call when memory needs to be freed)
   void clearPreviewCache() {
+    // Cancel all debounce timers
+    for (final timer in _previewDebounceTimers.values) {
+      timer.cancel();
+    }
+    _previewDebounceTimers.clear();
+    
     _previewCache.clear();
-    debugPrint('[LutFilterService] Preview cache cleared');
+    debugPrint('[LutFilterService] Preview cache and debounce timers cleared');
   }
 
   /// Dispose of the service and clean up resources
   void dispose() {
     debugPrint('[LutFilterService] Disposing LUT filter service...');
+    
+    // Cancel all debounce timers
+    for (final timer in _previewDebounceTimers.values) {
+      timer.cancel();
+    }
+    _previewDebounceTimers.clear();
+    
     _loadedLuts.clear();
     _previewCache.clear();
   }
