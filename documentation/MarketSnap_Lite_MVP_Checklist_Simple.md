@@ -70,8 +70,8 @@ Legend:
 ## Phase 3 – Interface Layer  
 **Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
-- [ ] **1. Auth & Profile Screens**
-  - [ ] Phone/email OTP flow using `firebase_auth`.
+- [~] **1. Auth & Profile Screens**
+  - [X] Phone/email OTP flow using `firebase_auth`. ✅ **COMPLETED** - Full cross-platform authentication implemented with Firebase emulator support.
   - [ ] Profile form: stall name, market city, avatar upload.
   - [ ] Validate offline caching of profile in Hive.
 
