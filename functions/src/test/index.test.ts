@@ -4,7 +4,7 @@ import * as chai from "chai";
 import * as sinon from "sinon";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
-import * as test from 'firebase-functions-test';
+// import * as test from "firebase-functions-test";
 
 // Initialize firebase-functions-test - using require is important
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -14,7 +14,11 @@ const testEnv = require("firebase-functions-test")();
 sinon.stub(functions, "logger");
 
 // Import the functions AFTER stubbing
-import {sendFollowerPush, fanOutBroadcast, sendMessageNotification} from "../index";
+import {
+  sendFollowerPush,
+  fanOutBroadcast,
+  sendMessageNotification,
+} from "../index";
 
 const expect = chai.expect;
 
@@ -217,8 +221,8 @@ describe("Cloud Functions: MarketSnap", () => {
           text: "Hello! Are your apples organic?",
           conversationId: "test-sender-id_test-recipient-id",
           createdAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
-          isRead: false
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+          isRead: false,
         },
         "messages/test-message-id"
       );
@@ -230,39 +234,40 @@ describe("Cloud Functions: MarketSnap", () => {
       const event = {
         data: message,
         params: {
-          messageId: "test-message-id"
-        }
+          messageId: "test-message-id",
+        },
       };
 
       // This should not throw an error
       await wrapped(event);
     });
 
-    it("should handle message with missing required fields gracefully", async () => {
+    it("should handle message with missing required fields gracefully",
+      async () => {
       // Mock Firestore data with missing fields
-      const invalidMessage = testEnv.firestore.makeDocumentSnapshot(
-        {
-          fromUid: "test-sender-id",
-          // Missing toUid, text, conversationId
-          createdAt: new Date(),
-          isRead: false
-        },
-        "messages/test-invalid-message-id"
-      );
+        const invalidMessage = testEnv.firestore.makeDocumentSnapshot(
+          {
+            fromUid: "test-sender-id",
+            // Missing toUid, text, conversationId
+            createdAt: new Date(),
+            isRead: false,
+          },
+          "messages/test-invalid-message-id"
+        );
 
-      // Create a mock function
-      const wrapped = testEnv.wrap(sendMessageNotification);
+        // Create a mock function
+        const wrapped = testEnv.wrap(sendMessageNotification);
 
-      // Mock the event
-      const event = {
-        data: invalidMessage,
-        params: {
-          messageId: "test-invalid-message-id"
-        }
-      };
+        // Mock the event
+        const event = {
+          data: invalidMessage,
+          params: {
+            messageId: "test-invalid-message-id",
+          },
+        };
 
-      // This should not throw an error (should handle gracefully)
-      await wrapped(event);
-    });
+        // This should not throw an error (should handle gracefully)
+        await wrapped(event);
+      });
   });
 });
