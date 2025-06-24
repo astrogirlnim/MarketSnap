@@ -34,7 +34,7 @@ class MarketSnapPrimaryButton extends StatelessWidget {
           backgroundColor: AppColors.marketBlue,
           foregroundColor: Colors.white,
           elevation: AppSpacing.elevationSm,
-          shadowColor: AppColors.marketBlue.withOpacity(0.3),
+          shadowColor: AppColors.marketBlue.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
@@ -363,39 +363,39 @@ class MarketSnapStatusMessage extends StatelessWidget {
   Color _getBackgroundColor() {
     switch (type) {
       case StatusType.success:
-        return AppColors.leafGreen.withOpacity(0.1);
+        return AppColors.leafGreen.withValues(alpha: 0.1);
       case StatusType.error:
-        return AppColors.appleRed.withOpacity(0.1);
+        return AppColors.appleRed.withValues(alpha: 0.1);
       case StatusType.warning:
-        return AppColors.sunsetAmber.withOpacity(0.1);
+        return AppColors.sunsetAmber.withValues(alpha: 0.1);
       case StatusType.info:
-        return AppColors.marketBlue.withOpacity(0.1);
+        return AppColors.marketBlue.withValues(alpha: 0.1);
     }
   }
 
   Color _getBorderColor() {
     switch (type) {
       case StatusType.success:
-        return AppColors.leafGreen.withOpacity(0.3);
+        return AppColors.leafGreen.withValues(alpha: 0.3);
       case StatusType.error:
-        return AppColors.appleRed.withOpacity(0.3);
+        return AppColors.appleRed.withValues(alpha: 0.3);
       case StatusType.warning:
-        return AppColors.sunsetAmber.withOpacity(0.3);
+        return AppColors.sunsetAmber.withValues(alpha: 0.3);
       case StatusType.info:
-        return AppColors.marketBlue.withOpacity(0.3);
+        return AppColors.marketBlue.withValues(alpha: 0.3);
     }
   }
 
   Color _getTextColor() {
     switch (type) {
       case StatusType.success:
-        return AppColors.leafGreen.withOpacity(0.8);
+        return AppColors.leafGreen.withValues(alpha: 0.8);
       case StatusType.error:
-        return AppColors.appleRed.withOpacity(0.8);
+        return AppColors.appleRed.withValues(alpha: 0.8);
       case StatusType.warning:
-        return AppColors.harvestOrange.withOpacity(0.8);
+        return AppColors.harvestOrange.withValues(alpha: 0.8);
       case StatusType.info:
-        return AppColors.marketBlue.withOpacity(0.8);
+        return AppColors.marketBlue.withValues(alpha: 0.8);
     }
   }
 
@@ -616,7 +616,7 @@ class _QueueStatusContainerState extends State<QueueStatusContainer>
           padding: widget.padding,
           decoration: BoxDecoration(
             border: Border.all(
-              color: AppColors.queuedBorder.withOpacity(_animation.value),
+              color: AppColors.queuedBorder.withValues(alpha: _animation.value),
               width: 2,
             ),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),

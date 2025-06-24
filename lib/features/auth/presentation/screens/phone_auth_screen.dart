@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../application/auth_service.dart';
 import 'otp_verification_screen.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
@@ -177,7 +176,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
                 // Help text about phone verification
                 MarketSnapCard(
-                  backgroundColor: AppColors.marketBlue.withOpacity(0.05),
+                  backgroundColor: AppColors.marketBlue.withValues(alpha: 0.05),
                   child: Column(
                     children: [
                       const Icon(
@@ -211,7 +210,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
                 // Privacy notice
                 MarketSnapCard(
-                  backgroundColor: AppColors.leafGreen.withOpacity(0.05),
+                  backgroundColor: AppColors.leafGreen.withValues(alpha: 0.05),
                   child: Column(
                     children: [
                       const Icon(

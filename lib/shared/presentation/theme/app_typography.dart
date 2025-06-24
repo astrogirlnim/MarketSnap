@@ -7,7 +7,6 @@ import 'app_colors.dart';
 class AppTypography {
   // Font family - Inter preferred, fallback to Roboto, then system
   static const String _fontFamily = 'Inter';
-  static const String _fallbackFontFamily = 'Roboto';
 
   // Display Style - Hero headlines (e.g., "Share your fresh finds")
   static TextStyle get display => const TextStyle(

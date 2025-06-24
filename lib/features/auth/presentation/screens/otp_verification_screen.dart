@@ -1,7 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:async';
 import '../../application/auth_service.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
@@ -282,7 +281,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(6, (index) {
-                    return Container(
+                    return SizedBox(
                       width: 45,
                       height: 55,
                       child: TextField(
@@ -403,7 +402,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
                 // Help text
                 MarketSnapCard(
-                  backgroundColor: AppColors.marketBlue.withOpacity(0.05),
+                  backgroundColor: AppColors.marketBlue.withValues(alpha: 0.05),
                   child: Column(
                     children: [
                       const Icon(

@@ -64,10 +64,8 @@ class AppColors {
       onError: Colors.white,
       surface: eggshell,
       onSurface: soilCharcoal,
-      background: cornsilk,
-      onBackground: soilCharcoal,
       outline: seedBrown,
-      surfaceVariant: eggshell,
+      surfaceContainerHighest: eggshell,
       onSurfaceVariant: soilTaupe,
     );
   }
@@ -85,17 +83,15 @@ class AppColors {
       onError: Colors.black,
       surface: surfaceDark,
       onSurface: textPrimaryDark,
-      background: backgroundDark,
-      onBackground: textPrimaryDark,
       outline: outlineDark,
-      surfaceVariant: surfaceDark,
+      surfaceContainerHighest: surfaceDark,
       onSurfaceVariant: textSecondaryDark,
     );
   }
 
   // Helper methods for color variations
-  static Color withOpacity(Color color, double opacity) {
-    return color.withOpacity(opacity);
+  static Color withOpacityValue(Color color, double opacity) {
+    return color.withValues(alpha: opacity);
   }
 
   // Status colors for different states
@@ -118,8 +114,8 @@ class AppColors {
   ];
 
   // Shadow colors
-  static Color get shadowLight => soilCharcoal.withOpacity(0.1);
-  static Color get shadowDark => Colors.black.withOpacity(0.3);
+  static Color get shadowLight => soilCharcoal.withValues(alpha: 0.1);
+  static Color get shadowDark => Colors.black.withValues(alpha: 0.3);
 
   // Helper for contrast checking (4.5:1 ratio minimum)
   static bool hasGoodContrast(Color foreground, Color background) {
