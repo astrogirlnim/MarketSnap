@@ -4,10 +4,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
+import 'core/services/background_sync_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
 late final HiveService hiveService;
+late final BackgroundSyncService backgroundSyncService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,16 @@ Future<void> main() async {
     debugPrint('[main] CRITICAL: Failed to initialize Hive. Error: $e');
     // We could show an error screen here or prevent the app from starting.
     // For now, we'll just log the error.
+  }
+
+  // Initialize Background Sync Service
+  try {
+    backgroundSyncService = BackgroundSyncService();
+    await backgroundSyncService.initialize();
+    await backgroundSyncService.scheduleSyncTask();
+    debugPrint('[main] BackgroundSyncService initialized and task scheduled.');
+  } catch (e) {
+    debugPrint('[main] CRITICAL: Failed to initialize BackgroundSyncService. Error: $e');
   }
 
   FirebaseOptions firebaseOptions;

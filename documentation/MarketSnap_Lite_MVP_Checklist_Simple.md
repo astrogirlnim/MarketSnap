@@ -30,10 +30,10 @@ Legend:
   - [X] Implement encryption key generation & storage in secure storage.
   - [X] Write baseline unit test: enqueue/dequeue survives hot restart.
 
-- [ ] **3. WorkManager Jobs**
-  - [ ] Register background sync job (`SyncPendingMediaTask`).
-  - [ ] Configure exponential back‑off policy.
-  - [ ] Add unit test: task executes when connectivity changes.
+- [X] **3. WorkManager Jobs**
+  - [X] Register background sync job (`SyncPendingMediaTask`).
+  - [X] Configure exponential back‑off policy.
+  - [X] Add unit test: task executes when connectivity changes.
 
 - [ ] **4. Static Asset Pipeline**
   - [ ] Add warm/cool/contrast LUT PNGs to asset bundle.
