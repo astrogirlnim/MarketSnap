@@ -64,10 +64,10 @@ Legend:
   - [X] Scaffold `generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ` with dummy return.
   - [X] Environment var for OpenAI key; leave disabled flag until Phase 4.
 
-- [ ] **5. Messages & Notifications**
-  - [ ] Define `messages` collection with 24 h TTL composite index.
-  - [ ] Firestore security rules: only `fromUid` and `toUid` may read/write.
-  - [ ] Cloud Function `sendMessageNotification` – on new `messages` doc → FCM to recipient.
+- [X] **5. Messages & Notifications**
+  - [X] Define `messages` collection with 24 h TTL composite index.
+  - [X] Firestore security rules: only `fromUid` and `toUid` may read/write.
+  - [X] Cloud Function `sendMessageNotification` – on new `messages` doc → FCM to recipient.
 
 
 ---
