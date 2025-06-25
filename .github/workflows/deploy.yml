@@ -186,6 +186,17 @@ jobs:
           cd ..
           firebase deploy --only functions,firestore,storage --non-interactive
 
+      - name: Configure TTL Policies
+        run: |
+          echo "🔄 Setting up TTL policy for messages collection..."
+          # Configure TTL policy for messages collection expiresAt field
+          gcloud firestore fields ttls update expiresAt \
+            --collection-group=messages \
+            --enable-ttl \
+            --project=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --quiet
+          echo "✅ TTL policy configured successfully"
+
       - name: Deploy to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:

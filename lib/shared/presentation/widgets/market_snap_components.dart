@@ -147,6 +147,7 @@ class MarketSnapTextField extends StatelessWidget {
   final int? maxLines;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final String? Function(String?)? validator;
 
   const MarketSnapTextField({
     super.key,
@@ -163,6 +164,7 @@ class MarketSnapTextField extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.onSubmitted,
+    this.validator,
   });
 
   @override
@@ -177,14 +179,15 @@ class MarketSnapTextField extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
         ],
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
           enabled: enabled,
           maxLines: maxLines,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          onFieldSubmitted: onSubmitted,
+          validator: validator,
           style: AppTypography.inputText,
           decoration: InputDecoration(
             hintText: hintText,

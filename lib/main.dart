@@ -15,6 +15,8 @@ import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
+import 'features/profile/application/profile_service.dart';
+import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -22,6 +24,7 @@ late final HiveService hiveService;
 late final BackgroundSyncService backgroundSyncService;
 late final AuthService authService;
 late final LutFilterService lutFilterService;
+late final ProfileService profileService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,6 +162,14 @@ Future<void> main() async {
     debugPrint('[main] Error initializing Hive service: $e');
   }
 
+  // Initialize profile service
+  try {
+    profileService = ProfileService(hiveService: hiveService);
+    debugPrint('[main] Profile service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing profile service: $e');
+  }
+
   try {
     backgroundSyncService = BackgroundSyncService();
     await backgroundSyncService.initialize();
@@ -198,7 +209,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Authentication wrapper that handles routing based on auth state
+/// Authentication wrapper that handles routing based on auth state and profile completion
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -218,12 +229,30 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is authenticated - redirect to camera preview
+        // User is authenticated - check profile completion
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint(
-            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera',
+            '[AuthWrapper] User authenticated: ${snapshot.data!.uid}',
           );
-          return const CameraPreviewScreen();
+          
+          // Check if user has a complete profile
+          if (profileService.hasCompleteProfile()) {
+            debugPrint('[AuthWrapper] Profile complete - redirecting to camera');
+            return const CameraPreviewScreen();
+          } else {
+            debugPrint('[AuthWrapper] Profile incomplete - redirecting to profile setup');
+            return VendorProfileScreen(
+              profileService: profileService,
+              onProfileComplete: () {
+                debugPrint('[AuthWrapper] Profile completed - refreshing auth wrapper');
+                // Trigger a rebuild by navigating back to main screen
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const MyApp()),
+                  (route) => false,
+                );
+              },
+            );
+          }
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode

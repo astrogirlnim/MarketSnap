@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/pending_media.dart';
 import '../models/user_settings.dart';
+import '../models/vendor_profile.dart';
 import 'secure_storage_service.dart';
 
 /// Service responsible for initializing and managing the Hive local database.
@@ -15,10 +16,12 @@ class HiveService {
   // for better encapsulation.
   late final Box<PendingMediaItem> pendingMediaQueueBox;
   late final Box<UserSettings> userSettingsBox;
+  late final Box<VendorProfile> vendorProfileBox;
 
   // Box names
   static const String pendingMediaQueueBoxName = 'pendingMediaQueue';
   static const String userSettingsBoxName = 'userSettings';
+  static const String vendorProfileBoxName = 'vendorProfile';
 
   HiveService(this._secureStorageService);
 
@@ -53,6 +56,12 @@ class HiveService {
     );
     debugPrint('[HiveService] "$userSettingsBoxName" box opened.');
 
+    vendorProfileBox = await Hive.openBox<VendorProfile>(
+      vendorProfileBoxName,
+      encryptionCipher: cipher,
+    );
+    debugPrint('[HiveService] "$vendorProfileBoxName" box opened.');
+
     // Ensure user settings has a default value if the box is new
     if (userSettingsBox.isEmpty) {
       debugPrint(
@@ -66,9 +75,28 @@ class HiveService {
 
   void _registerAdapters() {
     debugPrint('[HiveService] Registering Hive type adapters...');
-    Hive.registerAdapter(UserSettingsAdapter());
-    Hive.registerAdapter(PendingMediaItemAdapter());
-    Hive.registerAdapter(MediaTypeAdapter());
+    
+    // Only register adapters if they haven't been registered already
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(UserSettingsAdapter());
+      debugPrint('[HiveService] UserSettingsAdapter registered with typeId: 0');
+    }
+    
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(VendorProfileAdapter());
+      debugPrint('[HiveService] VendorProfileAdapter registered with typeId: 1');
+    }
+    
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(MediaTypeAdapter());
+      debugPrint('[HiveService] MediaTypeAdapter registered with typeId: 2');
+    }
+    
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(PendingMediaItemAdapter());
+      debugPrint('[HiveService] PendingMediaItemAdapter registered with typeId: 1');
+    }
+    
     debugPrint('[HiveService] All adapters registered.');
   }
 
@@ -105,6 +133,62 @@ class HiveService {
     debugPrint('[HiveService] Updating user settings');
     await userSettingsBox.put('settings', settings);
     debugPrint('[HiveService] User settings updated successfully');
+  }
+
+  /// Get vendor profile for the given UID
+  VendorProfile? getVendorProfile(String uid) {
+    debugPrint('[HiveService] Retrieving vendor profile for UID: $uid');
+    final profile = vendorProfileBox.get(uid);
+    if (profile != null) {
+      debugPrint('[HiveService] Found vendor profile: ${profile.stallName}');
+    } else {
+      debugPrint('[HiveService] No vendor profile found for UID: $uid');
+    }
+    return profile;
+  }
+
+  /// Save or update vendor profile
+  Future<void> saveVendorProfile(VendorProfile profile) async {
+    debugPrint('[HiveService] Saving vendor profile for UID: ${profile.uid}');
+    debugPrint('[HiveService] Profile details: ${profile.stallName} in ${profile.marketCity}');
+    await vendorProfileBox.put(profile.uid, profile);
+    debugPrint('[HiveService] Vendor profile saved successfully');
+  }
+
+  /// Get all vendor profiles that need syncing to Firestore
+  List<VendorProfile> getProfilesNeedingSync() {
+    debugPrint('[HiveService] Getting vendor profiles that need sync');
+    final profiles = vendorProfileBox.values
+        .where((profile) => profile.needsSync)
+        .toList();
+    debugPrint('[HiveService] Found ${profiles.length} profiles needing sync');
+    return profiles;
+  }
+
+  /// Mark vendor profile as synced
+  Future<void> markProfileAsSynced(String uid) async {
+    debugPrint('[HiveService] Marking vendor profile as synced: $uid');
+    final profile = vendorProfileBox.get(uid);
+    if (profile != null) {
+      final updatedProfile = profile.copyWith(needsSync: false);
+      await vendorProfileBox.put(uid, updatedProfile);
+      debugPrint('[HiveService] Profile marked as synced successfully');
+    } else {
+      debugPrint('[HiveService] Profile not found for UID: $uid');
+    }
+  }
+
+  /// Delete vendor profile
+  Future<void> deleteVendorProfile(String uid) async {
+    debugPrint('[HiveService] Deleting vendor profile for UID: $uid');
+    await vendorProfileBox.delete(uid);
+    debugPrint('[HiveService] Vendor profile deleted successfully');
+  }
+
+  /// Check if vendor profile exists and is complete
+  bool hasCompleteVendorProfile(String uid) {
+    final profile = getVendorProfile(uid);
+    return profile?.isComplete ?? false;
   }
 
   /// Closes all open Hive boxes.
