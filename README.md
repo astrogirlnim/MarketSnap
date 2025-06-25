@@ -253,11 +253,13 @@ If you are setting up the project for the first time after cloning, you will nee
 
 GitHub Actions workflow configured in `.github/workflows/deploy.yml`:
 - **Automated testing** on push/PR to main branch
+- **Parallel execution** of Android APK building and Firebase backend deployment for improved speed
 - **Secure Firebase Authentication**: Uses a service account (`FIREBASE_SERVICE_ACCOUNT_KEY`) for deployment jobs.
 - **Efficient PR Validation**: Generates dummy config files for pull request checks to ensure speed and security (no secrets needed).
 - **Flutter environment setup** with Java 17
 - **Code validation** with Flutter analyzer and tests
 - **Android APK builds** for streamlined testing (switched from AAB)
+- **Firebase backend deployment** with Cloud Functions, rules, and TTL policies
 - **Firebase App Distribution** deployment to testers
 - **Secure environment management** with encrypted secrets
 
