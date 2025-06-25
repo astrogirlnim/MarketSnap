@@ -32,9 +32,10 @@
     -   **✅ Login Screen Redesign:** AuthWelcomeScreen redesigned to match `login_page.png` reference with basket character icon and farmers-market branding.
     -   **✅ Auth Screen Enhancement:** All authentication screens (email, phone, OTP) updated with new design system while maintaining functionality.
     -   **✅ Profile Form Implementation:** Complete vendor profile form with stall name, market city, avatar upload using MarketSnap design system.
-    -   **✅ Offline Profile Validation:** Comprehensive Hive caching with 9/9 tests passing and DateTime serialization fixed.
+    -   **✅ Offline Profile Validation:** Comprehensive Hive caching with 11/11 tests passing and DateTime serialization fixed.
     -   **✅ Camera Preview & Photo Capture:** Full camera interface with photo capture, flash controls, camera switching, and modern UI.
     -   **✅ 5-Second Video Recording:** Complete video recording with auto-stop, live countdown, cross-platform support, and emulator optimizations.
+    -   **✅ Critical Hive Database Fix:** Resolved LateInitializationError and unknown typeId conflicts that were causing app crashes.
 
 ## What's Left to Build
 
@@ -50,11 +51,52 @@
 
 ## Known Issues & Blockers
 
+-   **✅ RESOLVED - Critical Database Corruption:** Fixed Hive typeId conflict that was causing "HiveError: Cannot read, unknown typeId: 35" and LateInitializationError crashes.
 -   **📋 FUTURE - Production Security:** GitHub Actions builds release APKs with debug keystore (can be addressed later, not blocking current development).
 -   **iOS Background Sync:** Testing requires manual verification via console logs due to platform limitations. This is expected behavior, not a bug.
 -   **Android Emulator Buffer Warnings:** Optimized with reduced resolution settings for emulators while maintaining high quality for real devices.
 
 ---
+
+## Recent Critical Bug Fix (January 25, 2025)
+
+### **✅ Critical Hive Database Fix: App Crash Resolution**
+
+**Problem:** 
+- App was crashing on startup with red error screen
+- Error: `HiveError: Cannot read, unknown typeId: 35. Did you forget to register an adapter?`
+- Secondary error: `LateInitializationError: Field 'vendorProfileBox' has not been initialized`
+- This prevented any app functionality from working
+
+**Root Cause Analysis:**
+- **TypeId Conflict:** Both `VendorProfile` and `PendingMediaItem` were using typeId: 1
+- **Registration Bug:** HiveService was checking typeId 1 twice instead of checking typeId 3 for PendingMediaItem  
+- **Database Corruption:** The conflict caused corrupted data with unknown typeId 35
+
+**Solution Implemented:**
+1. **Fixed TypeId Conflict:** Changed `PendingMediaItem` from typeId 1 to typeId 3
+2. **Fixed Registration Logic:** Corrected duplicate typeId check in `HiveService._registerAdapters()`
+3. **Added Error Recovery:** Created `_openBoxWithRecovery()` method to handle corrupted databases gracefully
+4. **Regenerated Adapters:** Used `dart run build_runner build` to update generated code
+
+**Validation Results:**
+- ✅ Static Analysis: `flutter analyze` - No issues found
+- ✅ Code Formatting: `dart format` - Applied formatting to 2 files
+- ✅ Automated Fixes: `dart fix --apply` - Nothing to fix
+- ✅ Build Verification: `flutter build apk --debug` - Successful
+- ✅ Unit Tests: `flutter test` - 11/11 tests passing
+- ✅ Runtime Testing: App launches successfully, all services initialized
+
+**Technical Details:**
+```dart
+// Fixed TypeId assignments:
+@HiveType(typeId: 0) class UserSettings
+@HiveType(typeId: 1) class VendorProfile  
+@HiveType(typeId: 2) enum MediaType
+@HiveType(typeId: 3) class PendingMediaItem  // Changed from 1 to 3
+```
+
+**Impact:** This was a critical production-blocking bug that has been completely resolved. The app now starts successfully and all Hive database operations work correctly.
 
 ## Completed Tasks
 
@@ -87,6 +129,7 @@
     - [X] 3.1.1d: OTP verification fixes ✅ **COMPLETED** - Fixed verification ID tracking for resend functionality
     - [X] 3.1.1e: Account linking system ✅ **COMPLETED** - Prevents multiple vendor profiles per user
     - [X] 3.1.1f: Sign-out improvements ✅ **COMPLETED** - Fixed infinite spinner with timeout handling
+    - [X] 3.1.1g: Critical Hive database fix ✅ **COMPLETED** - Resolved typeId conflicts and app crashes
     - [X] 3.1.2: Profile form with stall name, market city, avatar upload (apply design system) ✅ **COMPLETED**
     - [X] 3.1.3: Validate offline caching of profile in Hive ✅ **COMPLETED**
   - [~] 3.2: Capture & Review UI
@@ -109,6 +152,12 @@
 ## Authentication System Status: ✅ **PRODUCTION READY**
 
 ### **✅ All Critical Issues Resolved:**
+
+**Critical Database Fix:**
+- **Problem:** App crashing on startup with Hive typeId conflicts
+- **Root Cause:** Duplicate typeId assignments and registration logic errors
+- **Solution:** Fixed typeId assignments, registration logic, and added error recovery
+- **Status:** ✅ **RESOLVED** - App launches successfully, all database operations working
 
 **OTP Verification Fix:**
 - **Problem:** "Invalid verification code" errors when using correct codes from Firebase emulator
@@ -140,6 +189,7 @@
 - Fixed Firestore emulator port from 8080 to 8081 to avoid conflicts
 - Comprehensive error handling with user-friendly messages
 - Optimized Firebase emulator configuration for development
+- Added database error recovery mechanisms for corrupted Hive data
 
 ### **✅ Testing Results:**
 - ✅ Google Sign-In: Working in emulator and on devices
@@ -148,6 +198,8 @@
 - ✅ Sign-Out: No longer hangs, proper error handling
 - ✅ Profile Creation: Single profile per user regardless of auth method
 - ✅ Account Linking: Service ready for preventing multiple profiles
+- ✅ Database Operations: All Hive operations working correctly (11/11 tests passing)
+- ✅ App Startup: No crashes, all services initialize properly
 
 ## Firebase Emulator Configuration (Optimized)
 
