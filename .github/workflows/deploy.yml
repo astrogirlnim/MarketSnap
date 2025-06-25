@@ -217,6 +217,9 @@ jobs:
             --quiet
           echo "✅ TTL policy configured successfully"
 
+      - name: Activate Service Account for gcloud
+        run: gcloud auth activate-service-account --key-file=./service-account.json
+
       - name: Deploy to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
