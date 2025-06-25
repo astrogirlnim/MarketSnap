@@ -99,6 +99,13 @@ GoogleService-Info.plist
 *.env
 secrets.yaml
 
+# Android signing files
+key.properties
+android/key.properties
+**/*.keystore
+**/*.jks
+**/marketsnap-release.keystore
+
 # Cursor
 .cursorrules
 .cursor/

@@ -173,6 +173,26 @@ jobs:
           flutterfire configure --project=$FIREBASE_PROJECT_ID --platforms=android,ios --out=lib/firebase_options.dart --yes
           echo "✅ Generated lib/firebase_options.dart"
 
+      - name: Setup Release Keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Decode and save the release keystore
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+          
+          # Create key.properties file for signing
+          cat > android/key.properties << EOF
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          
+          echo "✅ Release keystore and signing configuration ready"
+
       - name: Build Android APK
         run: |
           flutter clean
