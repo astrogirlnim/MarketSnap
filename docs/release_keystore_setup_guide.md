@@ -20,7 +20,7 @@ This guide walks you through setting up release keystore signing for MarketSnap,
 ### 1. **Your Release Keystore Details**
 - **Location:** `~/marketsnap-release.keystore`
 - **Alias:** `marketsnap`
-- **Password:** `[REDACTED_PASSWORD]`
+- **Password:** `[REDACTED FOR SECURITY]`
 - **SHA-1 Fingerprint:** `[REDACTED FOR SECURITY]`
 
 ### 2. **Local Configuration Files**
@@ -61,7 +61,7 @@ You **MUST** add the new release SHA-1 fingerprint to your Firebase project:
 
 2. **Add SHA-1 Fingerprint:**
    ```
-   [Get from: keytool -list -v -keystore ~/marketsnap-release.keystore -alias marketsnap -storepass [REDACTED_PASSWORD] | grep SHA1]
+   [Get from: keytool -list -v -keystore ~/marketsnap-release.keystore -alias marketsnap -storepass [YOUR_PASSWORD] | grep SHA1]
    ```
 
 3. **Download Updated `google-services.json`:**
@@ -83,9 +83,9 @@ Add these secrets to your GitHub repository (Settings → Secrets and variables 
 | Secret Name | Value | Description |
 |-------------|-------|-------------|
 | `RELEASE_KEYSTORE_BASE64` | `[base64 encoded keystore]` | Your release keystore file |
-| `KEYSTORE_PASSWORD` | `[REDACTED_PASSWORD]` | Keystore password |
+| `KEYSTORE_PASSWORD` | `[YOUR_KEYSTORE_PASSWORD]` | Keystore password |
 | `KEY_ALIAS` | `marketsnap` | Key alias |
-| `KEY_PASSWORD` | `[REDACTED_PASSWORD]` | Key password |
+| `KEY_PASSWORD` | `[YOUR_KEY_PASSWORD]` | Key password |
 
 ### **Get Base64 Encoded Keystore**
 ```bash
@@ -173,7 +173,7 @@ cat android/key.properties
 
 ```bash
 # Get SHA-1 fingerprint
-keytool -list -v -keystore ~/marketsnap-release.keystore -alias marketsnap -storepass [REDACTED_PASSWORD] | grep SHA1
+keytool -list -v -keystore ~/marketsnap-release.keystore -alias marketsnap -storepass [YOUR_PASSWORD] | grep SHA1
 
 # Build release APK
 flutter build apk --release
