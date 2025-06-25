@@ -133,13 +133,13 @@ class AuthWelcomeScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // iOS emulator warning (if applicable)
+                  // iOS emulator note (if applicable)
                   if (isIOSEmulator) ...[
                     const SizedBox(height: AppSpacing.lg),
                     MarketSnapStatusMessage(
                       message:
-                          'Development Mode: Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
-                      type: StatusType.warning,
+                          'Development Mode: Google and Email authentication work fully. Phone authentication is limited in iOS simulator.',
+                      type: StatusType.info,
                       showIcon: true,
                     ),
                   ],
@@ -171,19 +171,9 @@ class AuthWelcomeScreen extends StatelessWidget {
     bool isIOSEmulator,
     bool isSignUp,
   ) {
-    // For now, both signup and login go to the same auth flow
-    // In the future, this could differentiate between vendor signup and customer login
-
-    if (isIOSEmulator) {
-      // iOS simulator - only email auth works
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const EmailAuthScreen()),
-      );
-    } else {
-      // Real device - offer choice between phone and email
-      _showAuthMethodDialog(context, isSignUp);
-    }
+    // Always show the authentication method dialog with all options
+    // Google Auth is now properly configured for both iOS and Android
+    _showAuthMethodDialog(context, isSignUp);
   }
 
   /// Show dialog to choose authentication method (phone or email)
