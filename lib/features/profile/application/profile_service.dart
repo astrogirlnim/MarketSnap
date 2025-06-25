@@ -76,13 +76,24 @@ class ProfileService {
     await _hiveService.saveVendorProfile(profile);
     debugPrint('[ProfileService] Profile saved locally successfully');
 
-    // Try to sync immediately if online
-    try {
-      await syncProfileToFirestore(uid);
-    } catch (e) {
-      debugPrint('[ProfileService] Failed to sync immediately, will retry later: $e');
+    // Try to sync immediately if online - but don't block the UI
+    _attemptImmediateSync(uid);
+  }
+
+  /// Attempts to sync profile immediately without blocking the UI
+  void _attemptImmediateSync(String uid) {
+    debugPrint('[ProfileService] Attempting immediate sync for UID: $uid');
+    
+    syncProfileToFirestore(uid).timeout(
+      const Duration(seconds: 5), // 5 second timeout
+      onTimeout: () {
+        debugPrint('[ProfileService] Sync timed out after 5 seconds - will retry later');
+        return;
+      },
+    ).catchError((error) {
+      debugPrint('[ProfileService] Immediate sync failed: $error');
       // Don't throw - offline-first means we save locally and sync when possible
-    }
+    });
   }
 
   /// Picks an image from gallery or camera for avatar
@@ -159,6 +170,8 @@ class ProfileService {
     }
 
     try {
+      debugPrint('[ProfileService] Starting Firestore sync process...');
+      
       // Upload avatar if we have a local path but no URL
       String? avatarURL = profile.avatarURL;
       if (profile.localAvatarPath != null && profile.avatarURL == null) {
@@ -171,11 +184,19 @@ class ProfileService {
           ? profile.copyWith(avatarURL: avatarURL, localAvatarPath: null)
           : profile;
 
-      // Sync to Firestore
+      debugPrint('[ProfileService] Writing profile to Firestore collection: vendors/$uid');
+      
+      // Sync to Firestore with timeout and detailed error handling
       await _firestore
           .collection('vendors')
           .doc(uid)
-          .set(profileToSync.toFirestore());
+          .set(profileToSync.toFirestore())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Firestore write operation timed out after 10 seconds'),
+          );
+
+      debugPrint('[ProfileService] Firestore write completed successfully');
 
       // Mark as synced locally
       await _hiveService.markProfileAsSynced(uid);
@@ -188,8 +209,20 @@ class ProfileService {
       }
 
       debugPrint('[ProfileService] Profile synced to Firestore successfully');
+    } on FirebaseException catch (e) {
+      debugPrint('[ProfileService] Firebase error during sync: ${e.code} - ${e.message}');
+      throw Exception('Firebase sync failed: ${e.message}');
     } catch (e) {
       debugPrint('[ProfileService] Error syncing profile to Firestore: $e');
+      
+      // Additional diagnostics for Firestore connection issues
+      if (e.toString().contains('FRAME_SIZE_ERROR') || 
+          e.toString().contains('Failed to connect') ||
+          e.toString().contains('INTERNAL')) {
+        debugPrint('[ProfileService] Detected Firestore emulator connection issue');
+        debugPrint('[ProfileService] This is likely due to emulator connectivity problems');
+      }
+      
       throw Exception('Failed to sync profile: $e');
     }
   }
