@@ -3,57 +3,224 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'phone_auth_screen.dart';
 import 'email_auth_screen.dart';
+import '../../../../shared/presentation/theme/app_colors.dart';
+import '../../../../shared/presentation/theme/app_typography.dart';
+import '../../../../shared/presentation/theme/app_spacing.dart';
+import '../../../../shared/presentation/widgets/market_snap_components.dart';
 
-/// Welcome screen for authentication
-/// Allows users to choose between phone and email authentication
+/// MarketSnap Welcome Screen - Redesigned to match login_page.png reference
+/// Features the basket character icon and farmers-market aesthetic
 class AuthWelcomeScreen extends StatelessWidget {
   const AuthWelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[AuthWelcomeScreen] Building MarketSnap welcome screen');
+    
     // Check if phone auth should be disabled on iOS emulator
     final bool isIOSEmulator = Platform.isIOS && kDebugMode;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.cornsilk,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // App logo/title
-              const Icon(
-                Icons.camera_alt_outlined,
-                size: 80,
-                color: Colors.deepPurple,
+        child: SingleChildScrollView(
+          child: Container(
+            height: screenHeight - MediaQuery.of(context).padding.top,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.cornsilk,
+                  Color(0xFFFFFBF0), // Slightly lighter variation
+                ],
+                stops: [0.0, 1.0],
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'MarketSnap',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Snap, Share, Sell',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
+            ),
+            child: Padding(
+              padding: AppSpacing.edgeInsetsScreen,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Spacer to push content down
+                  const Spacer(flex: 1),
 
-              // Phone authentication button
-              if (!isIOSEmulator) ...[
-                ElevatedButton.icon(
+                  // Basket Character Icon - Center of the design
+                  const Center(
+                    child: BasketIcon(
+                      size: 120,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Main CTA Button - "Sign Up as Vendor"
+                  MarketSnapPrimaryButton(
+                    text: 'Sign Up as Vendor',
+                    icon: Icons.storefront_outlined,
+                    onPressed: () {
+                      debugPrint('[AuthWelcomeScreen] Sign Up as Vendor tapped');
+                      _navigateToAuth(context, isIOSEmulator, true);
+                    },
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Subtitle for vendors
+                  Text(
+                    'Start sharing your fresh finds',
+                    style: AppTypography.brandSubtitle,
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: AppSpacing.xxl),
+
+                  // Secondary Action - "Log In"
+                  MarketSnapSecondaryButton(
+                    text: 'Log In',
+                    icon: Icons.login_outlined,
+                    onPressed: () {
+                      debugPrint('[AuthWelcomeScreen] Log In tapped');
+                      _navigateToAuth(context, isIOSEmulator, false);
+                    },
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Subtitle for existing users
+                  Text(
+                    'Already have an account?',
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilTaupe,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // "What is MarketSnap?" link
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        debugPrint('[AuthWelcomeScreen] What is MarketSnap tapped');
+                        _showInfoDialog(context);
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.marketBlue,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'What is MarketSnap',
+                            style: AppTypography.linkText,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: AppColors.marketBlue,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // iOS emulator warning (if applicable)
+                  if (isIOSEmulator) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    MarketSnapStatusMessage(
+                      message: 'Development Mode: Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
+                      type: StatusType.warning,
+                      showIcon: true,
+                    ),
+                  ],
+
+                  const Spacer(flex: 1),
+
+                  // Terms and Privacy - Bottom of screen
+                  Text(
+                    'By continuing, you agree to our Terms of Service and Privacy Policy',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.soilTaupe,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Navigate to authentication based on platform and signup/login mode
+  void _navigateToAuth(BuildContext context, bool isIOSEmulator, bool isSignUp) {
+    // For now, both signup and login go to the same auth flow
+    // In the future, this could differentiate between vendor signup and customer login
+    
+    if (isIOSEmulator) {
+      // iOS simulator - only email auth works
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const EmailAuthScreen(),
+        ),
+      );
+    } else {
+      // Real device - offer choice between phone and email
+      _showAuthMethodDialog(context, isSignUp);
+    }
+  }
+
+  /// Show dialog to choose authentication method (phone or email)
+  void _showAuthMethodDialog(BuildContext context, bool isSignUp) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: AppColors.eggshell,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          child: Padding(
+            padding: AppSpacing.edgeInsetsCard,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isSignUp ? 'Sign Up Method' : 'Log In Method',
+                  style: AppTypography.h2,
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: AppSpacing.lg),
+                
+                Text(
+                  'Choose how you\'d like to ${isSignUp ? 'create your account' : 'sign in'}:',
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.soilTaupe,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: AppSpacing.lg),
+
+                // Phone option
+                MarketSnapPrimaryButton(
+                  text: 'Continue with Phone',
+                  icon: Icons.phone_outlined,
                   onPressed: () {
-                    debugPrint(
-                      '[AuthWelcomeScreen] Navigating to phone authentication',
-                    );
+                    Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -61,91 +228,92 @@ class AuthWelcomeScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.phone),
-                  label: const Text('Continue with Phone'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Email option
+                MarketSnapSecondaryButton(
+                  text: 'Continue with Email',
+                  icon: Icons.email_outlined,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EmailAuthScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Cancel
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilTaupe,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
               ],
-
-              // Email authentication button
-              ElevatedButton.icon(
-                onPressed: () {
-                  debugPrint(
-                    '[AuthWelcomeScreen] Navigating to email authentication',
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EmailAuthScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.email),
-                label: const Text('Continue with Email'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isIOSEmulator
-                      ? Colors.deepPurple
-                      : Colors.grey.shade700,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-
-              // iOS emulator warning
-              if (isIOSEmulator) ...[
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange, size: 24),
-                      SizedBox(height: 8),
-                      Text(
-                        'Development Mode',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
-                        style: TextStyle(fontSize: 12, color: Colors.orange),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
-              // Terms and privacy
-              const Text(
-                'By continuing, you agree to our Terms of Service and Privacy Policy',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+
+  /// Show information dialog about MarketSnap
+  void _showInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: AppColors.eggshell,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          child: Padding(
+            padding: AppSpacing.edgeInsetsCard,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const BasketIcon(size: 60),
+                
+                const SizedBox(height: AppSpacing.md),
+                
+                Text(
+                  'What is MarketSnap?',
+                  style: AppTypography.h2,
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: AppSpacing.md),
+                
+                Text(
+                  'MarketSnap enables farmers-market vendors to share real-time "fresh-stock" photos and 5-second clips that work offline first, sync transparently when connectivity returns, and auto-expire after 24 hours—driving foot traffic before produce spoils.',
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.soilTaupe,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: AppSpacing.lg),
+
+                MarketSnapPrimaryButton(
+                  text: 'Got it!',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -173,6 +173,12 @@ class AuthService {
   // EMAIL AUTHENTICATION
   // ================================
 
+  /// Sends email sign-in link to the provided email address (simplified version)
+  Future<void> sendEmailSignInLinkSimple(String email) async {
+    debugPrint('[AuthService] Sending email sign-in link to: $email');
+    await sendEmailSignInLink(email: email);
+  }
+
   /// Sends email sign-in link to the provided email address
   Future<void> sendEmailSignInLink({required String email}) async {
     debugPrint('[AuthService] Sending email sign-in link to: $email');
@@ -236,6 +242,40 @@ class AuthService {
   /// Checks if a link is a valid sign-in email link
   bool isSignInWithEmailLink(String emailLink) {
     return _firebaseAuth.isSignInWithEmailLink(emailLink);
+  }
+
+  // ================================
+  // ADDITIONAL PHONE AUTH HELPERS
+  // ================================
+
+  /// Simplified method to verify OTP (used by screens)
+  Future<UserCredential> verifyOTP({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    return await verifyOTPAndSignIn(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+  }
+
+  /// Simplified method to sign in with phone number (used by screens)
+  Future<void> signInWithPhoneNumber({
+    required String phoneNumber,
+    required void Function(PhoneAuthCredential) verificationCompleted,
+    required void Function(String) verificationFailed,
+    required void Function(String, int?) codeSent,
+    required void Function(String) codeAutoRetrievalTimeout,
+  }) async {
+    debugPrint('[AuthService] Starting phone number sign-in for: $phoneNumber');
+    
+    await verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      onVerificationCompleted: verificationCompleted,
+      onVerificationFailed: verificationFailed,
+      onCodeSent: codeSent,
+      onCodeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+    );
   }
 
   // ================================
