@@ -270,7 +270,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Media posted successfully! Uploading in background...'),
+                Expanded(child: Text('Media posted successfully! Uploading in background...')),
               ],
             ),
             backgroundColor: Colors.green,
