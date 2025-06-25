@@ -37,6 +37,74 @@ MarketSnap supports robust background media sync on both Android and iOS using t
 
 **Note:** iOS may delay or throttle background execution. This is a platform limitation.
 
+## Quick Start Guide
+
+Get MarketSnap running in under 5 minutes:
+
+### 1. Prerequisites
+- Flutter SDK (3.8.1+) - [Install Flutter](https://docs.flutter.dev/get-started/install)
+- Git
+- Android Studio (for Android) or Xcode (for iOS)
+
+### 2. Clone & Install
+```bash
+git clone <repository-url>
+cd MarketSnap
+flutter pub get
+```
+
+### 3. Environment Setup
+Create a `.env` file in the root directory:
+```bash
+touch .env
+```
+
+Add your Firebase configuration to `.env`:
+```env
+# Required Firebase Configuration
+ANDROID_API_KEY=your_android_api_key_here
+IOS_API_KEY=your_ios_api_key_here
+FIREBASE_PROJECT_ID=your_project_id_here
+FIREBASE_PROJECT_NUMBER=your_project_number_here
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id_here
+FIREBASE_STORAGE_BUCKET=your_storage_bucket_here
+ANDROID_APP_ID=your_android_app_id_here
+IOS_APP_ID=your_ios_app_id_here
+APP_BUNDLE_ID=your_bundle_id_here
+
+# Optional AI Features
+OPENAI_API_KEY=your_openai_api_key_here
+AI_FUNCTIONS_ENABLED=false
+```
+
+### 4. Run the App
+```bash
+# Start both iOS & Android emulators automatically
+./scripts/dev_emulator.sh
+
+# OR run on specific platform
+flutter run -d ios           # iOS Simulator
+flutter run -d android       # Android Emulator
+```
+
+### 5. Camera Testing (Development Mode)
+- Camera functionality works immediately in debug mode (auth bypassed)
+- Look for orange "DEVELOPMENT MODE" banner
+- To test full auth flow: Set `kDevelopmentBypassAuth = false` in `lib/main.dart`
+
+### 🎉 You're Ready!
+- **Camera preview** should load automatically in debug mode
+- **Hot reload** works on both platforms when using `dev_emulator.sh`
+- **Background sync** can be tested using the in-app buttons
+
+### Need Help?
+- **Detailed setup**: See [Getting Started](#getting-started) section below
+- **Firebase setup**: See [Firebase Setup](#firebase-setup) section
+- **Troubleshooting**: See [Troubleshooting](#troubleshooting) section
+- **Scripts documentation**: Check `scripts/README.md`
+
+---
+
 ## Security Implementation
 
 ### Environment Variables Setup
