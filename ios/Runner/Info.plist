@@ -59,5 +59,17 @@
 	<string>MarketSnap needs access to your camera to take photos and videos for your market stall posts.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>MarketSnap needs access to your photo library to save and share your market stall photos.</string>
+	<!-- Google Sign-In URL Schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps.625502565137-nf9igj4prd00qu8lav79k61f9blhgjqr</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.625502565137-nf9igj4prd00qu8lav79k61f9blhgjqr</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

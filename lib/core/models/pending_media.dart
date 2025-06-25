@@ -17,7 +17,7 @@ enum MediaType {
 
 /// Represents a media item that is pending upload.
 /// Stored in a Hive box when the device is offline.
-@HiveType(typeId: 1)
+@HiveType(typeId: 3)
 class PendingMediaItem extends HiveObject {
   /// A unique identifier for the queue item.
   @HiveField(0)

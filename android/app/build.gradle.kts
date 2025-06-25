@@ -64,8 +64,12 @@ android {
     buildTypes {
         release {
             // Use release signing configuration for production builds
-            // For now, fallback to debug signing until release keystore is properly configured
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystoreProperties.containsKey("storeFile")) {
+                signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug for development environments without keystore
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }
