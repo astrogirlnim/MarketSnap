@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-import '../../../../core/models/vendor_profile.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
@@ -440,7 +439,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                               },
                               activeColor: AppColors.leafGreen,
                               inactiveThumbColor: AppColors.soilTaupe,
-                              inactiveTrackColor: AppColors.seedBrown.withOpacity(0.3),
+                              inactiveTrackColor: AppColors.seedBrown.withValues(alpha: 0.3),
                             ),
                           ],
                         ),

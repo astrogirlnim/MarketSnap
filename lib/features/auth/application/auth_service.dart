@@ -491,13 +491,13 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
       final UserCredential result = await _firebaseAuth.signInWithCredential(credential);
-      debugPrint('[AuthService] Google sign-in successful for user: \\${result.user?.uid}');
+      debugPrint('[AuthService] Google sign-in successful for user: ${result.user?.uid}');
       return result;
     } on FirebaseAuthException catch (e) {
-      debugPrint('[AuthService] Google sign-in failed: \\${e.code} - \\${e.message}');
-      throw Exception('Google sign-in failed: \\${e.message}');
+      debugPrint('[AuthService] Google sign-in failed: ${e.code} - ${e.message}');
+      throw Exception('Google sign-in failed: ${e.message}');
     } catch (e) {
-      debugPrint('[AuthService] Google sign-in error: \\${e}');
+      debugPrint('[AuthService] Google sign-in error: $e');
       throw Exception('Google sign-in failed. Please try again.');
     }
   }
