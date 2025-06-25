@@ -775,7 +775,7 @@ class AuthService {
               '[AuthService] Current app package: com.example.marketsnap',
             );
             debugPrint(
-              '[AuthService] Expected SHA-1: [REDACTED FOR SECURITY]',
+              '[AuthService] Expected SHA-1: [REDACTED FOR SECURITY] // Do not log sensitive fingerprints',
             );
 
             throw Exception(
