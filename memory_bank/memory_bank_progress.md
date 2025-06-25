@@ -1,6 +1,6 @@
 # Progress Log
 
-*Last Updated: December 24, 2024*
+*Last Updated: January 25, 2025*
 
 ---
 
@@ -19,7 +19,7 @@
     -   **✅ Cloud Functions (AI Prep):** AI helper functions scaffolded and ready for Phase 4 implementation.
     -   **✅ Local Emulator Environment:** Full Firebase Emulator Suite is configured and the local testing workflow is documented.
 
--   **Phase 3 - Interface Layer:** 🔄 **IN PROGRESS - Phase 3.1 Complete**
+-   **Phase 3 - Interface Layer:** 🔄 **IN PROGRESS - Phase 3.1 Nearly Complete**
     -   **✅ Design System Implementation:** Complete MarketSnap design system implemented based on `snap_design.md` with farmers-market aesthetic.
     -   **✅ Theme System:** Comprehensive theme system with light/dark mode support, proper color palette, typography, and spacing.
     -   **✅ Component Library:** MarketSnap-branded component library with buttons, inputs, cards, status messages, and loading indicators.
@@ -27,23 +27,29 @@
     -   **✅ Authentication Flow:** Phone/email OTP authentication with Firebase Auth is complete with cross-platform support and emulator integration.
     -   **✅ Login Screen Redesign:** AuthWelcomeScreen redesigned to match `login_page.png` reference with basket character icon and farmers-market branding.
     -   **✅ Auth Screen Enhancement:** All authentication screens (email, phone, OTP) updated with new design system while maintaining functionality.
+    -   **✅ Profile Form Implementation:** Complete vendor profile form with stall name, market city, avatar upload using MarketSnap design system.
+    -   **✅ Offline Profile Validation:** Comprehensive Hive caching with 9/9 tests passing and DateTime serialization fixed.
+    -   **🔄 Google Authentication:** Google Sign-In implemented but currently troubleshooting SHA-1 registration issue.
     -   **✅ Camera Preview & Photo Capture:** Full camera interface with photo capture, flash controls, camera switching, and modern UI.
     -   **✅ 5-Second Video Recording:** Complete video recording with auto-stop, live countdown, cross-platform support, and emulator optimizations.
 
 ## What's Left to Build
 
 -   **Phase 3 - Interface Layer (Remaining):**
-    -   Profile form with stall name, market city, and avatar upload (apply new design system).
+    -   🔄 **Google Auth Fix:** Replace Firebase configuration files and test Google Sign-In functionality.
     -   Review screen with LUT filter application and "Post" button (apply new design system).
     -   Story reel & feed UI components (apply new design system).
     -   Settings & help screens (apply new design system).
     -   Apply design system cohesively to camera capture screens.
+    -   **🚨 CRITICAL:** Set up production release keystore for GitHub Actions (security issue).
 
 -   **Phase 4 - Implementation Layer:**
     -   All business logic connecting the UI to the backend, including the offline media queue and AI helper features.
 
 ## Known Issues & Blockers
 
+-   **🚨 CRITICAL - Production Security:** GitHub Actions builds release APKs with debug keystore (insecure, Google Play Store will reject).
+-   **🔄 Google Auth:** ApiException: 10 due to SHA-1 fingerprint not registered in Firebase Console (fix in progress).
 -   **iOS Background Sync:** Testing requires manual verification via console logs due to platform limitations. This is expected behavior, not a bug.
 -   **Android Emulator Buffer Warnings:** Optimized with reduced resolution settings for emulators while maintaining high quality for real devices.
 
@@ -68,14 +74,16 @@
     - [X] 3.0.1: Comprehensive theme system based on `snap_design.md`
     - [X] 3.0.2: MarketSnap color palette (cornsilk, market blue, harvest orange, etc.)
     - [X] 3.0.3: Typography system with Inter font and proper hierarchy
-    - [X] 3.0.4: 4px grid spacing system for consistency
+    - [X] 3.0.4: 4px grid system for consistency
     - [X] 3.0.5: MarketSnap component library with branded widgets
     - [X] 3.0.6: Light/dark theme support with automatic switching
     - [X] 3.0.7: Asset integration with basket character icon and reference images
-  - [X] 3.1: Auth & Profile Screens ✅ **COMPLETED**
+  - [~] 3.1: Auth & Profile Screens 🔄 **95% COMPLETED - Google Auth Fix Pending**
     - [X] 3.1.1: Phone/email OTP flow using `firebase_auth` ✅ **COMPLETED**
     - [X] 3.1.1a: Login screen redesign to match `login_page.png` reference ✅ **COMPLETED**
     - [X] 3.1.1b: All auth screens updated with MarketSnap design system ✅ **COMPLETED**
+    - [X] 3.1.1c: Google Sign-In implementation ✅ **CODE COMPLETED** 
+    - [~] 3.1.1d: Google Auth troubleshooting 🔄 **IN PROGRESS** - SHA-1 registration fix pending
     - [X] 3.1.2: Profile form with stall name, market city, avatar upload (apply design system) ✅ **COMPLETED**
     - [X] 3.1.3: Validate offline caching of profile in Hive ✅ **COMPLETED**
   - [~] 3.2: Capture & Review UI
@@ -86,16 +94,45 @@
   - [ ] 3.3: Story Reel & Feed (apply design system)
   - [ ] 3.4: Settings & Help (apply design system)
 
-## Next Tasks
+## Next Tasks (Priority Order)
 
-- **Phase 3.2.3: Review Screen with LUT Filters** (apply design system)
-- **Phase 3.2.4: Apply design system to camera capture screens**
-- **Phase 3.3: Story Reel & Feed UI** (with MarketSnap branding)
-- **Phase 3.4: Settings & Help Screens** (with MarketSnap branding)
-- **Phase 4: Implementation Layer** (after Phase 3 completion)
+1. **🔄 CURRENT:** Fix Google Auth - Replace Firebase configuration files and test
+2. **🚨 CRITICAL:** Set up production release keystore for GitHub Actions (security issue)
+3. **Phase 3.2.3:** Review Screen with LUT Filters (apply design system)
+4. **Phase 3.2.4:** Apply design system to camera capture screens
+5. **Phase 3.3:** Story Reel & Feed UI (with MarketSnap branding)
+6. **Phase 3.4:** Settings & Help Screens (with MarketSnap branding)
+7. **Phase 4:** Implementation Layer (after Phase 3 completion)
+
+## Critical Security Issue
+
+### **Production Release Keystore Problem:**
+- **Current State:** GitHub Actions builds release APKs with debug keystore
+- **Risk Level:** 🚨 **CRITICAL**
+- **Impact:** 
+  - Debug keystores are public and insecure
+  - Google Play Store will reject debug-signed apps
+  - Production Google Sign-In will fail without proper release SHA-1
+- **Required Action:** Create production release keystore and update GitHub Actions pipeline
+
+## Google Auth Implementation Status
+
+### **✅ Completed:**
+- Google Sign-In dependencies added (`firebase_auth: ^5.6.0`, `google_sign_in: ^6.2.1`)
+- `signInWithGoogle()` method implemented in AuthService with comprehensive error handling
+- Google Sign-In button integrated into AuthWelcomeScreen with MarketSnap design system
+- Firebase Console Google Auth provider enabled
+- Debug SHA-1 fingerprint identified: `[REDACTED FOR SECURITY]`
+
+### **🔄 In Progress:**
+- **Current Issue:** ApiException: 10 (DEVELOPER_ERROR) - SHA-1 not registered in Firebase Console
+- **Solution:** Replace `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist` with updated versions from Firebase Console
+- **Next Step:** Test Google Sign-In functionality after configuration file replacement
 
 ## Known Issues / Risks
 
+- **🚨 CRITICAL:** Production builds use debug keystore (security vulnerability)
+- **🔄 Google Auth:** SHA-1 registration pending (fix in progress)
 - Video compression performance on older devices not yet profiled.
 - Vector DB cost evaluation pending provider selection.
 - Android emulator buffer warnings resolved with optimized camera settings.
@@ -115,7 +152,8 @@
 
 **✅ Authentication Experience Enhanced:**
 - **Login Screen:** Redesigned to match reference with basket character icon
-- **Auth Flows:** All screens (welcome, email, phone, OTP) updated with MarketSnap branding
+- **Auth Flows:** All screens (welcome, email, phone, OTP, Google) updated with MarketSnap branding
 - **User Experience:** Improved with branded components, better error handling, and loading states
 - **Functionality:** All existing auth functionality preserved while enhancing visual design
+- **Google Integration:** Third authentication option added with proper error handling
 

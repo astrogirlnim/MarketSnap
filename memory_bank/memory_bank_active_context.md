@@ -1,14 +1,14 @@
 # Active Context
 
-*Last Updated: June 25, 2025*
+*Last Updated: January 25, 2025*
 
 ---
 
 ## Current Work Focus
 
-**Phase 3.1: Auth & Profile Screens + Design System Implementation**
+**Phase 3.1: Auth & Profile Screens + Design System Implementation + Google Auth**
 
-We have successfully implemented a comprehensive MarketSnap design system and redesigned the authentication experience.
+We have successfully implemented a comprehensive MarketSnap design system and redesigned the authentication experience. Currently troubleshooting Google Auth integration.
 
 1. **Design System Implementation** ✅ **COMPLETED**
    - ✅ Created comprehensive theme system based on `snap_design.md`
@@ -39,56 +39,82 @@ We have successfully implemented a comprehensive MarketSnap design system and re
    - ✅ Network security configuration for Android cleartext HTTP to emulators
    - ✅ iOS-specific crash prevention and fallback mechanisms
 
-5. **Profile Form Implementation** ✅ **COMPLETED**
+5. **Google Authentication Integration** 🔄 **IN PROGRESS**
+   - ✅ Google Sign-In dependencies added (`firebase_auth: ^5.6.0`, `google_sign_in: ^6.2.1`)
+   - ✅ `signInWithGoogle()` method implemented in AuthService
+   - ✅ Google Sign-In button integrated into AuthWelcomeScreen with MarketSnap design
+   - ✅ Firebase Console Google Auth provider enabled
+   - ✅ SHA-1 fingerprint identified: `[REDACTED FOR SECURITY]`
+   - 🔄 **CURRENT ISSUE:** ApiException: 10 (DEVELOPER_ERROR) - SHA-1 not registered in Firebase Console
+   - 📋 **NEXT:** Replace google-services.json and GoogleService-Info.plist with updated versions from Firebase Console
+
+6. **Profile Form Implementation** ✅ **COMPLETED**
    - ✅ Vendor profile creation/editing (stall name, market city, avatar upload)
    - ✅ Offline caching validation in Hive
    - ✅ Apply new design system to profile screens
 
 ## Recent Changes
 
-- **✅ Comprehensive Design System:** Implemented complete MarketSnap design system with colors, typography, spacing, and component library based on `snap_design.md`
-- **✅ Login Screen Redesign:** Redesigned AuthWelcomeScreen to match reference images with basket character icon and farmers-market aesthetic  
-- **✅ Asset Integration:** Added reference images and basket icon to assets with proper organization
-- **✅ Theme System:** Created light/dark theme support with automatic system switching
-- **✅ Auth Screen Enhancement:** Updated all authentication screens to use new design system while maintaining functionality
-- **✅ Component Library:** Built comprehensive MarketSnap component library with branded buttons, inputs, cards, and status messages
-- **✅ Profile Form Implementation:** Complete vendor profile form with stall name, market city, avatar upload using MarketSnap design system
-- **✅ Offline Profile Validation:** Fixed DateTime serialization issue and verified comprehensive Hive caching with 9/9 tests passing
-- **✅ Profile Navigation Integration:** Complete authentication flow with profile completion check and seamless navigation
+- **✅ Google Auth Implementation:** Added Google Sign-In as third authentication option with proper error handling and UI integration
+- **✅ Debug SHA-1 Identification:** Found debug keystore SHA-1 fingerprint for Firebase Console registration
+- **✅ Firebase Console Configuration:** Enabled Google Auth provider in Firebase Console
+- **🔄 Configuration Files:** Downloaded updated google-services.json and GoogleService-Info.plist from Firebase Console
+- **✅ Error Analysis:** Identified ApiException: 10 as missing SHA-1 registration issue
+- **✅ Production Security Review:** Discovered current GitHub Actions uses debug keystore for release builds (security issue)
 
 ## Current Status
 
-**Design System & Authentication Complete:**
-- ✅ Android: All auth screens using MarketSnap design system with cornsilk backgrounds and market blue CTAs
-- ✅ iOS: All auth screens updated with new design system; phone auth disabled in simulator with user-friendly messaging  
-- ✅ Comprehensive error handling and user feedback with branded components
-- ✅ Clean architecture with proper separation of concerns maintained
-- ✅ Asset organization with basket icon and reference images properly integrated
-- ✅ Cross-platform compatibility verified with platform-specific handling
+**Google Auth Troubleshooting:**
+- ✅ Code Implementation: Google Sign-In fully implemented with proper error handling
+- ✅ Dependencies: All required packages installed and configured
+- ✅ Firebase Console: Google Auth provider enabled, SHA-1 fingerprint identified
+- 🔄 **CURRENT STEP:** Replace configuration files with updated versions from Firebase Console
+- 📋 **NEXT:** Test Google Sign-In functionality in emulator
+- ⚠️ **SECURITY ISSUE:** Production builds currently use debug keystore (needs release keystore setup)
+
+**File Replacement Required:**
+- 📱 **Android:** Replace `android/app/google-services.json` with downloaded version
+- 🍎 **iOS:** Replace `ios/Runner/GoogleService-Info.plist` with downloaded version
 
 ## Next Steps
 
-1. ✅ ~~Complete authentication screens implementation~~ **DONE**
-2. ✅ ~~Test authentication flow on both platforms with Firebase emulators~~ **DONE**
-3. ✅ ~~Implement comprehensive design system based on snap_design.md~~ **DONE**
-4. ✅ ~~Redesign login screen to match reference images~~ **DONE**
-5. ✅ ~~Implement profile form with new design system (stall name, market city, avatar upload)~~ **DONE**
-6. ✅ ~~Validate offline caching of profile in Hive~~ **DONE**
+1. ✅ ~~Implement Google Auth code~~ **DONE**
+2. ✅ ~~Enable Google Auth in Firebase Console~~ **DONE** 
+3. ✅ ~~Identify debug SHA-1 fingerprint~~ **DONE**
+4. 🔄 **CURRENT:** Replace Firebase configuration files with updated versions
+5. 📋 **NEXT:** Test Google Sign-In in emulator after configuration update
+6. 📋 **NEXT:** Set up production release keystore for GitHub Actions
 7. 📋 **NEXT:** Apply design system to camera capture screens
-8. 📋 **NEXT:** Begin media capture UI development with MarketSnap branding
+
+## Critical Issues Identified
+
+### **Production Security Issue:**
+- **Problem:** GitHub Actions builds release APKs with debug keystore
+- **Risk:** Debug keystores are public and insecure
+- **Impact:** Google Play Store will reject debug-signed apps
+- **Solution Required:** Create production release keystore and update GitHub Actions pipeline
+
+### **Google Auth Configuration:**
+- **Problem:** ApiException: 10 (DEVELOPER_ERROR) 
+- **Cause:** SHA-1 fingerprint not registered in Firebase Console
+- **Solution:** Replace configuration files with updated versions from Firebase Console
 
 ---
 
 ## Technical Implementation Details
 
-- **Design System:** Complete theme system with `AppTheme`, `AppColors`, `AppTypography`, and `AppSpacing` classes
-- **Component Library:** `MarketSnapComponents` with branded buttons, text fields, cards, status messages, and loading indicators
-- **AuthService:** Comprehensive Firebase Auth service with phone and email support (unchanged functionality)
-- **Cross-Platform Handling:** Platform-specific logic for iOS emulator limitations maintained
-- **Network Security:** Android network security config allows Firebase emulator connections
-- **Error Handling:** Enhanced user-friendly error messages using branded status message components
-- **UI/UX:** MarketSnap design system with farmers-market aesthetic, cornsilk backgrounds, and market blue CTAs
-- **Assets:** Organized asset structure with basket icon and reference images properly integrated
+- **Google Auth Service:** `signInWithGoogle()` method in AuthService with proper error handling
+- **UI Integration:** Google Sign-In button in AuthWelcomeScreen using MarketSnap design system
+- **Error Handling:** Comprehensive error messages for Google Sign-In failures
+- **Cross-Platform:** Works on both Android and iOS (bypasses Firebase Auth emulator as expected)
+- **Security:** Uses secure Google OAuth2 flow via google_sign_in package
+
+## Known Issues / Notes
+
+- **Google Auth:** Currently failing with ApiException: 10 due to missing SHA-1 registration
+- **Production Security:** Release builds use debug keystore (critical security issue)
+- **Emulator Behavior:** Google Sign-In bypasses Firebase Auth emulator (expected behavior)
+- **Configuration Files:** Need to be replaced with updated versions from Firebase Console
 
 ## Project Status Overview
 
