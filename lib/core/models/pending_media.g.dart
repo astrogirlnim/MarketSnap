@@ -8,7 +8,7 @@ part of 'pending_media.dart';
 
 class PendingMediaItemAdapter extends TypeAdapter<PendingMediaItem> {
   @override
-  final int typeId = 1;
+  final int typeId = 3;
 
   @override
   PendingMediaItem read(BinaryReader reader) {

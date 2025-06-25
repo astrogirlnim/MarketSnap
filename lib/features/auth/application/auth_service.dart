@@ -777,14 +777,21 @@ class AuthService {
             );
             debugPrint('[AuthService] Platform: Android');
             debugPrint('[AuthService] Package name: com.example.marketsnap');
-            
+
             // In debug mode, show expected SHA-1 from environment
             if (kDebugMode) {
-              final expectedSha1 = dotenv.env['ANDROID_DEBUG_SHA1'] ?? 'Not configured';
-              debugPrint('[AuthService] Expected debug SHA-1: ${expectedSha1.isNotEmpty ? expectedSha1 : "Not set in .env file"}');
-              debugPrint('[AuthService] Note: Ensure SHA-1 is registered in Firebase Console');
+              final expectedSha1 =
+                  dotenv.env['ANDROID_DEBUG_SHA1'] ?? 'Not configured';
+              debugPrint(
+                '[AuthService] Expected debug SHA-1: ${expectedSha1.isNotEmpty ? expectedSha1 : "Not set in .env file"}',
+              );
+              debugPrint(
+                '[AuthService] Note: Ensure SHA-1 is registered in Firebase Console',
+              );
             } else {
-              debugPrint('[AuthService] Production mode - SHA-1 configured via Firebase Console');
+              debugPrint(
+                '[AuthService] Production mode - SHA-1 configured via Firebase Console',
+              );
             }
 
             throw Exception(

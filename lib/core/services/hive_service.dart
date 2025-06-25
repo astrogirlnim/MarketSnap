@@ -43,34 +43,81 @@ class HiveService {
     final cipher = HiveAesCipher(encryptionKey);
     debugPrint('[HiveService] Encryption key retrieved, cipher created.');
 
-    // 4. Open encrypted boxes
-    pendingMediaQueueBox = await Hive.openBox<PendingMediaItem>(
-      pendingMediaQueueBoxName,
-      encryptionCipher: cipher,
-    );
-    debugPrint('[HiveService] "$pendingMediaQueueBoxName" box opened.');
-
-    userSettingsBox = await Hive.openBox<UserSettings>(
-      userSettingsBoxName,
-      encryptionCipher: cipher,
-    );
-    debugPrint('[HiveService] "$userSettingsBoxName" box opened.');
-
-    vendorProfileBox = await Hive.openBox<VendorProfile>(
-      vendorProfileBoxName,
-      encryptionCipher: cipher,
-    );
-    debugPrint('[HiveService] "$vendorProfileBoxName" box opened.');
-
-    // Ensure user settings has a default value if the box is new
-    if (userSettingsBox.isEmpty) {
-      debugPrint(
-        '[HiveService] UserSettings box is empty. Seeding with default settings.',
+    try {
+      // 4. Open encrypted boxes with error handling for corrupted data
+      await _openBoxWithRecovery<PendingMediaItem>(
+        pendingMediaQueueBoxName,
+        cipher,
+        (box) => pendingMediaQueueBox = box,
       );
-      await userSettingsBox.put('settings', UserSettings());
-    }
+      debugPrint('[HiveService] "$pendingMediaQueueBoxName" box opened.');
 
-    debugPrint('[HiveService] Hive initialization complete.');
+      await _openBoxWithRecovery<UserSettings>(
+        userSettingsBoxName,
+        cipher,
+        (box) => userSettingsBox = box,
+      );
+      debugPrint('[HiveService] "$userSettingsBoxName" box opened.');
+
+      await _openBoxWithRecovery<VendorProfile>(
+        vendorProfileBoxName,
+        cipher,
+        (box) => vendorProfileBox = box,
+      );
+      debugPrint('[HiveService] "$vendorProfileBoxName" box opened.');
+
+      // Ensure user settings has a default value if the box is new
+      if (userSettingsBox.isEmpty) {
+        debugPrint(
+          '[HiveService] UserSettings box is empty. Seeding with default settings.',
+        );
+        await userSettingsBox.put('settings', UserSettings());
+      }
+
+      debugPrint('[HiveService] Hive initialization complete.');
+    } catch (e) {
+      debugPrint('[HiveService] Error during Hive initialization: $e');
+      // If we still get errors after recovery attempts, we have a more serious issue
+      rethrow;
+    }
+  }
+
+  /// Opens a Hive box with recovery mechanism for corrupted data
+  Future<void> _openBoxWithRecovery<T>(
+    String boxName,
+    HiveAesCipher cipher,
+    void Function(Box<T>) assignBox,
+  ) async {
+    try {
+      final box = await Hive.openBox<T>(boxName, encryptionCipher: cipher);
+      assignBox(box);
+    } catch (e) {
+      debugPrint('[HiveService] Error opening box "$boxName": $e');
+      debugPrint(
+        '[HiveService] Attempting to recover by deleting corrupted box "$boxName"',
+      );
+
+      try {
+        // Close the corrupted box if it's partially open
+        if (Hive.isBoxOpen(boxName)) {
+          await Hive.box(boxName).close();
+        }
+
+        // Delete the corrupted box
+        await Hive.deleteBoxFromDisk(boxName);
+        debugPrint('[HiveService] Corrupted box "$boxName" deleted');
+
+        // Try to open a fresh box
+        final box = await Hive.openBox<T>(boxName, encryptionCipher: cipher);
+        assignBox(box);
+        debugPrint('[HiveService] Fresh box "$boxName" opened successfully');
+      } catch (recoveryError) {
+        debugPrint(
+          '[HiveService] Failed to recover box "$boxName": $recoveryError',
+        );
+        rethrow;
+      }
+    }
   }
 
   void _registerAdapters() {
@@ -94,10 +141,10 @@ class HiveService {
       debugPrint('[HiveService] MediaTypeAdapter registered with typeId: 2');
     }
 
-    if (!Hive.isAdapterRegistered(1)) {
+    if (!Hive.isAdapterRegistered(3)) {
       Hive.registerAdapter(PendingMediaItemAdapter());
       debugPrint(
-        '[HiveService] PendingMediaItemAdapter registered with typeId: 1',
+        '[HiveService] PendingMediaItemAdapter registered with typeId: 3',
       );
     }
 
