@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
@@ -770,13 +771,21 @@ class AuthService {
               '[AuthService] 4. Google Play Services on emulator needs update',
             );
 
-            // Try to get more information about the current configuration
+            // Log configuration details for debugging (without exposing sensitive data)
             debugPrint(
-              '[AuthService] Current app package: com.example.marketsnap',
+              '[AuthService] Google Sign-In configuration error details:',
             );
-            debugPrint(
-              '[AuthService] Expected SHA-1: [REDACTED FOR SECURITY] // Do not log sensitive fingerprints',
-            );
+            debugPrint('[AuthService] Platform: Android');
+            debugPrint('[AuthService] Package name: com.example.marketsnap');
+            
+            // In debug mode, show expected SHA-1 from environment
+            if (kDebugMode) {
+              final expectedSha1 = dotenv.env['ANDROID_DEBUG_SHA1'] ?? 'Not configured';
+              debugPrint('[AuthService] Expected debug SHA-1: ${expectedSha1.isNotEmpty ? expectedSha1 : "Not set in .env file"}');
+              debugPrint('[AuthService] Note: Ensure SHA-1 is registered in Firebase Console');
+            } else {
+              debugPrint('[AuthService] Production mode - SHA-1 configured via Firebase Console');
+            }
 
             throw Exception(
               'Google Sign-In configuration error. Please check that:\n'

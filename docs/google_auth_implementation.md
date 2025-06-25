@@ -275,3 +275,38 @@ buildTypes {
 **Current Status:**
 - All authentication methods (Google, email, phone) are supported in the emulator environment with the above configuration.
 - Sign out and re-authentication flows are fully testable in local dev. 
+
+## Environment-Based SHA-1 Management
+
+### **✅ Secure Development Configuration:**
+- **Environment Variables:** SHA-1 fingerprints are now managed via `.env` file for development
+- **Debug Mode Only:** SHA-1 values are only logged in debug mode for troubleshooting
+- **Production Security:** No sensitive fingerprints are logged or stored in production code
+- **Configuration Variables:**
+  - `ANDROID_DEBUG_SHA1`: Debug keystore SHA-1 for development
+  - `ANDROID_RELEASE_SHA1`: Release keystore SHA-1 for production builds
+
+### **🔧 Development Setup:**
+1. **Generate Debug SHA-1:**
+   ```bash
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   ```
+
+2. **Add to Environment File:**
+   ```env
+   # .env file (never commit this)
+   ANDROID_DEBUG_SHA1=your_debug_sha1_here
+   ANDROID_RELEASE_SHA1=your_release_sha1_here
+   ```
+
+3. **Register in Firebase Console:**
+   - Add debug SHA-1 to Firebase Console for development
+   - Add release SHA-1 for production builds
+   - Download updated configuration files
+
+### **🔒 Security Implementation:**
+- ✅ **No hardcoded fingerprints** in source code
+- ✅ **Environment-based configuration** for all sensitive values
+- ✅ **Debug-only logging** of SHA-1 values for troubleshooting
+- ✅ **Production mode protection** - no sensitive data logged
+- ✅ **Comprehensive documentation** for secure setup 
