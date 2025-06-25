@@ -6,6 +6,7 @@ import '../../application/camera_service.dart';
 import 'media_review_screen.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../auth/application/auth_service.dart';
+import '../../../../shared/presentation/widgets/version_display_widget.dart';
 
 /// Custom painter for drawing viewfinder grid overlay
 class ViewfinderGridPainter extends CustomPainter {
@@ -1202,6 +1203,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           if (!_isInitializing && _errorMessage == null) ...[
             _buildTopControls(),
             _buildCameraControls(),
+            
+            // Subtle version display in bottom left corner
+            const CompactVersionDisplay(
+              position: Alignment.bottomLeft,
+            ),
           ],
         ],
       ),

@@ -226,6 +226,58 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo $GOOGLE_SERVICES_JSON > android/app/google-services.json
 
+      - name: Update version number automatically
+        run: |
+          echo "📋 Updating version number for release..."
+          
+          # Get current version from pubspec.yaml
+          CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          echo "Current base version: $CURRENT_VERSION"
+          
+          # Generate comprehensive build number with GitHub run number and short commit SHA
+          GITHUB_RUN_NUM=${{ github.run_number }}
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+          
+          # Create build number: run_number.short_sha
+          NEW_BUILD_NUMBER="${GITHUB_RUN_NUM}.${SHORT_SHA}"
+          echo "New build number: $NEW_BUILD_NUMBER"
+          
+          # Create new version string with comprehensive info
+          NEW_VERSION="${CURRENT_VERSION}+${NEW_BUILD_NUMBER}"
+          echo "New complete version: $NEW_VERSION"
+          
+          # Update pubspec.yaml with new version
+          sed -i "s/^version:.*/version: $NEW_VERSION/" pubspec.yaml
+          
+          echo "✅ Version updated to: $NEW_VERSION"
+          echo "📊 Version components:"
+          echo "  • Base version: $CURRENT_VERSION"
+          echo "  • Build run: $GITHUB_RUN_NUM"
+          echo "  • Commit SHA: $SHORT_SHA"
+          echo "  • Full build number: $NEW_BUILD_NUMBER"
+          
+          # Show the updated version line for verification
+          grep "^version:" pubspec.yaml
+          
+          # Create version info file for deployment reference
+          cat > version_info.txt << EOF
+          MarketSnap Release Information
+          =============================
+          Version: $NEW_VERSION
+          Base Version: $CURRENT_VERSION
+          Build Number: $NEW_BUILD_NUMBER
+          GitHub Run: $GITHUB_RUN_NUM
+          Commit SHA: $COMMIT_SHA
+          Short SHA: $SHORT_SHA
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Branch: ${{ github.ref_name }}
+          Workflow: ${{ github.workflow }}
+          EOF
+          
+          echo "📄 Version info file created:"
+          cat version_info.txt
+
       - name: Install Flutter dependencies
         run: |
           echo "📦 Installing Flutter dependencies with caching..."
@@ -297,6 +349,7 @@ jobs:
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           groups: testers
           file: build/app/outputs/flutter-apk/app-release.apk
+          releaseNotesFile: version_info.txt
 
   deploy_backend:
     name: Deploy Firebase Backend

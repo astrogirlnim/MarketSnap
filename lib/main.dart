@@ -18,6 +18,7 @@ import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
 import 'features/profile/application/profile_service.dart';
 import 'features/profile/presentation/screens/vendor_profile_screen.dart';
+import 'shared/presentation/widgets/version_display_widget.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -471,6 +472,13 @@ class DevelopmentCameraWrapper extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+
+          // Debug version info in bottom left corner
+          const Positioned(
+            bottom: 20,
+            left: 20,
+            child: DebugVersionDisplay(),
           ),
         ],
       ),
