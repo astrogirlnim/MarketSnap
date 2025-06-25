@@ -243,3 +243,35 @@ buildTypes {
 - 🔄 Configuration file replacement in progress
 - 🚨 Production security issue requires immediate attention
 - 📋 End-to-end testing pending configuration fixes 
+
+## Emulator Configuration & Troubleshooting (2024-07)
+
+### Emulator Ports
+- **Auth:** 9099
+- **Firestore:** 8081 (changed from 8080 to avoid port conflict)
+- **Storage:** 9199
+
+### Common Issues & Fixes
+- **Port 8080 in use:** Change Firestore emulator port to 8081 in `firebase.json`.
+- **Google sign-in fails with `Failed to connect to /10.0.2.2:9099`:** Ensure emulators are running and app is restarted after port changes.
+- **Sign out spinner stuck:** Restart both emulators and Flutter app after port changes.
+
+### Sign Out Improvements
+- Sign out button added to Camera Preview screen (top-right corner)
+- Confirmation dialog, loading state, and error handling added
+
+### Emulator Support for All Auth Methods
+- **Google Sign-In:** Works with Auth emulator on port 9099
+- **Email Sign-In:** Supported by Auth emulator (magic link flows work in emulator)
+- **Phone Number Sign-In:** Supported by Auth emulator (SMS codes are displayed in emulator UI at http://localhost:4000/auth)
+
+### Best Practices
+- Always restart both emulators and app after changing emulator ports
+- Check emulator UI for test phone/SMS codes
+- Use `firebase.json` to configure all emulator ports
+
+---
+
+**Current Status:**
+- All authentication methods (Google, email, phone) are supported in the emulator environment with the above configuration.
+- Sign out and re-authentication flows are fully testable in local dev. 

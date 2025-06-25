@@ -140,5 +140,18 @@ We have successfully implemented a comprehensive MarketSnap design system and re
 - All authentication flows tested and working with new design system
 - Asset organization completed with proper file structure for icons and backgrounds
 
+## 2024-07 Emulator Auth Flow Update
+
+- Firestore emulator port changed to 8081 to resolve port conflict
+- All Firebase emulators (auth, firestore, storage) running on:
+  - Auth: 9099
+  - Firestore: 8081
+  - Storage: 9199
+- Google, email, and phone number sign-in are all supported in the emulator environment
+- Sign out flow improved: button added to camera screen, with confirmation and error handling
+- Troubleshooting: Always restart both emulators and app after port changes to avoid stuck sign out or failed sign in
+- Emulator UI at http://localhost:4000/ shows test phone/SMS codes for phone auth
+- All flows tested and working as of July 2024
+
 
 

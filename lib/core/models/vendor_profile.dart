@@ -42,6 +42,14 @@ class VendorProfile extends HiveObject {
   @HiveField(8)
   int lastUpdatedMillis;
 
+  /// Phone number for account linking and contact
+  @HiveField(9)
+  String? phoneNumber;
+
+  /// Email address for account linking and contact
+  @HiveField(10)
+  String? email;
+
   VendorProfile({
     required this.uid,
     required this.displayName,
@@ -51,6 +59,8 @@ class VendorProfile extends HiveObject {
     this.allowLocation = false,
     this.localAvatarPath,
     this.needsSync = true,
+    this.phoneNumber,
+    this.email,
     DateTime? lastUpdated,
   }) : lastUpdatedMillis = (lastUpdated ?? DateTime.now()).millisecondsSinceEpoch;
 
@@ -66,6 +76,8 @@ class VendorProfile extends HiveObject {
       marketCity: data['marketCity'] ?? '',
       avatarURL: data['avatarURL'],
       allowLocation: data['allowLocation'] ?? false,
+      phoneNumber: data['phoneNumber'],
+      email: data['email'],
       needsSync: false, // Data from Firestore is already synced
       lastUpdated: DateTime.now(),
     );
@@ -79,6 +91,24 @@ class VendorProfile extends HiveObject {
       'marketCity': marketCity,
       'avatarURL': avatarURL,
       'allowLocation': allowLocation,
+      'phoneNumber': phoneNumber,
+      'email': email,
+      'lastUpdated': lastUpdated.toIso8601String(),
+    };
+  }
+
+  /// Converts VendorProfile to a Map for general use
+  Map<String, dynamic> toMap() {
+    return {
+      'uid': uid,
+      'displayName': displayName,
+      'stallName': stallName,
+      'marketCity': marketCity,
+      'avatarURL': avatarURL,
+      'allowLocation': allowLocation,
+      'phoneNumber': phoneNumber,
+      'email': email,
+      'needsSync': needsSync,
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -93,6 +123,8 @@ class VendorProfile extends HiveObject {
     bool? allowLocation,
     String? localAvatarPath,
     bool? needsSync,
+    String? phoneNumber,
+    String? email,
     DateTime? lastUpdated,
   }) {
     return VendorProfile(
@@ -104,6 +136,8 @@ class VendorProfile extends HiveObject {
       allowLocation: allowLocation ?? this.allowLocation,
       localAvatarPath: localAvatarPath ?? this.localAvatarPath,
       needsSync: needsSync ?? this.needsSync,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      email: email ?? this.email,
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
   }
@@ -118,6 +152,6 @@ class VendorProfile extends HiveObject {
 
   @override
   String toString() {
-    return 'VendorProfile(uid: $uid, displayName: $displayName, stallName: $stallName, marketCity: $marketCity, avatarURL: $avatarURL, allowLocation: $allowLocation, needsSync: $needsSync)';
+    return 'VendorProfile(uid: $uid, displayName: $displayName, stallName: $stallName, marketCity: $marketCity, phoneNumber: $phoneNumber, email: $email, avatarURL: $avatarURL, allowLocation: $allowLocation, needsSync: $needsSync)';
   }
 } 

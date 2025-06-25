@@ -25,13 +25,15 @@ class VendorProfileAdapter extends TypeAdapter<VendorProfile> {
       allowLocation: fields[5] as bool,
       localAvatarPath: fields[6] as String?,
       needsSync: fields[7] as bool,
+      phoneNumber: fields[9] as String?,
+      email: fields[10] as String?,
     )..lastUpdatedMillis = fields[8] as int;
   }
 
   @override
   void write(BinaryWriter writer, VendorProfile obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.uid)
       ..writeByte(1)
@@ -49,7 +51,11 @@ class VendorProfileAdapter extends TypeAdapter<VendorProfile> {
       ..writeByte(7)
       ..write(obj.needsSync)
       ..writeByte(8)
-      ..write(obj.lastUpdatedMillis);
+      ..write(obj.lastUpdatedMillis)
+      ..writeByte(9)
+      ..write(obj.phoneNumber)
+      ..writeByte(10)
+      ..write(obj.email);
   }
 
   @override

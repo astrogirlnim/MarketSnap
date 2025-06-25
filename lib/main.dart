@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
+import 'core/services/account_linking_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +26,7 @@ late final BackgroundSyncService backgroundSyncService;
 late final AuthService authService;
 late final LutFilterService lutFilterService;
 late final ProfileService profileService;
+late final AccountLinkingService accountLinkingService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,7 +73,7 @@ Future<void> main() async {
       }
 
       try {
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8081);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
@@ -187,6 +189,17 @@ Future<void> main() async {
     debugPrint('[main] Error initializing LUT filter service: $e');
   }
 
+  // Initialize account linking service
+  try {
+    accountLinkingService = AccountLinkingService(
+      authService: authService,
+      profileService: profileService,
+    );
+    debugPrint('[main] Account linking service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing account linking service: $e');
+  }
+
   debugPrint('[main] Firebase & App Check initialized.');
 
   runApp(const MyApp());
@@ -213,6 +226,20 @@ class MyApp extends StatelessWidget {
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
+  /// Handles post-authentication flow including account linking
+  Future<void> _handlePostAuthenticationFlow() async {
+    debugPrint('[AuthWrapper] Handling post-authentication flow');
+    
+    try {
+      // Handle account linking after sign-in
+      await accountLinkingService.handleSignInAccountLinking();
+      debugPrint('[AuthWrapper] Account linking flow completed');
+    } catch (e) {
+      debugPrint('[AuthWrapper] Account linking failed: $e');
+      // Don't block the flow if account linking fails
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -229,30 +256,50 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is authenticated - check profile completion
+        // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint(
             '[AuthWrapper] User authenticated: ${snapshot.data!.uid}',
           );
           
-          // Check if user has a complete profile
-          if (profileService.hasCompleteProfile()) {
-            debugPrint('[AuthWrapper] Profile complete - redirecting to camera');
-            return const CameraPreviewScreen();
-          } else {
-            debugPrint('[AuthWrapper] Profile incomplete - redirecting to profile setup');
-            return VendorProfileScreen(
-              profileService: profileService,
-              onProfileComplete: () {
-                debugPrint('[AuthWrapper] Profile completed - refreshing auth wrapper');
-                // Trigger a rebuild by navigating back to main screen
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const MyApp()),
-                  (route) => false,
+          return FutureBuilder<void>(
+            future: _handlePostAuthenticationFlow(),
+            builder: (context, authFuture) {
+              if (authFuture.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Setting up your account...'),
+                      ],
+                    ),
+                  ),
                 );
-              },
-            );
-          }
+              }
+              
+              // Check if user has a complete profile
+              if (profileService.hasCompleteProfile()) {
+                debugPrint('[AuthWrapper] Profile complete - redirecting to camera');
+                return const CameraPreviewScreen();
+              } else {
+                debugPrint('[AuthWrapper] Profile incomplete - redirecting to profile setup');
+                return VendorProfileScreen(
+                  profileService: profileService,
+                  onProfileComplete: () {
+                    debugPrint('[AuthWrapper] Profile completed - refreshing auth wrapper');
+                    // Trigger a rebuild by navigating back to main screen
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MyApp()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+            },
+          );
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode

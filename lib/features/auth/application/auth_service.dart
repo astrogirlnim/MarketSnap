@@ -289,11 +289,26 @@ class AuthService {
     debugPrint('[AuthService] Signing out user: ${currentUser?.uid}');
 
     try {
-      await _firebaseAuth.signOut();
+      // Add timeout to prevent infinite spinning
+      await _firebaseAuth.signOut().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('[AuthService] Sign out timed out after 10 seconds');
+          throw Exception('Sign out operation timed out');
+        },
+      );
       debugPrint('[AuthService] Sign out successful');
     } catch (e) {
       debugPrint('[AuthService] Sign out failed: $e');
-      throw Exception('Failed to sign out. Please try again.');
+      
+      // Provide more specific error handling
+      if (e.toString().contains('timeout') || e.toString().contains('Timeout')) {
+        throw Exception('Sign out timed out. Please check your connection and try again.');
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        throw Exception('Network error during sign out. Please check your connection.');
+      } else {
+        throw Exception('Failed to sign out: ${e.toString()}');
+      }
     }
   }
 
@@ -324,6 +339,141 @@ class AuthService {
       debugPrint('[AuthService] Account deletion error: $e');
       throw Exception('Failed to delete account. Please try again.');
     }
+  }
+
+  /// Links the current user account with a phone number credential
+  Future<UserCredential> linkWithPhoneNumber(String verificationId, String smsCode) async {
+    debugPrint('[AuthService] Linking current account with phone number');
+    
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('No user is currently signed in');
+    }
+
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+
+      debugPrint('[AuthService] Attempting to link phone credential...');
+      final result = await user.linkWithCredential(credential);
+      
+      debugPrint('[AuthService] Phone number linked successfully');
+      return result;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthService] Phone linking failed: ${e.code} - ${e.message}');
+      
+      switch (e.code) {
+        case 'provider-already-linked':
+          throw Exception('This account is already linked with a phone number.');
+        case 'invalid-verification-code':
+          throw Exception('The verification code is invalid. Please check and try again.');
+        case 'invalid-verification-id':
+          throw Exception('The verification session has expired. Please request a new code.');
+        case 'credential-already-in-use':
+          throw Exception('This phone number is already associated with another account.');
+        default:
+          throw Exception('Failed to link phone number: ${e.message}');
+      }
+    } catch (e) {
+      debugPrint('[AuthService] Phone linking error: $e');
+      throw Exception('Failed to link phone number: $e');
+    }
+  }
+
+  /// Links the current user account with Google credential
+  Future<UserCredential> linkWithGoogle() async {
+    debugPrint('[AuthService] Linking current account with Google');
+    
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('No user is currently signed in');
+    }
+
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: <String>['email', 'profile'],
+      );
+      
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        throw Exception('Google sign-in was cancelled');
+      }
+      
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      debugPrint('[AuthService] Attempting to link Google credential...');
+      final result = await user.linkWithCredential(credential);
+      
+      debugPrint('[AuthService] Google account linked successfully');
+      return result;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthService] Google linking failed: ${e.code} - ${e.message}');
+      
+      switch (e.code) {
+        case 'provider-already-linked':
+          throw Exception('This account is already linked with Google.');
+        case 'credential-already-in-use':
+          throw Exception('This Google account is already associated with another user.');
+        case 'email-already-in-use':
+          throw Exception('The email address is already in use by another account.');
+        default:
+          throw Exception('Failed to link Google account: ${e.message}');
+      }
+    } catch (e) {
+      debugPrint('[AuthService] Google linking error: $e');
+      throw Exception('Failed to link Google account: $e');
+    }
+  }
+
+  /// Gets the user's phone number from their providers
+  String? getUserPhoneNumber() {
+    final user = currentUser;
+    if (user == null) return null;
+
+    // Check if user has phone provider
+    for (final provider in user.providerData) {
+      if (provider.providerId == 'phone' && provider.phoneNumber != null) {
+        return provider.phoneNumber;
+      }
+    }
+    return null;
+  }
+
+  /// Gets the user's email from their providers
+  String? getUserEmail() {
+    final user = currentUser;
+    if (user == null) return null;
+
+    // Primary email
+    if (user.email != null) return user.email;
+
+    // Check providers for email
+    for (final provider in user.providerData) {
+      if (provider.email != null) {
+        return provider.email;
+      }
+    }
+    return null;
+  }
+
+  /// Checks if the current user has multiple authentication providers linked
+  bool hasMultipleProviders() {
+    final user = currentUser;
+    if (user == null) return false;
+    return user.providerData.length > 1;
+  }
+
+  /// Gets list of authentication providers for the current user
+  List<String> getUserProviders() {
+    final user = currentUser;
+    if (user == null) return [];
+    return user.providerData.map((provider) => provider.providerId).toList();
   }
 
   // ================================
