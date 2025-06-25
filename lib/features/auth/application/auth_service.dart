@@ -149,7 +149,7 @@ class AuthService {
     required String verificationId,
     required String smsCode,
   }) async {
-    debugPrint('[AuthService] Verifying OTP: $smsCode');
+    debugPrint('[AuthService] Verifying OTP: $smsCode with verification ID: $verificationId');
 
     try {
       // Create credential from verification ID and SMS code
@@ -158,13 +158,31 @@ class AuthService {
         smsCode: smsCode,
       );
 
+      debugPrint('[AuthService] Phone credential created successfully');
+
       // Sign in with the credential
-      return await signInWithPhoneCredential(credential);
+      final result = await signInWithPhoneCredential(credential);
+      debugPrint('[AuthService] OTP verification successful for user: ${result.user?.uid}');
+      return result;
     } on FirebaseAuthException catch (e) {
       debugPrint(
         '[AuthService] OTP verification failed: ${e.code} - ${e.message}',
       );
-      throw Exception(_getPhoneAuthErrorMessage(e));
+      
+      // Enhanced error handling for specific OTP verification errors
+      switch (e.code) {
+        case 'invalid-verification-code':
+          debugPrint('[AuthService] Invalid verification code provided');
+          throw Exception('The verification code is invalid. Please check the code and try again.');
+        case 'invalid-verification-id':
+          debugPrint('[AuthService] Invalid or expired verification ID');
+          throw Exception('The verification session has expired. Please request a new code.');
+        case 'session-expired':
+          debugPrint('[AuthService] Verification session expired');
+          throw Exception('The verification session has expired. Please request a new code.');
+        default:
+          throw Exception(_getPhoneAuthErrorMessage(e));
+      }
     } catch (e) {
       debugPrint('[AuthService] OTP verification error: $e');
       throw Exception('Failed to verify OTP. Please try again.');
