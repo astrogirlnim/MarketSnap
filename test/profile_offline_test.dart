@@ -19,7 +19,10 @@ class MockPathProviderPlatform extends Fake
 
 /// Mock secure storage service for testing
 class MockSecureStorageService implements SecureStorageService {
-  final List<int> _mockKey = List.generate(32, (index) => index); // Mock 256-bit key
+  final List<int> _mockKey = List.generate(
+    32,
+    (index) => index,
+  ); // Mock 256-bit key
 
   @override
   Future<List<int>> getHiveEncryptionKey() async {
@@ -40,10 +43,10 @@ void main() {
     setUpAll(() async {
       // Set up mock path provider
       PathProviderPlatform.instance = MockPathProviderPlatform();
-      
+
       // Initialize Hive for testing in unique directory
       await Hive.initFlutter('/tmp/test_hive_profile');
-      
+
       // Clear any existing test boxes
       await Hive.deleteBoxFromDisk('test_vendorProfile');
       await Hive.deleteBoxFromDisk('test_userSettings');
@@ -53,17 +56,17 @@ void main() {
     setUp(() async {
       // Clear any registered adapters before each test
       Hive.resetAdapters();
-      
+
       mockSecureStorage = MockSecureStorageService();
       hiveService = HiveService(mockSecureStorage);
-      
+
       // Initialize HiveService for this test
       await hiveService.init();
     });
 
     tearDown(() async {
       await hiveService.close();
-      
+
       // Clean up test boxes
       try {
         await Hive.deleteBoxFromDisk('vendorProfile');
@@ -117,10 +120,10 @@ void main() {
 
       // Act - Save profile
       await hiveService.saveVendorProfile(profile);
-      
+
       // Simulate app restart by closing and reopening Hive
       await hiveService.close();
-      
+
       // Reinitialize HiveService (simulating app restart)
       final newHiveService = HiveService(mockSecureStorage);
       await newHiveService.init();
@@ -131,7 +134,10 @@ void main() {
       expect(retrievedProfile!.displayName, equals('Jane Market'));
       expect(retrievedProfile.stallName, equals('Organic Delights'));
       expect(retrievedProfile.marketCity, equals('Shelbyville'));
-      expect(retrievedProfile.avatarURL, equals('https://example.com/avatar.jpg'));
+      expect(
+        retrievedProfile.avatarURL,
+        equals('https://example.com/avatar.jpg'),
+      );
       expect(retrievedProfile.allowLocation, equals(false));
 
       await newHiveService.close();
@@ -149,7 +155,7 @@ void main() {
 
       // Act - Save initial profile
       await hiveService.saveVendorProfile(initialProfile);
-      
+
       // Update profile
       final updatedProfile = initialProfile.copyWith(
         stallName: 'New Farm Stand',
@@ -162,7 +168,10 @@ void main() {
       final retrievedProfile = hiveService.getVendorProfile(uid);
       expect(retrievedProfile, isNotNull);
       expect(retrievedProfile!.stallName, equals('New Farm Stand'));
-      expect(retrievedProfile.avatarURL, equals('https://example.com/new_avatar.jpg'));
+      expect(
+        retrievedProfile.avatarURL,
+        equals('https://example.com/new_avatar.jpg'),
+      );
       expect(retrievedProfile.allowLocation, equals(true));
       expect(retrievedProfile.displayName, equals('Bob Farmer')); // Unchanged
       expect(retrievedProfile.marketCity, equals('Capital City')); // Unchanged
@@ -198,7 +207,9 @@ void main() {
 
       // Assert - All profiles should be retrievable
       for (final originalProfile in profiles) {
-        final retrievedProfile = hiveService.getVendorProfile(originalProfile.uid);
+        final retrievedProfile = hiveService.getVendorProfile(
+          originalProfile.uid,
+        );
         expect(retrievedProfile, isNotNull);
         expect(retrievedProfile!.uid, equals(originalProfile.uid));
         expect(retrievedProfile.stallName, equals(originalProfile.stallName));
@@ -218,7 +229,7 @@ void main() {
 
       // Act - Save profile (should need sync)
       await hiveService.saveVendorProfile(profile);
-      
+
       // Assert - Profile should need sync
       final profilesNeedingSync = hiveService.getProfilesNeedingSync();
       expect(profilesNeedingSync.length, equals(1));
@@ -256,7 +267,10 @@ void main() {
         marketCity: 'Incomplete City',
       );
       await hiveService.saveVendorProfile(incompleteProfile);
-      expect(hiveService.hasCompleteVendorProfile(incompleteUid), equals(false));
+      expect(
+        hiveService.hasCompleteVendorProfile(incompleteUid),
+        equals(false),
+      );
     });
 
     test('should handle profile deletion', () async {
@@ -272,7 +286,7 @@ void main() {
       // Act - Save then delete
       await hiveService.saveVendorProfile(profile);
       expect(hiveService.getVendorProfile(uid), isNotNull);
-      
+
       await hiveService.deleteVendorProfile(uid);
 
       // Assert - Profile should be deleted
@@ -286,11 +300,14 @@ void main() {
 
       // Act & Assert
       expect(hiveService.getVendorProfile(nonExistentUid), isNull);
-      expect(hiveService.hasCompleteVendorProfile(nonExistentUid), equals(false));
-      
+      expect(
+        hiveService.hasCompleteVendorProfile(nonExistentUid),
+        equals(false),
+      );
+
       // Should not throw when marking non-existent profile as synced
       await hiveService.markProfileAsSynced(nonExistentUid);
-      
+
       // Should not throw when deleting non-existent profile
       await hiveService.deleteVendorProfile(nonExistentUid);
     });
@@ -321,12 +338,21 @@ void main() {
       expect(retrievedProfile.displayName, equals('Full Fields User'));
       expect(retrievedProfile.stallName, equals('Full Fields Stand'));
       expect(retrievedProfile.marketCity, equals('Full Fields City'));
-      expect(retrievedProfile.avatarURL, equals('https://example.com/avatar.jpg'));
+      expect(
+        retrievedProfile.avatarURL,
+        equals('https://example.com/avatar.jpg'),
+      );
       expect(retrievedProfile.allowLocation, equals(true));
-      expect(retrievedProfile.localAvatarPath, equals('/local/path/avatar.jpg'));
+      expect(
+        retrievedProfile.localAvatarPath,
+        equals('/local/path/avatar.jpg'),
+      );
       expect(retrievedProfile.needsSync, equals(false));
       // Note: DateTime comparison might have slight precision differences
-      expect(retrievedProfile.lastUpdated.difference(now).inMilliseconds.abs(), lessThan(1000));
+      expect(
+        retrievedProfile.lastUpdated.difference(now).inMilliseconds.abs(),
+        lessThan(1000),
+      );
     });
   });
-} 
+}

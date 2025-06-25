@@ -31,17 +31,17 @@ class LutFilterService {
 
   // Cache for loaded LUT data
   final Map<LutFilterType, img.Image?> _loadedLuts = {};
-  
+
   // Cache for filter previews to avoid regenerating
   final Map<String, Uint8List> _previewCache = {};
-  
+
   // Debounce mechanism for preview generation
   final Map<String, Timer> _previewDebounceTimers = {};
 
   /// Initialize the service by preloading LUT assets
   Future<void> initialize() async {
     debugPrint('[LutFilterService] Initializing LUT filter service...');
-    
+
     try {
       // Preload all LUT assets
       for (final lutType in LutFilterType.values) {
@@ -49,10 +49,14 @@ class LutFilterService {
           await _loadLutAsset(lutType);
         }
       }
-      
-      debugPrint('[LutFilterService] LUT filter service initialized successfully');
+
+      debugPrint(
+        '[LutFilterService] LUT filter service initialized successfully',
+      );
     } catch (e) {
-      debugPrint('[LutFilterService] Error initializing LUT filter service: $e');
+      debugPrint(
+        '[LutFilterService] Error initializing LUT filter service: $e',
+      );
     }
   }
 
@@ -69,11 +73,11 @@ class LutFilterService {
 
     try {
       debugPrint('[LutFilterService] Loading LUT asset: ${lutType.assetPath}');
-      
+
       // For now, create placeholder LUT images since assets are empty
       // In a real implementation, you would load actual LUT files
       img.Image? lutImage;
-      
+
       switch (lutType) {
         case LutFilterType.warm:
           // Create a 1x1 placeholder for warm filter
@@ -94,17 +98,23 @@ class LutFilterService {
           lutImage = null;
           break;
       }
-      
+
       if (lutImage != null) {
         _loadedLuts[lutType] = lutImage;
-        debugPrint('[LutFilterService] Successfully created placeholder LUT: ${lutType.displayName}');
+        debugPrint(
+          '[LutFilterService] Successfully created placeholder LUT: ${lutType.displayName}',
+        );
         return lutImage;
       } else {
-        debugPrint('[LutFilterService] Failed to create placeholder LUT: ${lutType.assetPath}');
+        debugPrint(
+          '[LutFilterService] Failed to create placeholder LUT: ${lutType.assetPath}',
+        );
         return null;
       }
     } catch (e) {
-      debugPrint('[LutFilterService] Error loading LUT asset ${lutType.assetPath}: $e');
+      debugPrint(
+        '[LutFilterService] Error loading LUT asset ${lutType.assetPath}: $e',
+      );
       return null;
     }
   }
@@ -115,19 +125,25 @@ class LutFilterService {
     required String inputImagePath,
     required LutFilterType filterType,
   }) async {
-    debugPrint('[LutFilterService] Applying filter ${filterType.displayName} to image: $inputImagePath');
+    debugPrint(
+      '[LutFilterService] Applying filter ${filterType.displayName} to image: $inputImagePath',
+    );
 
     try {
       // If no filter, just return the original path
       if (filterType == LutFilterType.none) {
-        debugPrint('[LutFilterService] No filter selected, returning original image');
+        debugPrint(
+          '[LutFilterService] No filter selected, returning original image',
+        );
         return inputImagePath;
       }
 
       // Load the input image
       final File inputFile = File(inputImagePath);
       if (!await inputFile.exists()) {
-        debugPrint('[LutFilterService] Input image file does not exist: $inputImagePath');
+        debugPrint(
+          '[LutFilterService] Input image file does not exist: $inputImagePath',
+        );
         return null;
       }
 
@@ -135,14 +151,18 @@ class LutFilterService {
       final img.Image? inputImage = img.decodeImage(inputBytes);
 
       if (inputImage == null) {
-        debugPrint('[LutFilterService] Failed to decode input image: $inputImagePath');
+        debugPrint(
+          '[LutFilterService] Failed to decode input image: $inputImagePath',
+        );
         return null;
       }
 
       // Get the LUT for the specified filter
       final img.Image? lutImage = await _loadLutAsset(filterType);
       if (lutImage == null) {
-        debugPrint('[LutFilterService] Failed to load LUT for filter: ${filterType.displayName}');
+        debugPrint(
+          '[LutFilterService] Failed to load LUT for filter: ${filterType.displayName}',
+        );
         return inputImagePath; // Return original if LUT loading fails
       }
 
@@ -150,9 +170,15 @@ class LutFilterService {
       final img.Image filteredImage = _applyLutToImage(inputImage, lutImage);
 
       // Save the filtered image
-      final String outputPath = await _saveFilteredImage(filteredImage, inputImagePath, filterType);
-      
-      debugPrint('[LutFilterService] Successfully applied filter and saved to: $outputPath');
+      final String outputPath = await _saveFilteredImage(
+        filteredImage,
+        inputImagePath,
+        filterType,
+      );
+
+      debugPrint(
+        '[LutFilterService] Successfully applied filter and saved to: $outputPath',
+      );
       return outputPath;
     } catch (e) {
       debugPrint('[LutFilterService] Error applying filter to image: $e');
@@ -173,7 +199,10 @@ class LutFilterService {
         final img.Color originalColor = outputImage.getPixel(x, y);
 
         // Apply color transformation based on filter type
-        final img.Color newColor = _applyColorTransformation(originalColor, lutImage);
+        final img.Color newColor = _applyColorTransformation(
+          originalColor,
+          lutImage,
+        );
 
         // Set the new color
         outputImage.setPixel(x, y, newColor);
@@ -186,7 +215,10 @@ class LutFilterService {
 
   /// Apply color transformation based on LUT type
   /// This is a simplified implementation - in a full LUT system, you would use the LUT image as a lookup table
-  img.Color _applyColorTransformation(img.Color originalColor, img.Image lutImage) {
+  img.Color _applyColorTransformation(
+    img.Color originalColor,
+    img.Image lutImage,
+  ) {
     final int r = originalColor.r.toInt();
     final int g = originalColor.g.toInt();
     final int b = originalColor.b.toInt();
@@ -194,7 +226,7 @@ class LutFilterService {
 
     // Simple color transformations based on filter type
     // In a real LUT implementation, you would use the LUT image as a 3D lookup table
-    
+
     // For now, we'll apply simple color adjustments to simulate LUT effects
     int newR = r;
     int newG = g;
@@ -202,17 +234,19 @@ class LutFilterService {
 
     // Determine filter type based on LUT image dimensions (simplified approach)
     // In a real implementation, we would have proper LUT lookup tables
-    
+
     // For now, apply basic color transformations:
-    
+
     // Warm filter: increase red/yellow tones, reduce blues
-    if (lutImage.width == 1 && lutImage.height == 1) { // Placeholder for warm
+    if (lutImage.width == 1 && lutImage.height == 1) {
+      // Placeholder for warm
       newR = (r * 1.15).clamp(0, 255).toInt();
       newG = (g * 1.08).clamp(0, 255).toInt();
       newB = (b * 0.85).clamp(0, 255).toInt();
     }
     // Cool filter: increase blues, reduce reds
-    else if (lutImage.width == 2 && lutImage.height == 2) { // Placeholder for cool
+    else if (lutImage.width == 2 && lutImage.height == 2) {
+      // Placeholder for cool
       newR = (r * 0.85).clamp(0, 255).toInt();
       newG = (g * 0.95).clamp(0, 255).toInt();
       newB = (b * 1.15).clamp(0, 255).toInt();
@@ -239,16 +273,19 @@ class LutFilterService {
 
     // Get temporary directory
     final Directory tempDir = await getTemporaryDirectory();
-    
+
     // Generate output filename
     final String originalFileName = path.basenameWithoutExtension(originalPath);
     final String extension = path.extension(originalPath);
     final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    final String outputFileName = '${originalFileName}_${filterType.name}_$timestamp$extension';
+    final String outputFileName =
+        '${originalFileName}_${filterType.name}_$timestamp$extension';
     final String outputPath = path.join(tempDir.path, outputFileName);
 
     // Encode and save the image
-    final Uint8List encodedImage = Uint8List.fromList(img.encodeJpg(filteredImage, quality: 90));
+    final Uint8List encodedImage = Uint8List.fromList(
+      img.encodeJpg(filteredImage, quality: 90),
+    );
     final File outputFile = File(outputPath);
     await outputFile.writeAsBytes(encodedImage);
 
@@ -269,35 +306,48 @@ class LutFilterService {
     }
 
     // Create cache key
-    final String cacheKey = '${path.basename(inputImagePath)}_${filterType.name}_$previewSize';
-    
+    final String cacheKey =
+        '${path.basename(inputImagePath)}_${filterType.name}_$previewSize';
+
     // Return cached preview if available
     if (_previewCache.containsKey(cacheKey)) {
-      debugPrint('[LutFilterService] Returning cached filter preview for: ${filterType.displayName}');
+      debugPrint(
+        '[LutFilterService] Returning cached filter preview for: ${filterType.displayName}',
+      );
       return _previewCache[cacheKey];
     }
 
     // Cancel any existing debounce timer for this cache key
     _previewDebounceTimers[cacheKey]?.cancel();
-    
+
     // Create a completer for the debounced operation
     final Completer<Uint8List?> completer = Completer<Uint8List?>();
-    
+
     // Set up debounced preview generation (50ms delay to batch operations)
-    _previewDebounceTimers[cacheKey] = Timer(const Duration(milliseconds: 50), () async {
-      debugPrint('[LutFilterService] Generating debounced filter preview for: ${filterType.displayName}');
-      
-      try {
-        final result = await _generateFilterPreview(inputImagePath, filterType, previewSize, cacheKey);
-        if (!completer.isCompleted) {
-          completer.complete(result);
+    _previewDebounceTimers[cacheKey] = Timer(
+      const Duration(milliseconds: 50),
+      () async {
+        debugPrint(
+          '[LutFilterService] Generating debounced filter preview for: ${filterType.displayName}',
+        );
+
+        try {
+          final result = await _generateFilterPreview(
+            inputImagePath,
+            filterType,
+            previewSize,
+            cacheKey,
+          );
+          if (!completer.isCompleted) {
+            completer.complete(result);
+          }
+        } catch (e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
         }
-      } catch (e) {
-        if (!completer.isCompleted) {
-          completer.completeError(e);
-        }
-      }
-    });
+      },
+    );
 
     return completer.future;
   }
@@ -313,7 +363,9 @@ class LutFilterService {
       // Load and resize the input image for preview
       final File inputFile = File(inputImagePath);
       if (!await inputFile.exists()) {
-        debugPrint('[LutFilterService] Input image file does not exist for preview: $inputImagePath');
+        debugPrint(
+          '[LutFilterService] Input image file does not exist for preview: $inputImagePath',
+        );
         return null;
       }
 
@@ -321,30 +373,45 @@ class LutFilterService {
       final img.Image? inputImage = img.decodeImage(inputBytes);
 
       if (inputImage == null) {
-        debugPrint('[LutFilterService] Failed to decode input image for preview');
+        debugPrint(
+          '[LutFilterService] Failed to decode input image for preview',
+        );
         return null;
       }
 
       // Resize for preview (faster processing)
-      final img.Image resizedImage = img.copyResize(inputImage, width: previewSize, height: previewSize);
+      final img.Image resizedImage = img.copyResize(
+        inputImage,
+        width: previewSize,
+        height: previewSize,
+      );
 
       // Get the LUT for the specified filter
       final img.Image? lutImage = await _loadLutAsset(filterType);
       if (lutImage == null) {
-        debugPrint('[LutFilterService] Failed to load LUT for preview: ${filterType.displayName}');
+        debugPrint(
+          '[LutFilterService] Failed to load LUT for preview: ${filterType.displayName}',
+        );
         return null;
       }
 
       // Apply the LUT filter to the preview
-      final img.Image filteredPreview = _applyLutToImage(resizedImage, lutImage);
+      final img.Image filteredPreview = _applyLutToImage(
+        resizedImage,
+        lutImage,
+      );
 
       // Encode as JPEG bytes with lower quality for previews
-      final Uint8List previewBytes = Uint8List.fromList(img.encodeJpg(filteredPreview, quality: 50));
-      
+      final Uint8List previewBytes = Uint8List.fromList(
+        img.encodeJpg(filteredPreview, quality: 50),
+      );
+
       // Cache the result
       _previewCache[cacheKey] = previewBytes;
-      
-      debugPrint('[LutFilterService] Filter preview generated and cached successfully');
+
+      debugPrint(
+        '[LutFilterService] Filter preview generated and cached successfully',
+      );
       return previewBytes;
     } catch (e) {
       debugPrint('[LutFilterService] Error generating filter preview: $e');
@@ -355,11 +422,11 @@ class LutFilterService {
   /// Clean up temporary filtered images
   Future<void> cleanupTempFiles() async {
     debugPrint('[LutFilterService] Cleaning up temporary filter files...');
-    
+
     try {
       final Directory tempDir = await getTemporaryDirectory();
       final List<FileSystemEntity> files = tempDir.listSync();
-      
+
       int deletedCount = 0;
       for (final file in files) {
         if (file is File && file.path.contains('_filter_')) {
@@ -367,12 +434,16 @@ class LutFilterService {
             await file.delete();
             deletedCount++;
           } catch (e) {
-            debugPrint('[LutFilterService] Failed to delete temp file ${file.path}: $e');
+            debugPrint(
+              '[LutFilterService] Failed to delete temp file ${file.path}: $e',
+            );
           }
         }
       }
-      
-      debugPrint('[LutFilterService] Cleaned up $deletedCount temporary filter files');
+
+      debugPrint(
+        '[LutFilterService] Cleaned up $deletedCount temporary filter files',
+      );
     } catch (e) {
       debugPrint('[LutFilterService] Error during cleanup: $e');
     }
@@ -385,7 +456,7 @@ class LutFilterService {
       timer.cancel();
     }
     _previewDebounceTimers.clear();
-    
+
     _previewCache.clear();
     debugPrint('[LutFilterService] Preview cache and debounce timers cleared');
   }
@@ -393,14 +464,14 @@ class LutFilterService {
   /// Dispose of the service and clean up resources
   void dispose() {
     debugPrint('[LutFilterService] Disposing LUT filter service...');
-    
+
     // Cancel all debounce timers
     for (final timer in _previewDebounceTimers.values) {
       timer.cancel();
     }
     _previewDebounceTimers.clear();
-    
+
     _loadedLuts.clear();
     _previewCache.clear();
   }
-} 
+}

@@ -20,7 +20,7 @@ class AppSpacing {
   static const double xxxxl = _baseUnit * 20; // 80px
 
   // Common component-specific spacings
-  
+
   // Button padding
   static const double buttonPaddingHorizontal = lg; // 24px
   static const double buttonPaddingVertical = md; // 16px
@@ -86,9 +86,13 @@ class AppSpacing {
 
   // Animation durations (matching snap_design.md motion guidelines)
   static const Duration animationFast = Duration(milliseconds: 150); // Snap-In
-  static const Duration animationMedium = Duration(milliseconds: 300); // Story Ring Sweep
+  static const Duration animationMedium = Duration(
+    milliseconds: 300,
+  ); // Story Ring Sweep
   static const Duration animationSlow = Duration(milliseconds: 500);
-  static const Duration animationPulse = Duration(milliseconds: 1000); // Queue Pulse
+  static const Duration animationPulse = Duration(
+    milliseconds: 1000,
+  ); // Queue Pulse
 
   // Common edge insets
   static const edgeInsetsXs = EdgeInsets.all(xs);
@@ -113,8 +117,12 @@ class AppSpacing {
 
   // Screen-specific padding
   static const edgeInsetsScreen = EdgeInsets.all(screenPaddingHorizontal);
-  static const edgeInsetsScreenHorizontal = EdgeInsets.symmetric(horizontal: screenPaddingHorizontal);
-  static const edgeInsetsScreenVertical = EdgeInsets.symmetric(vertical: screenPaddingVertical);
+  static const edgeInsetsScreenHorizontal = EdgeInsets.symmetric(
+    horizontal: screenPaddingHorizontal,
+  );
+  static const edgeInsetsScreenVertical = EdgeInsets.symmetric(
+    vertical: screenPaddingVertical,
+  );
 
   // Card-specific spacing
   static const edgeInsetsCard = EdgeInsets.all(cardPadding);
@@ -140,7 +148,12 @@ class AppSpacing {
     return value * factor;
   }
 
-  static double responsive(double mobile, double tablet, double desktop, double screenWidth) {
+  static double responsive(
+    double mobile,
+    double tablet,
+    double desktop,
+    double screenWidth,
+  ) {
     if (screenWidth >= 1200) return desktop;
     if (screenWidth >= 768) return tablet;
     return mobile;

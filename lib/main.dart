@@ -229,7 +229,7 @@ class AuthWrapper extends StatelessWidget {
   /// Handles post-authentication flow including account linking
   Future<void> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
-    
+
     try {
       // Handle account linking after sign-in
       await accountLinkingService.handleSignInAccountLinking();
@@ -258,10 +258,8 @@ class AuthWrapper extends StatelessWidget {
 
         // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint(
-            '[AuthWrapper] User authenticated: ${snapshot.data!.uid}',
-          );
-          
+          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
+
           return FutureBuilder<void>(
             future: _handlePostAuthenticationFlow(),
             builder: (context, authFuture) {
@@ -279,17 +277,23 @@ class AuthWrapper extends StatelessWidget {
                   ),
                 );
               }
-              
+
               // Check if user has a complete profile
               if (profileService.hasCompleteProfile()) {
-                debugPrint('[AuthWrapper] Profile complete - redirecting to camera');
+                debugPrint(
+                  '[AuthWrapper] Profile complete - redirecting to camera',
+                );
                 return const CameraPreviewScreen();
               } else {
-                debugPrint('[AuthWrapper] Profile incomplete - redirecting to profile setup');
+                debugPrint(
+                  '[AuthWrapper] Profile incomplete - redirecting to profile setup',
+                );
                 return VendorProfileScreen(
                   profileService: profileService,
                   onProfileComplete: () {
-                    debugPrint('[AuthWrapper] Profile completed - refreshing auth wrapper');
+                    debugPrint(
+                      '[AuthWrapper] Profile completed - refreshing auth wrapper',
+                    );
                     // Trigger a rebuild by navigating back to main screen
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => const MyApp()),
@@ -517,7 +521,7 @@ class _MyHomePageState extends State<MyHomePage> {
   /// Signs out the current user
   Future<void> _signOut() async {
     debugPrint('[MyHomePage] User sign out requested');
-    
+
     // Show loading dialog
     if (mounted) {
       showDialog(
@@ -538,11 +542,11 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       await authService.signOut();
       debugPrint('[MyHomePage] User signed out successfully');
-      
+
       // Close loading dialog
       if (mounted) {
         Navigator.of(context).pop();
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -560,11 +564,11 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       debugPrint('[MyHomePage] Error signing out: $e');
-      
+
       // Close loading dialog
       if (mounted) {
         Navigator.of(context).pop();
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -747,7 +751,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // User Info
                     Text(
                       'Signed in as:',
@@ -766,7 +770,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
@@ -780,7 +787,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Sign Out Button
                     SizedBox(
                       width: double.infinity,

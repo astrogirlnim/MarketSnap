@@ -44,22 +44,27 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     });
 
     try {
-      debugPrint('[EmailAuthScreen] Sending magic link to: ${_emailController.text.trim()}');
-      
-      await _authService.sendEmailSignInLinkSimple(_emailController.text.trim());
-      
+      debugPrint(
+        '[EmailAuthScreen] Sending magic link to: ${_emailController.text.trim()}',
+      );
+
+      await _authService.sendEmailSignInLinkSimple(
+        _emailController.text.trim(),
+      );
+
       setState(() {
         _emailSent = true;
         _isLoading = false;
         _successMessage = 'Magic link sent successfully!';
       });
-      
+
       debugPrint('[EmailAuthScreen] Magic link sent successfully');
     } catch (error) {
       debugPrint('[EmailAuthScreen] Error sending magic link: $error');
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to send magic link. Please check your email and try again.';
+        _errorMessage =
+            'Failed to send magic link. Please check your email and try again.';
       });
     }
   }

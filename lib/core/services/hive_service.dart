@@ -75,28 +75,32 @@ class HiveService {
 
   void _registerAdapters() {
     debugPrint('[HiveService] Registering Hive type adapters...');
-    
+
     // Only register adapters if they haven't been registered already
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(UserSettingsAdapter());
       debugPrint('[HiveService] UserSettingsAdapter registered with typeId: 0');
     }
-    
+
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(VendorProfileAdapter());
-      debugPrint('[HiveService] VendorProfileAdapter registered with typeId: 1');
+      debugPrint(
+        '[HiveService] VendorProfileAdapter registered with typeId: 1',
+      );
     }
-    
+
     if (!Hive.isAdapterRegistered(2)) {
       Hive.registerAdapter(MediaTypeAdapter());
       debugPrint('[HiveService] MediaTypeAdapter registered with typeId: 2');
     }
-    
+
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(PendingMediaItemAdapter());
-      debugPrint('[HiveService] PendingMediaItemAdapter registered with typeId: 1');
+      debugPrint(
+        '[HiveService] PendingMediaItemAdapter registered with typeId: 1',
+      );
     }
-    
+
     debugPrint('[HiveService] All adapters registered.');
   }
 
@@ -150,7 +154,9 @@ class HiveService {
   /// Save or update vendor profile
   Future<void> saveVendorProfile(VendorProfile profile) async {
     debugPrint('[HiveService] Saving vendor profile for UID: ${profile.uid}');
-    debugPrint('[HiveService] Profile details: ${profile.stallName} in ${profile.marketCity}');
+    debugPrint(
+      '[HiveService] Profile details: ${profile.stallName} in ${profile.marketCity}',
+    );
     await vendorProfileBox.put(profile.uid, profile);
     debugPrint('[HiveService] Vendor profile saved successfully');
   }

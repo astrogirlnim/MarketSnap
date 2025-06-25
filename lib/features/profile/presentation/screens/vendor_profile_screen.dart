@@ -28,13 +28,13 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   final _displayNameController = TextEditingController();
   final _stallNameController = TextEditingController();
   final _marketCityController = TextEditingController();
-  
+
   bool _allowLocation = false;
   String? _localAvatarPath;
   String? _errorMessage;
   bool _isLoading = false;
   bool _isSaving = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +52,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   /// Loads existing profile data if available
   Future<void> _loadExistingProfile() async {
     debugPrint('[VendorProfileScreen] Loading existing profile data');
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -61,7 +61,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     try {
       final profile = widget.profileService.getCurrentUserProfile();
       if (profile != null) {
-        debugPrint('[VendorProfileScreen] Found existing profile: ${profile.stallName}');
+        debugPrint(
+          '[VendorProfileScreen] Found existing profile: ${profile.stallName}',
+        );
         setState(() {
           _displayNameController.text = profile.displayName;
           _stallNameController.text = profile.stallName;
@@ -86,10 +88,14 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   /// Handles avatar image selection
   Future<void> _pickAvatar({bool fromCamera = false}) async {
-    debugPrint('[VendorProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}');
-    
+    debugPrint(
+      '[VendorProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}',
+    );
+
     try {
-      final imagePath = await widget.profileService.pickAvatarImage(fromCamera: fromCamera);
+      final imagePath = await widget.profileService.pickAvatarImage(
+        fromCamera: fromCamera,
+      );
       if (imagePath != null) {
         setState(() {
           _localAvatarPath = imagePath;
@@ -108,7 +114,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       context: context,
       backgroundColor: AppColors.eggshell,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusLg),
+        ),
       ),
       builder: (BuildContext context) {
         return SafeArea(
@@ -117,10 +125,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Choose Avatar Photo',
-                  style: AppTypography.h2,
-                ),
+                Text('Choose Avatar Photo', style: AppTypography.h2),
                 const SizedBox(height: AppSpacing.lg),
                 MarketSnapSecondaryButton(
                   text: 'Take Photo',
@@ -197,7 +202,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     }
 
     debugPrint('[VendorProfileScreen] Saving profile');
-    
+
     setState(() {
       _isSaving = true;
       _errorMessage = null;
@@ -213,7 +218,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       );
 
       debugPrint('[VendorProfileScreen] Profile saved successfully');
-      
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -263,10 +268,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.eggshell,
-              border: Border.all(
-                color: AppColors.seedBrown,
-                width: 2,
-              ),
+              border: Border.all(color: AppColors.seedBrown, width: 2),
             ),
             child: _localAvatarPath != null
                 ? ClipOval(
@@ -303,9 +305,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         const SizedBox(height: AppSpacing.xs),
         Text(
           'Optional - helps customers recognize your stall',
-          style: AppTypography.caption.copyWith(
-            color: AppColors.soilTaupe,
-          ),
+          style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           textAlign: TextAlign.center,
         ),
       ],
@@ -317,10 +317,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.cornsilk,
       appBar: AppBar(
-        title: Text(
-          'Vendor Profile',
-          style: AppTypography.h1,
-        ),
+        title: Text('Vendor Profile', style: AppTypography.h1),
         backgroundColor: AppColors.cornsilk,
         elevation: 0,
         leading: IconButton(
@@ -439,7 +436,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                               },
                               activeColor: AppColors.leafGreen,
                               inactiveThumbColor: AppColors.soilTaupe,
-                              inactiveTrackColor: AppColors.seedBrown.withValues(alpha: 0.3),
+                              inactiveTrackColor: AppColors.seedBrown
+                                  .withValues(alpha: 0.3),
                             ),
                           ],
                         ),
@@ -457,7 +455,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
                       // Offline Notice
                       MarketSnapStatusMessage(
-                        message: 'Your profile is saved locally and will sync when you\'re online',
+                        message:
+                            'Your profile is saved locally and will sync when you\'re online',
                         type: StatusType.info,
                         showIcon: true,
                       ),
@@ -468,4 +467,4 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             ),
     );
   }
-} 
+}

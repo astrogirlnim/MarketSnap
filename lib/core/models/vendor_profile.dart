@@ -62,10 +62,12 @@ class VendorProfile extends HiveObject {
     this.phoneNumber,
     this.email,
     DateTime? lastUpdated,
-  }) : lastUpdatedMillis = (lastUpdated ?? DateTime.now()).millisecondsSinceEpoch;
+  }) : lastUpdatedMillis =
+           (lastUpdated ?? DateTime.now()).millisecondsSinceEpoch;
 
   /// Getter for lastUpdated as DateTime
-  DateTime get lastUpdated => DateTime.fromMillisecondsSinceEpoch(lastUpdatedMillis);
+  DateTime get lastUpdated =>
+      DateTime.fromMillisecondsSinceEpoch(lastUpdatedMillis);
 
   /// Creates a VendorProfile from Firestore document data
   factory VendorProfile.fromFirestore(Map<String, dynamic> data, String uid) {
@@ -145,13 +147,13 @@ class VendorProfile extends HiveObject {
   /// Returns true if the profile has all required fields filled
   bool get isComplete {
     return uid.isNotEmpty &&
-           displayName.trim().isNotEmpty &&
-           stallName.trim().isNotEmpty &&
-           marketCity.trim().isNotEmpty;
+        displayName.trim().isNotEmpty &&
+        stallName.trim().isNotEmpty &&
+        marketCity.trim().isNotEmpty;
   }
 
   @override
   String toString() {
     return 'VendorProfile(uid: $uid, displayName: $displayName, stallName: $stallName, marketCity: $marketCity, phoneNumber: $phoneNumber, email: $email, avatarURL: $avatarURL, allowLocation: $allowLocation, needsSync: $needsSync)';
   }
-} 
+}

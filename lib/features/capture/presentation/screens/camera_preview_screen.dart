@@ -516,7 +516,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Sign out the current user
   Future<void> _signOut() async {
     debugPrint('[CameraPreviewScreen] User sign out requested');
-    
+
     // Show confirmation dialog
     final bool? shouldSignOut = await showDialog<bool>(
       context: context,
@@ -559,7 +559,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     try {
       await _authService.signOut();
       debugPrint('[CameraPreviewScreen] User signed out successfully');
-      
+
       // Close loading dialog and navigate to auth
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
@@ -567,11 +567,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Error signing out: $e');
-      
+
       // Close loading dialog and show error
       if (mounted) {
         Navigator.of(context).pop();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
