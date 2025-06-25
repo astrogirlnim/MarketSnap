@@ -24,6 +24,7 @@ Legend:
   - [X] Initialise Flutter 3 project with null‑safety enabled.
   - [X] Add core packages: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `workmanager`, `hive`, `path_provider`, `image_picker`, `camera`, `video_player`, `video_compress`.
   - [X] Configure Android & iOS Firebase SDKs with staging project IDs.
+  - [X] **Enable Google Auth as optional sign-in method in Firebase Auth and app UI.** ✅ Google sign-in is now available in the authentication dialog for dev and production.
 
 - [X] **2. Local Data Stores**
   - [X] Create Hive boxes for `pendingMediaQueue` and `userSettings`.
@@ -75,10 +76,10 @@ Legend:
 ## Phase 3 – Interface Layer  
 **Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
-- [~] **1. Auth & Profile Screens**
+- [X] **1. Auth & Profile Screens**
   - [X] Phone/email OTP flow using `firebase_auth`. ✅ **COMPLETED** - Full cross-platform authentication implemented with Firebase emulator support.
-  - [ ] Profile form: stall name, market city, avatar upload.
-  - [ ] Validate offline caching of profile in Hive.
+  - [X] Profile form: stall name, market city, avatar upload. ✅ **COMPLETED** - Full vendor profile form with MarketSnap design system, avatar upload via camera/gallery, offline-first storage, and Firebase sync.
+  - [X] Validate offline caching of profile in Hive. ✅ **COMPLETED** - Comprehensive test suite validates profile persistence, sync status tracking, completeness validation, and cross-restart data integrity.
 
 - [X] **2. Capture & Review UI**
   - [X] Camera preview with photo shutter. ✅ **COMPLETED** - Full camera preview with photo capture, cross-platform support, flash controls, camera switching, and modern UI.

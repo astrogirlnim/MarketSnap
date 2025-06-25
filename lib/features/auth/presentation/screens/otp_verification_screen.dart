@@ -39,7 +39,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   bool _isVerifying = false;
   bool _isResending = false;
   String? _errorMessage;
-  
+
+  // Store the current verification ID (can be updated when OTP is resent)
+  late String _currentVerificationId;
+
   // Resend functionality
   Timer? _resendTimer;
   int _resendCountdown = 30;
@@ -48,6 +51,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize with the verification ID passed from the previous screen
+    _currentVerificationId = widget.verificationId;
+    debugPrint(
+      '[OTPVerificationScreen] Initial verification ID: $_currentVerificationId',
+    );
+
     _startResendTimer();
     // Auto-focus on first OTP field
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -125,16 +134,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       _errorMessage = null;
     });
 
-    debugPrint('[OTPVerificationScreen] Verifying OTP: $otpCode');
+    debugPrint(
+      '[OTPVerificationScreen] Verifying OTP: $otpCode with verification ID: $_currentVerificationId',
+    );
 
     try {
       await _authService.verifyOTP(
-        verificationId: widget.verificationId,
+        verificationId: _currentVerificationId,
         smsCode: otpCode,
       );
 
       debugPrint('[OTPVerificationScreen] OTP verified successfully');
-      
+
       if (mounted) {
         // Show success and navigate back to main app
         ScaffoldMessenger.of(context).showSnackBar(
@@ -177,16 +188,22 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       _errorMessage = null;
     });
 
-    debugPrint('[OTPVerificationScreen] Resending OTP to: ${widget.phoneNumber}');
+    debugPrint(
+      '[OTPVerificationScreen] Resending OTP to: ${widget.phoneNumber}',
+    );
 
     try {
       await _authService.signInWithPhoneNumber(
         phoneNumber: widget.phoneNumber,
         verificationCompleted: (credential) {
-          debugPrint('[OTPVerificationScreen] Auto verification completed on resend');
+          debugPrint(
+            '[OTPVerificationScreen] Auto verification completed on resend',
+          );
         },
         verificationFailed: (error) {
-          debugPrint('[OTPVerificationScreen] Resend verification failed: $error');
+          debugPrint(
+            '[OTPVerificationScreen] Resend verification failed: $error',
+          );
           setState(() {
             _isResending = false;
             _errorMessage = 'Failed to resend code. Please try again.';
@@ -194,11 +211,26 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         },
         codeSent: (verificationId, resendToken) {
           debugPrint('[OTPVerificationScreen] Code resent successfully');
+          debugPrint(
+            '[OTPVerificationScreen] Old verification ID: $_currentVerificationId',
+          );
+          debugPrint(
+            '[OTPVerificationScreen] New verification ID: $verificationId',
+          );
+
           setState(() {
             _isResending = false;
+            // Update the verification ID to the new one
+            _currentVerificationId = verificationId;
           });
           _startResendTimer();
-          
+
+          // Clear any existing OTP input
+          for (final controller in _otpControllers) {
+            controller.clear();
+          }
+          _otpFocusNodes[0].requestFocus();
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -215,7 +247,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           );
         },
         codeAutoRetrievalTimeout: (verificationId) {
-          debugPrint('[OTPVerificationScreen] Auto retrieval timeout on resend');
+          debugPrint(
+            '[OTPVerificationScreen] Auto retrieval timeout on resend',
+          );
         },
       );
     } catch (e) {
@@ -297,28 +331,36 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         decoration: InputDecoration(
                           counterText: '',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
                             borderSide: const BorderSide(
                               color: AppColors.seedBrown,
                               width: 1,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
                             borderSide: const BorderSide(
                               color: AppColors.seedBrown,
                               width: 1,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
                             borderSide: const BorderSide(
                               color: AppColors.marketBlue,
                               width: 2,
                             ),
                           ),
                           errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
                             borderSide: const BorderSide(
                               color: AppColors.appleRed,
                               width: 2,

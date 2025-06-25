@@ -18,7 +18,7 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 | Urgency & engagement | ≥ 40 % of followers open a push‑pinged snap within 30 min | Post‑MVP |
 | Performance | Median online sync latency **< 3 s** | Firebase Performance |
 | Bandwidth budgets | Photo ≤ 200 kB; 5‑s video ≤ 1 MB (after compression) | App instrumentation |
-| AI utility (Phase 2) | ≥ 70 % of vendors tap “Magic Caption” per market day | Mixpanel funnel |
+| AI utility (Phase 2) | ≥ 70 % of vendors tap "Magic Caption" per market day | Mixpanel funnel |
 
 ---
 
@@ -26,8 +26,8 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 
 | Persona | Needs & Pain Points |
 |---------|--------------------|
-| **Local Vendor “Lena”** (primary) | Patchy data; limited marketing time; wants fast way to announce fresh stock and last‑call offers. |
-| **Market Shopper “Sam”** (secondary) | Loves fresh produce; wants real‑time, low‑data updates; values privacy. |
+| **Local Vendor "Lena"** (primary) | Patchy data; limited marketing time; wants fast way to announce fresh stock and last‑call offers. |
+| **Market Shopper "Sam"** (secondary) | Loves fresh produce; wants real‑time, low‑data updates; values privacy. |
 
 ---
 
@@ -36,7 +36,7 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 * Flutter + Firebase chosen for rapid cross‑platform dev and offline cache.  
 * Vendors may be on 3G or offline periodically.  
 * Privacy defaults to minimal: vendor coarse location optional; shopper GPS never captured.  
-* **Vendors can tap “Save to Device” to keep local copies after the 24 h expiry; saved media never re‑uploads.**  
+* **Vendors can tap "Save to Device" to keep local copies after the 24 h expiry; saved media never re‑uploads.**  
 * **No web portal for coordinators — vendor onboarding is self‑serve in‑app.**  
 * **Infra spend capped at ≈ US $25/mo during pilot; pgvector on a micro Postgres instance preferred.**  
 * 5‑second videos are mandatory (G2P2 spec) and must auto‑compress on‑device.
@@ -47,7 +47,7 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 
 | # | User Story | Features Utilised |
 |---|---|---|
-| **1** | **Offline Photo Snap** — *As a vendor with spotty signal, I want to take a photo and see it land in a “Pending Upload” queue, so my post isn't lost and shoppers are notified once I reconnect.* | Camera → Offline Queue → Sync + Push → Feed |
+| **1** | **Offline Photo Snap** — *As a vendor with spotty signal, I want to take a photo and see it land in a "Pending Upload" queue, so my post isn't lost and shoppers are notified once I reconnect.* | Camera → Offline Queue → Sync + Push → Feed |
 | **2** | **5‑Second Video Teaser** — *I want to record a 5‑sec clip auto‑compressed to ≤ 1 MB and added to my story reel.* | Video Capture + Compression → Queue → Story |
 | **3** | **One‑Tap AI Caption & Filter** — *I want "Magic Caption" and a warm filter so my snap pops with zero typing.* | AI Caption Helper → Filters |
 | **4** | **Location‑Tagged Snap** — *I want to toggle "Show Market Location" so nearby shoppers find me.* | Coarse Location Tag → Discovery |
@@ -62,7 +62,7 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 
 | Phase | Time‑box | Features |
 |-------|----------|----------|
-| **Core / MVP** | Days 1-5 | Auth & Profile · Offline Photo/Video Queue · Auto‑Sync + Push · Story Reel · Low‑Bandwidth Filters · Follower Feed · Broadcast Text · Coarse Location · **Save to Device** · Settings/Help |
+| **Core / MVP** | Days 1-5 | Auth & Profile · Offline Photo/Video Queue · Auto‑Sync + Push · Story Reel · Low‑Bandwidth Filters · Follower Feed · Broadcast Text · Coarse Location · **Save to Device** · Settings/Help · **Google Auth (optional)** |
 | **Polish** | Day 5 | Accessibility, UI polish, Firebase Perf, Crashlytics, **Ephemeral Messaging (DM)** |
 | **Phase 2 (AI)** | Days 6‑7 | AI Caption Helper · Recipe Snippets · FAQ Vector Search |
 
@@ -73,6 +73,7 @@ Phase 2 adds time‑saving AI helpers (auto‑captions, recipe snippets, FAQ c
 | ID | Requirement |
 |----|-------------|
 | FR‑1 | Vendor registers / logs in via phone # or email (OTP). |
+| FR‑1a | Vendor can optionally register / log in via Google Auth (one-tap sign-in). |
 | FR‑2 | Capture photo *or* 5‑s video; if offline, store in local queue. |
 | FR‑3 | Local queue retries upload until success (exponential back‑off). |
 | FR‑4 | On upload success, followers receive FCM push. |
@@ -147,7 +148,7 @@ graph TD
 
 | Day | Deliverable |
 |-----|-------------|
-| 1 | Auth & profile stub; queue POC |
+| 1 | Auth & profile stub; queue POC; **Enable Google Auth as alternative sign-in** |
 | 2 | Photo + video capture; queue → storage; push MVP |
 | 3 | Story reel UI; TTL GC job; filters |
 | 4 | Feed; broadcast text; coarse location; Save‑to‑Device |

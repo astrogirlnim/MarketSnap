@@ -45,7 +45,8 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
     if (!_authService.isValidPhoneNumber(phoneNumber)) {
       setState(() {
-        _errorMessage = 'Please enter a valid phone number with country code (e.g., +1 555 123 4567)';
+        _errorMessage =
+            'Please enter a valid phone number with country code (e.g., +1 555 123 4567)';
       });
       return;
     }
@@ -80,7 +81,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
           });
         },
         codeSent: (verificationId, resendToken) {
-          debugPrint('[PhoneAuthScreen] Code sent with verification ID: $verificationId');
+          debugPrint(
+            '[PhoneAuthScreen] Code sent with verification ID: $verificationId',
+          );
           setState(() {
             _isLoading = false;
           });
@@ -97,7 +100,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
           );
         },
         codeAutoRetrievalTimeout: (verificationId) {
-          debugPrint('[PhoneAuthScreen] Auto retrieval timeout for: $verificationId');
+          debugPrint(
+            '[PhoneAuthScreen] Auto retrieval timeout for: $verificationId',
+          );
         },
       );
     } catch (e) {

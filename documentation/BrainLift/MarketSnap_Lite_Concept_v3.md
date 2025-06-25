@@ -18,6 +18,7 @@ MarketSnap Lite gives them a **one‑tap, offline‑first "fresh‑stock" snap
 | Build Day | Feature | User Value | Notes & Dependencies |
 |:--|:--|:--|:--|
 | **D1** | **Phone / Email Auth + Vendor Profile** | Quick sign‑in & basic stall info | Firebase Auth; Firestore (offline cache) |
+| **D1** | **Google Auth (optional)** | One-tap sign-in for vendors with Google accounts | Firebase Auth; depends on core Auth setup |
 | **D1–2** | **Offline Snap & 5‑Sec Video Queue** | Post photos **or 5‑sec clips** even offline | Flutter `camera` / `image_picker`; `video_player`; `flutter_video_compress`; Hive/Drift queue; WorkManager retry |
 | **D2** | **Sync + Push Ping** | Shoppers notified the moment media uploads | Cloud Storage upload; FCM; background task checks |
 | **D2–3** | **Ephemeral Story Reel** | 24‑h carousel per vendor (photos + clips) | Firestore collection with TTL index |
@@ -39,7 +40,7 @@ MarketSnap Lite gives them a **one‑tap, offline‑first "fresh‑stock" snap
 - **Frontend:** Flutter 3 (Dart)  
 - **Local Queue:** Hive or Drift (encrypted)  
 - **Background Sync:** `workmanager`  
-- **Backend:** Firebase Auth · Firestore · Storage · Cloud Functions · FCM  
+- **Backend:** Firebase Auth (Phone/Email/Google) · Firestore · Storage · Cloud Functions · FCM  
 - **Monitoring:** Firebase Performance (<3 s median sync) · Crashlytics  
 
 ## 5 · Next Steps

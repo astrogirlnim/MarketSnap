@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
+import 'core/services/account_linking_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,6 +16,8 @@ import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
 import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
+import 'features/profile/application/profile_service.dart';
+import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -22,6 +25,8 @@ late final HiveService hiveService;
 late final BackgroundSyncService backgroundSyncService;
 late final AuthService authService;
 late final LutFilterService lutFilterService;
+late final ProfileService profileService;
+late final AccountLinkingService accountLinkingService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +73,7 @@ Future<void> main() async {
       }
 
       try {
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8081);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
@@ -159,6 +164,14 @@ Future<void> main() async {
     debugPrint('[main] Error initializing Hive service: $e');
   }
 
+  // Initialize profile service
+  try {
+    profileService = ProfileService(hiveService: hiveService);
+    debugPrint('[main] Profile service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing profile service: $e');
+  }
+
   try {
     backgroundSyncService = BackgroundSyncService();
     await backgroundSyncService.initialize();
@@ -174,6 +187,17 @@ Future<void> main() async {
     debugPrint('[main] LUT filter service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing LUT filter service: $e');
+  }
+
+  // Initialize account linking service
+  try {
+    accountLinkingService = AccountLinkingService(
+      authService: authService,
+      profileService: profileService,
+    );
+    debugPrint('[main] Account linking service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing account linking service: $e');
   }
 
   debugPrint('[main] Firebase & App Check initialized.');
@@ -198,9 +222,23 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Authentication wrapper that handles routing based on auth state
+/// Authentication wrapper that handles routing based on auth state and profile completion
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
+
+  /// Handles post-authentication flow including account linking
+  Future<void> _handlePostAuthenticationFlow() async {
+    debugPrint('[AuthWrapper] Handling post-authentication flow');
+
+    try {
+      // Handle account linking after sign-in
+      await accountLinkingService.handleSignInAccountLinking();
+      debugPrint('[AuthWrapper] Account linking flow completed');
+    } catch (e) {
+      debugPrint('[AuthWrapper] Account linking failed: $e');
+      // Don't block the flow if account linking fails
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,12 +256,54 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is authenticated - redirect to camera preview
+        // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint(
-            '[AuthWrapper] User authenticated: ${snapshot.data!.uid} - redirecting to camera',
+          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
+
+          return FutureBuilder<void>(
+            future: _handlePostAuthenticationFlow(),
+            builder: (context, authFuture) {
+              if (authFuture.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Setting up your account...'),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // Check if user has a complete profile
+              if (profileService.hasCompleteProfile()) {
+                debugPrint(
+                  '[AuthWrapper] Profile complete - redirecting to camera',
+                );
+                return const CameraPreviewScreen();
+              } else {
+                debugPrint(
+                  '[AuthWrapper] Profile incomplete - redirecting to profile setup',
+                );
+                return VendorProfileScreen(
+                  profileService: profileService,
+                  onProfileComplete: () {
+                    debugPrint(
+                      '[AuthWrapper] Profile completed - refreshing auth wrapper',
+                    );
+                    // Trigger a rebuild by navigating back to main screen
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MyApp()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+            },
           );
-          return const CameraPreviewScreen();
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
@@ -440,16 +520,67 @@ class _MyHomePageState extends State<MyHomePage> {
 
   /// Signs out the current user
   Future<void> _signOut() async {
+    debugPrint('[MyHomePage] User sign out requested');
+
+    // Show loading dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Signing out...'),
+            ],
+          ),
+        ),
+      );
+    }
+
     try {
       await authService.signOut();
       debugPrint('[MyHomePage] User signed out successfully');
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Successfully signed out'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('[MyHomePage] Error signing out: $e');
+
+      // Close loading dialog
       if (mounted) {
+        Navigator.of(context).pop();
+
+        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error signing out: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Error signing out: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -577,6 +708,118 @@ class _MyHomePageState extends State<MyHomePage> {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.green.shade700,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // User Profile Card
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade200,
+                      offset: const Offset(0, 2),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // User Avatar
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.deepPurple.shade600,
+                      child: Text(
+                        (user?.phoneNumber?.isNotEmpty == true
+                                ? user!.phoneNumber!.substring(
+                                    user.phoneNumber!.length - 2,
+                                  )
+                                : user?.email?.substring(0, 1).toUpperCase()) ??
+                            'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // User Info
+                    Text(
+                      'Signed in as:',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user?.phoneNumber ?? user?.email ?? 'Unknown',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'UID: ${user?.uid.substring(0, 8)}...',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Sign Out Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _signOut,
+                        icon: const Icon(Icons.logout, size: 20),
+                        label: const Text(
+                          'Sign Out',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Test your authentication by signing out and back in',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),

@@ -46,11 +46,11 @@ class Message {
   }) {
     final now = DateTime.now();
     final expiresAt = now.add(const Duration(hours: 24));
-    
+
     // Create conversation ID by sorting UIDs for consistency
     final participants = [fromUid, toUid]..sort();
     final conversationId = '${participants[0]}_${participants[1]}';
-    
+
     return Message(
       messageId: '', // Will be set by Firestore
       fromUid: fromUid,
@@ -66,7 +66,7 @@ class Message {
   /// Creates a Message from Firestore document data
   factory Message.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return Message(
       messageId: doc.id,
       fromUid: data['fromUid'] as String,
@@ -143,7 +143,7 @@ class Message {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    
+
     return other is Message &&
         other.messageId == messageId &&
         other.fromUid == fromUid &&
@@ -166,4 +166,4 @@ class Message {
         expiresAt.hashCode ^
         isRead.hashCode;
   }
-} 
+}

@@ -56,10 +56,7 @@ class MarketSnapPrimaryButton extends StatelessWidget {
                     Icon(icon, size: AppSpacing.iconSm),
                     const SizedBox(width: AppSpacing.sm),
                   ],
-                  Text(
-                    text,
-                    style: AppTypography.buttonLarge,
-                  ),
+                  Text(text, style: AppTypography.buttonLarge),
                 ],
               ),
       ),
@@ -93,10 +90,7 @@ class MarketSnapSecondaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.soilCharcoal,
-          side: const BorderSide(
-            color: AppColors.seedBrown,
-            width: 2,
-          ),
+          side: const BorderSide(color: AppColors.seedBrown, width: 2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
@@ -107,7 +101,9 @@ class MarketSnapSecondaryButton extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.soilCharcoal),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.soilCharcoal,
+                  ),
                 ),
               )
             : Row(
@@ -115,7 +111,11 @@ class MarketSnapSecondaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: AppSpacing.iconSm, color: AppColors.soilCharcoal),
+                    Icon(
+                      icon,
+                      size: AppSpacing.iconSm,
+                      color: AppColors.soilCharcoal,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                   ],
                   Text(
@@ -147,6 +147,7 @@ class MarketSnapTextField extends StatelessWidget {
   final int? maxLines;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final String? Function(String?)? validator;
 
   const MarketSnapTextField({
     super.key,
@@ -163,6 +164,7 @@ class MarketSnapTextField extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.onSubmitted,
+    this.validator,
   });
 
   @override
@@ -171,32 +173,30 @@ class MarketSnapTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (labelText != null) ...[
-          Text(
-            labelText!,
-            style: AppTypography.label,
-          ),
+          Text(labelText!, style: AppTypography.label),
           const SizedBox(height: AppSpacing.xs),
         ],
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
           enabled: enabled,
           maxLines: maxLines,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          onFieldSubmitted: onSubmitted,
+          validator: validator,
           style: AppTypography.inputText,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: AppTypography.inputHint,
-            prefixIcon: prefixIcon != null 
+            prefixIcon: prefixIcon != null
                 ? Icon(
                     prefixIcon,
                     color: AppColors.marketBlue,
                     size: AppSpacing.iconMd,
                   )
                 : null,
-            suffixIcon: suffixIcon != null 
+            suffixIcon: suffixIcon != null
                 ? GestureDetector(
                     onTap: onSuffixTap,
                     child: Icon(
@@ -233,17 +233,11 @@ class MarketSnapTextField extends StatelessWidget {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              borderSide: const BorderSide(
-                color: AppColors.appleRed,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: AppColors.appleRed, width: 2),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              borderSide: const BorderSide(
-                color: AppColors.appleRed,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: AppColors.appleRed, width: 2),
             ),
             contentPadding: AppSpacing.edgeInsetsInput,
           ),
@@ -280,10 +274,7 @@ class MarketSnapCard extends StatelessWidget {
         shadowColor: AppColors.shadowLight,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          side: const BorderSide(
-            color: AppColors.seedBrown,
-            width: 0.5,
-          ),
+          side: const BorderSide(color: AppColors.seedBrown, width: 0.5),
         ),
         child: InkWell(
           onTap: onTap,
@@ -320,19 +311,12 @@ class MarketSnapStatusMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: _getBackgroundColor(),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(
-          color: _getBorderColor(),
-          width: 1,
-        ),
+        border: Border.all(color: _getBorderColor(), width: 1),
       ),
       child: Row(
         children: [
           if (showIcon) ...[
-            Icon(
-              _getIcon(),
-              color: _getIconColor(),
-              size: AppSpacing.iconSm,
-            ),
+            Icon(_getIcon(), color: _getIconColor(), size: AppSpacing.iconSm),
             const SizedBox(width: AppSpacing.sm),
           ],
           Expanded(
@@ -460,9 +444,7 @@ class MarketSnapLoadingIndicator extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             message!,
-            style: AppTypography.body.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
             textAlign: TextAlign.center,
           ),
         ],
@@ -476,11 +458,7 @@ class BasketIcon extends StatelessWidget {
   final double size;
   final Color? color; // For tinting if needed
 
-  const BasketIcon({
-    super.key,
-    this.size = 48,
-    this.color,
-  });
+  const BasketIcon({super.key, this.size = 48, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -519,12 +497,7 @@ class MarketSnapAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: title != null
-          ? Text(
-              title!,
-              style: AppTypography.h2,
-            )
-          : null,
+      title: title != null ? Text(title!, style: AppTypography.h2) : null,
       actions: actions,
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -571,13 +544,9 @@ class _QueueStatusContainerState extends State<QueueStatusContainer>
       duration: AppSpacing.animationPulse,
       vsync: this,
     );
-    _animation = Tween<double>(
-      begin: 0.3,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _animation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
     if (widget.isQueued) {
       _animationController.repeat(reverse: true);
@@ -603,10 +572,7 @@ class _QueueStatusContainerState extends State<QueueStatusContainer>
   @override
   Widget build(BuildContext context) {
     if (!widget.isQueued) {
-      return Container(
-        padding: widget.padding,
-        child: widget.child,
-      );
+      return Container(padding: widget.padding, child: widget.child);
     }
 
     return AnimatedBuilder(

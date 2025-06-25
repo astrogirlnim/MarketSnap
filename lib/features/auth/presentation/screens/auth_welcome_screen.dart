@@ -7,6 +7,7 @@ import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
+import '../../application/auth_service.dart';
 
 /// MarketSnap Welcome Screen - Redesigned to match login_page.png reference
 /// Features the basket character icon and farmers-market aesthetic
@@ -16,7 +17,7 @@ class AuthWelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('[AuthWelcomeScreen] Building MarketSnap welcome screen');
-    
+
     // Check if phone auth should be disabled on iOS emulator
     final bool isIOSEmulator = Platform.isIOS && kDebugMode;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -48,12 +49,8 @@ class AuthWelcomeScreen extends StatelessWidget {
                   const Spacer(flex: 1),
 
                   // Basket Character Icon - Center of the design
-                  const Center(
-                    child: BasketIcon(
-                      size: 120,
-                    ),
-                  ),
-                  
+                  const Center(child: BasketIcon(size: 120)),
+
                   const SizedBox(height: AppSpacing.xl),
 
                   // Main CTA Button - "Sign Up as Vendor"
@@ -61,7 +58,9 @@ class AuthWelcomeScreen extends StatelessWidget {
                     text: 'Sign Up as Vendor',
                     icon: Icons.storefront_outlined,
                     onPressed: () {
-                      debugPrint('[AuthWelcomeScreen] Sign Up as Vendor tapped');
+                      debugPrint(
+                        '[AuthWelcomeScreen] Sign Up as Vendor tapped',
+                      );
                       _navigateToAuth(context, isIOSEmulator, true);
                     },
                   ),
@@ -104,7 +103,9 @@ class AuthWelcomeScreen extends StatelessWidget {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        debugPrint('[AuthWelcomeScreen] What is MarketSnap tapped');
+                        debugPrint(
+                          '[AuthWelcomeScreen] What is MarketSnap tapped',
+                        );
                         _showInfoDialog(context);
                       },
                       style: TextButton.styleFrom(
@@ -136,7 +137,8 @@ class AuthWelcomeScreen extends StatelessWidget {
                   if (isIOSEmulator) ...[
                     const SizedBox(height: AppSpacing.lg),
                     MarketSnapStatusMessage(
-                      message: 'Development Mode: Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
+                      message:
+                          'Development Mode: Phone authentication is disabled in iOS simulator. Please use email authentication for testing.',
                       type: StatusType.warning,
                       showIcon: true,
                     ),
@@ -152,7 +154,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: AppSpacing.sm),
                 ],
               ),
@@ -164,17 +166,19 @@ class AuthWelcomeScreen extends StatelessWidget {
   }
 
   /// Navigate to authentication based on platform and signup/login mode
-  void _navigateToAuth(BuildContext context, bool isIOSEmulator, bool isSignUp) {
+  void _navigateToAuth(
+    BuildContext context,
+    bool isIOSEmulator,
+    bool isSignUp,
+  ) {
     // For now, both signup and login go to the same auth flow
     // In the future, this could differentiate between vendor signup and customer login
-    
+
     if (isIOSEmulator) {
       // iOS simulator - only email auth works
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const EmailAuthScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const EmailAuthScreen()),
       );
     } else {
       // Real device - offer choice between phone and email
@@ -202,9 +206,9 @@ class AuthWelcomeScreen extends StatelessWidget {
                   style: AppTypography.h2,
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
-                
+
                 Text(
                   'Choose how you\'d like to ${isSignUp ? 'create your account' : 'sign in'}:',
                   style: AppTypography.body.copyWith(
@@ -212,7 +216,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
 
                 // Phone option
@@ -249,6 +253,9 @@ class AuthWelcomeScreen extends StatelessWidget {
 
                 const SizedBox(height: AppSpacing.md),
 
+                // Google option
+                _GoogleSignInButton(),
+
                 // Cancel
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -283,17 +290,17 @@ class AuthWelcomeScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const BasketIcon(size: 60),
-                
+
                 const SizedBox(height: AppSpacing.md),
-                
+
                 Text(
                   'What is MarketSnap?',
                   style: AppTypography.h2,
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.md),
-                
+
                 Text(
                   'MarketSnap enables farmers-market vendors to share real-time "fresh-stock" photos and 5-second clips that work offline first, sync transparently when connectivity returns, and auto-expire after 24 hours—driving foot traffic before produce spoils.',
                   style: AppTypography.body.copyWith(
@@ -302,7 +309,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
 
                 MarketSnapPrimaryButton(
@@ -314,6 +321,56 @@ class AuthWelcomeScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// Google Sign-In Button Widget
+class _GoogleSignInButton extends StatefulWidget {
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await AuthService().signInWithGoogle();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        MarketSnapPrimaryButton(
+          text: 'Continue with Google',
+          icon: Icons.account_circle_outlined,
+          isLoading: _isLoading,
+          onPressed: _isLoading ? null : _handleGoogleSignIn,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: AppTypography.caption.copyWith(color: AppColors.appleRed),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -46,7 +46,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   @override
   void initState() {
     super.initState();
-    debugPrint('[MediaReviewScreen] Initializing review screen for: ${widget.mediaPath}');
+    debugPrint(
+      '[MediaReviewScreen] Initializing review screen for: ${widget.mediaPath}',
+    );
 
     // Initialize caption with provided text
     if (widget.caption != null) {
@@ -59,7 +61,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       vsync: this,
     );
     _filterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _filterAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _filterAnimationController,
+        curve: Curves.easeInOut,
+      ),
     );
 
     // Initialize video player if media is video
@@ -74,19 +79,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   @override
   void dispose() {
     debugPrint('[MediaReviewScreen] Disposing review screen');
-    
+
     _captionController.dispose();
     _filterAnimationController.dispose();
     _videoController?.dispose();
-    
+
     // Clean up filtered image if it exists
     if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
       _cleanupFilteredImage();
     }
-    
+
     // Clear preview cache to free memory
     _lutFilterService.clearPreviewCache();
-    
+
     super.dispose();
   }
 
@@ -95,34 +100,40 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     debugPrint('[MediaReviewScreen] Initializing LUT filter service...');
     try {
       await _lutFilterService.initialize();
-      debugPrint('[MediaReviewScreen] LUT filter service initialized successfully');
+      debugPrint(
+        '[MediaReviewScreen] LUT filter service initialized successfully',
+      );
     } catch (e) {
-      debugPrint('[MediaReviewScreen] Error initializing LUT filter service: $e');
+      debugPrint(
+        '[MediaReviewScreen] Error initializing LUT filter service: $e',
+      );
     }
   }
 
   /// Initialize video player for video media
   Future<void> _initializeVideoPlayer() async {
-    debugPrint('[MediaReviewScreen] Initializing video player for: ${widget.mediaPath}');
-    
+    debugPrint(
+      '[MediaReviewScreen] Initializing video player for: ${widget.mediaPath}',
+    );
+
     try {
       _videoController = VideoPlayerController.file(File(widget.mediaPath));
       await _videoController!.initialize();
-      
+
       // Set video to loop and start playing
       await _videoController!.setLooping(true);
       await _videoController!.play();
-      
+
       if (mounted) {
         setState(() {
           _isVideoInitialized = true;
         });
       }
-      
+
       debugPrint('[MediaReviewScreen] Video player initialized successfully');
     } catch (e) {
       debugPrint('[MediaReviewScreen] Error initializing video player: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -138,12 +149,16 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Apply selected filter to the image
   Future<void> _applyFilter(LutFilterType filterType) async {
     if (widget.mediaType == MediaType.video) {
-      debugPrint('[MediaReviewScreen] Filter application not supported for videos');
+      debugPrint(
+        '[MediaReviewScreen] Filter application not supported for videos',
+      );
       return;
     }
 
-    debugPrint('[MediaReviewScreen] Applying filter: ${filterType.displayName}');
-    
+    debugPrint(
+      '[MediaReviewScreen] Applying filter: ${filterType.displayName}',
+    );
+
     setState(() {
       _isApplyingFilter = true;
       _selectedFilter = filterType;
@@ -151,7 +166,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
     try {
       // Clean up previous filtered image
-      if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
+      if (_filteredImagePath != null &&
+          _filteredImagePath != widget.mediaPath) {
         await _cleanupFilteredImage();
       }
 
@@ -165,19 +181,21 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         setState(() {
           _filteredImagePath = filteredPath;
         });
-        
+
         // Animate filter application
         _filterAnimationController.forward().then((_) {
           _filterAnimationController.reset();
         });
-        
-        debugPrint('[MediaReviewScreen] Filter applied successfully: $filteredPath');
+
+        debugPrint(
+          '[MediaReviewScreen] Filter applied successfully: $filteredPath',
+        );
       } else {
         throw Exception('Failed to apply filter');
       }
     } catch (e) {
       debugPrint('[MediaReviewScreen] Error applying filter: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -203,7 +221,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         final File filteredFile = File(_filteredImagePath!);
         if (await filteredFile.exists()) {
           await filteredFile.delete();
-          debugPrint('[MediaReviewScreen] Cleaned up filtered image: $_filteredImagePath');
+          debugPrint(
+            '[MediaReviewScreen] Cleaned up filtered image: $_filteredImagePath',
+          );
         }
       } catch (e) {
         debugPrint('[MediaReviewScreen] Error cleaning up filtered image: $e');
@@ -214,7 +234,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Post the media with applied filters and caption
   Future<void> _postMedia() async {
     debugPrint('[MediaReviewScreen] Posting media...');
-    
+
     setState(() {
       _isPosting = true;
     });
@@ -223,7 +243,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       // Determine the final media path (filtered or original)
       final String finalMediaPath = _filteredImagePath ?? widget.mediaPath;
       final String caption = _captionController.text.trim();
-      
+
       debugPrint('[MediaReviewScreen] Final media path: $finalMediaPath');
       debugPrint('[MediaReviewScreen] Caption: $caption');
 
@@ -237,8 +257,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       // Add to Hive queue for background upload
       await hiveService.addPendingMedia(pendingItem);
-      
-      debugPrint('[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}');
+
+      debugPrint(
+        '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
+      );
 
       // Show success message
       if (mounted) {
@@ -261,7 +283,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       }
     } catch (e) {
       debugPrint('[MediaReviewScreen] Error posting media: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -298,7 +320,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Build image preview with filter animation
   Widget _buildImagePreview() {
     final String displayPath = _filteredImagePath ?? widget.mediaPath;
-    
+
     return AnimatedBuilder(
       animation: _filterAnimation,
       builder: (context, child) {
@@ -316,7 +338,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ),
               ),
             ),
-            
+
             // Filter application overlay
             if (_isApplyingFilter)
               Container(
@@ -340,7 +362,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                   ),
                 ),
               ),
-            
+
             // Filter animation overlay
             if (_filterAnimation.value > 0)
               Container(
@@ -348,7 +370,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 height: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.white.withValues(alpha: _filterAnimation.value * 0.3),
+                  color: Colors.white.withValues(
+                    alpha: _filterAnimation.value * 0.3,
+                  ),
                 ),
               ),
           ],
@@ -411,7 +435,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         itemBuilder: (context, index) {
           final filterType = LutFilterType.values[index];
           final isSelected = _selectedFilter == filterType;
-          
+
           return GestureDetector(
             onTap: () => _applyFilter(filterType),
             child: Container(
@@ -426,7 +450,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? Colors.deepPurple : Colors.grey.shade300,
+                        color: isSelected
+                            ? Colors.deepPurple
+                            : Colors.grey.shade300,
                         width: isSelected ? 3 : 1,
                       ),
                     ),
@@ -435,16 +461,20 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                       child: _buildFilterThumbnail(filterType),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Filter name
                   Text(
                     filterType.displayName,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? Colors.deepPurple : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.deepPurple
+                          : Colors.grey.shade700,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -482,11 +512,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           // Show simplified loading indicator
           return Container(
             color: Colors.grey.shade200,
-            child: Icon(
-              Icons.image,
-              color: Colors.grey.shade400,
-              size: 24,
-            ),
+            child: Icon(Icons.image, color: Colors.grey.shade400, size: 24),
           );
         } else if (snapshot.hasData && snapshot.data != null) {
           return Image.memory(
@@ -561,14 +587,18 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             maxLines: 2,
             maxLength: 200,
             decoration: InputDecoration(
-              hintText: 'What\'s the story behind this ${widget.mediaType.name}?',
+              hintText:
+                  'What\'s the story behind this ${widget.mediaType.name}?',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                borderSide: const BorderSide(
+                  color: Colors.deepPurple,
+                  width: 2,
+                ),
               ),
               contentPadding: const EdgeInsets.all(16),
             ),
@@ -616,7 +646,13 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                   children: [
                     Icon(Icons.send, size: 20),
                     SizedBox(width: 8),
-                    Text('Post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Post',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
         ),
@@ -684,7 +720,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 child: Column(
                   children: [
                     // Filter selection (only for photos)
-                    if (widget.mediaType == MediaType.photo) _buildFilterSelection(),
+                    if (widget.mediaType == MediaType.photo)
+                      _buildFilterSelection(),
 
                     // Caption input
                     _buildCaptionInput(),
@@ -693,7 +730,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                     _buildPostButton(),
 
                     // Bottom padding for safe area
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                    SizedBox(
+                      height: MediaQuery.of(context).padding.bottom + 16,
+                    ),
                   ],
                 ),
               ),
@@ -710,4 +749,4 @@ extension StringExtension on String {
   String capitalize() {
     return "${this[0].toUpperCase()}${substring(1)}";
   }
-} 
+}

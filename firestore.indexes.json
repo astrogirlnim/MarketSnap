@@ -25,11 +25,5 @@
       ]
     }
   ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "messages",
-      "fieldPath": "expiresAt",
-      "ttl": true
-    }
-  ]
+  "fieldOverrides": []
 }

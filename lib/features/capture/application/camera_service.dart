@@ -229,7 +229,9 @@ class CameraService {
 
       // Set additional buffer management for Android emulators
       if (_isAndroidEmulator()) {
-        debugPrint('[CameraService] Applying Android emulator optimizations...');
+        debugPrint(
+          '[CameraService] Applying Android emulator optimizations...',
+        );
       }
 
       debugPrint('[CameraService] Initializing camera controller...');

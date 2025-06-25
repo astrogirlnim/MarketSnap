@@ -37,10 +37,14 @@ class AppColors {
   static const Color outlineDark = Color(0xFF3F3F3F);
 
   // Text Colors
-  static const Color soilCharcoal = Color(0xFF3C3C3C); // Soil Charcoal (Primary Text)
+  static const Color soilCharcoal = Color(
+    0xFF3C3C3C,
+  ); // Soil Charcoal (Primary Text)
   static const Color textPrimaryDark = Color(0xFFF2F2F2);
 
-  static const Color soilTaupe = Color(0xFF6E6E6E); // Soil Taupe (Secondary Text)
+  static const Color soilTaupe = Color(
+    0xFF6E6E6E,
+  ); // Soil Taupe (Secondary Text)
   static const Color textSecondaryDark = Color(0xFFBDBDBD);
 
   // Additional semantic colors for better theming
