@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -480,25 +481,112 @@ class AuthService {
 
   /// Signs in with Google account
   Future<UserCredential> signInWithGoogle() async {
+    debugPrint('[AuthService] Starting Google sign-in process...');
+    
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      // Initialize GoogleSignIn with configuration
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        // For Android, scopes are configured in Firebase Console
+        // For iOS, scopes can be specified here if needed
+        scopes: <String>[
+          'email',
+          'profile',
+        ],
+      );
+      
+      debugPrint('[AuthService] Initiating Google sign-in dialog...');
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
       if (googleUser == null) {
-        throw Exception('Google sign-in aborted');
+        debugPrint('[AuthService] Google sign-in was cancelled by user');
+        throw Exception('Google sign-in was cancelled');
       }
+      
+      debugPrint('[AuthService] Google sign-in successful, getting authentication details...');
+      debugPrint('[AuthService] Google user email: ${googleUser.email}');
+      debugPrint('[AuthService] Google user display name: ${googleUser.displayName}');
+      
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        debugPrint('[AuthService] Missing Google authentication tokens');
+        throw Exception('Failed to get Google authentication tokens');
+      }
+      
+      debugPrint('[AuthService] Google authentication tokens received, creating Firebase credential...');
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      
+      debugPrint('[AuthService] Signing in to Firebase with Google credential...');
       final UserCredential result = await _firebaseAuth.signInWithCredential(credential);
+      
       debugPrint('[AuthService] Google sign-in successful for user: ${result.user?.uid}');
+      debugPrint('[AuthService] User email: ${result.user?.email}');
+      debugPrint('[AuthService] User display name: ${result.user?.displayName}');
+      
       return result;
+    } on PlatformException catch (e) {
+      debugPrint('[AuthService] Google sign-in PlatformException: ${e.code} - ${e.message}');
+      debugPrint('[AuthService] PlatformException details: ${e.details}');
+      
+      // Handle specific Google Sign-In errors
+      switch (e.code) {
+        case 'sign_in_failed':
+          if (e.message?.contains('ApiException: 10') == true) {
+            debugPrint('[AuthService] ApiException: 10 - This is a developer configuration error');
+            debugPrint('[AuthService] Possible causes:');
+            debugPrint('[AuthService] 1. SHA-1 fingerprint not registered in Firebase Console');
+            debugPrint('[AuthService] 2. Wrong package name in Firebase Console');
+            debugPrint('[AuthService] 3. Google Services configuration file is outdated');
+            debugPrint('[AuthService] 4. Google Play Services on emulator needs update');
+            
+            // Try to get more information about the current configuration
+            debugPrint('[AuthService] Current app package: com.example.marketsnap');
+            debugPrint('[AuthService] Expected SHA-1: [REDACTED FOR SECURITY]');
+            
+            throw Exception('Google Sign-In configuration error. Please check that:\n'
+                '1. SHA-1 fingerprint is registered in Firebase Console\n'
+                '2. Package name matches in Firebase Console\n'
+                '3. google-services.json is up to date\n'
+                '4. Try restarting the emulator');
+          }
+          throw Exception('Google sign-in failed: ${e.message}');
+        case 'network_error':
+          throw Exception('Network error during Google sign-in. Please check your internet connection.');
+        case 'sign_in_canceled':
+          throw Exception('Google sign-in was cancelled');
+        default:
+          throw Exception('Google sign-in failed: ${e.message ?? 'Unknown error'}');
+      }
     } on FirebaseAuthException catch (e) {
-      debugPrint('[AuthService] Google sign-in failed: ${e.code} - ${e.message}');
-      throw Exception('Google sign-in failed: ${e.message}');
+      debugPrint('[AuthService] Firebase auth error during Google sign-in: ${e.code} - ${e.message}');
+      
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          throw Exception('An account already exists with this email using a different sign-in method. Please try signing in with that method.');
+        case 'invalid-credential':
+          throw Exception('The Google sign-in credential is invalid. Please try again.');
+        case 'operation-not-allowed':
+          throw Exception('Google sign-in is not enabled for this app. Please contact support.');
+        case 'user-disabled':
+          throw Exception('This account has been disabled. Please contact support.');
+        default:
+          throw Exception('Google sign-in failed: ${e.message ?? 'Unknown Firebase error'}');
+      }
     } catch (e) {
-      debugPrint('[AuthService] Google sign-in error: $e');
-      throw Exception('Google sign-in failed. Please try again.');
+      debugPrint('[AuthService] Unexpected error during Google sign-in: $e');
+      debugPrint('[AuthService] Error type: ${e.runtimeType}');
+      
+      // Provide more specific error information
+      if (e.toString().contains('MissingPluginException')) {
+        throw Exception('Google Sign-In plugin not properly installed. Please restart the app.');
+      } else if (e.toString().contains('PlatformException')) {
+        throw Exception('Platform error during Google sign-in. Please try again or restart the app.');
+      } else {
+        throw Exception('Google sign-in failed: ${e.toString()}');
+      }
     }
   }
 }
