@@ -76,8 +76,8 @@
     - [X] 3.1.1: Phone/email OTP flow using `firebase_auth` ✅ **COMPLETED**
     - [X] 3.1.1a: Login screen redesign to match `login_page.png` reference ✅ **COMPLETED**
     - [X] 3.1.1b: All auth screens updated with MarketSnap design system ✅ **COMPLETED**
-    - [ ] 3.1.2: Profile form with stall name, market city, avatar upload (apply design system)
-    - [ ] 3.1.3: Validate offline caching of profile in Hive
+    - [X] 3.1.2: Profile form with stall name, market city, avatar upload (apply design system) ✅ **COMPLETED**
+    - [X] 3.1.3: Validate offline caching of profile in Hive ✅ **COMPLETED**
   - [~] 3.2: Capture & Review UI
     - [X] 3.2.1: Camera preview with photo shutter ✅ **COMPLETED**
     - [X] 3.2.2: 5-sec video record button with live countdown ✅ **COMPLETED** - Full video recording with auto-stop timer, live countdown display, cross-platform support, simulator mode compatibility, and Android emulator optimizations.
@@ -88,7 +88,6 @@
 
 ## Next Tasks
 
-- **Phase 3.1.2: Profile Form Implementation** (with MarketSnap design system)
 - **Phase 3.2.3: Review Screen with LUT Filters** (apply design system)
 - **Phase 3.2.4: Apply design system to camera capture screens**
 - **Phase 3.3: Story Reel & Feed UI** (with MarketSnap branding)

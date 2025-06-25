@@ -38,9 +38,9 @@ class VendorProfile extends HiveObject {
   @HiveField(7)
   bool needsSync;
 
-  /// Last updated timestamp
+  /// Last updated timestamp (stored as milliseconds since epoch)
   @HiveField(8)
-  DateTime lastUpdated;
+  int lastUpdatedMillis;
 
   VendorProfile({
     required this.uid,
@@ -52,7 +52,10 @@ class VendorProfile extends HiveObject {
     this.localAvatarPath,
     this.needsSync = true,
     DateTime? lastUpdated,
-  }) : lastUpdated = lastUpdated ?? DateTime.now();
+  }) : lastUpdatedMillis = (lastUpdated ?? DateTime.now()).millisecondsSinceEpoch;
+
+  /// Getter for lastUpdated as DateTime
+  DateTime get lastUpdated => DateTime.fromMillisecondsSinceEpoch(lastUpdatedMillis);
 
   /// Creates a VendorProfile from Firestore document data
   factory VendorProfile.fromFirestore(Map<String, dynamic> data, String uid) {

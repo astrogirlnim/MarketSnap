@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:google_sign_in/google_sign_in.dart';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
@@ -475,5 +476,29 @@ class AuthService {
     return RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     ).hasMatch(email);
+  }
+
+  /// Signs in with Google account
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        throw Exception('Google sign-in aborted');
+      }
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final UserCredential result = await _firebaseAuth.signInWithCredential(credential);
+      debugPrint('[AuthService] Google sign-in successful for user: \\${result.user?.uid}');
+      return result;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthService] Google sign-in failed: \\${e.code} - \\${e.message}');
+      throw Exception('Google sign-in failed: \\${e.message}');
+    } catch (e) {
+      debugPrint('[AuthService] Google sign-in error: \\${e}');
+      throw Exception('Google sign-in failed. Please try again.');
+    }
   }
 }

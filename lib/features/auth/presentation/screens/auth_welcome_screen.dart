@@ -7,6 +7,7 @@ import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
+import '../../application/auth_service.dart';
 
 /// MarketSnap Welcome Screen - Redesigned to match login_page.png reference
 /// Features the basket character icon and farmers-market aesthetic
@@ -249,6 +250,9 @@ class AuthWelcomeScreen extends StatelessWidget {
 
                 const SizedBox(height: AppSpacing.md),
 
+                // Google option
+                _GoogleSignInButton(),
+
                 // Cancel
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -314,6 +318,56 @@ class AuthWelcomeScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// Google Sign-In Button Widget
+class _GoogleSignInButton extends StatefulWidget {
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await AuthService().signInWithGoogle();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        MarketSnapPrimaryButton(
+          text: 'Continue with Google',
+          icon: Icons.account_circle_outlined,
+          isLoading: _isLoading,
+          onPressed: _isLoading ? null : _handleGoogleSignIn,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: AppTypography.caption.copyWith(color: AppColors.appleRed),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -56,6 +56,7 @@ dependencies:
   # Image processing dependencies for LUT filter application
   image: ^4.3.0
   flutter_image_compress: ^2.3.0
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:

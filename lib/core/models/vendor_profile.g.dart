@@ -25,8 +25,7 @@ class VendorProfileAdapter extends TypeAdapter<VendorProfile> {
       allowLocation: fields[5] as bool,
       localAvatarPath: fields[6] as String?,
       needsSync: fields[7] as bool,
-      lastUpdated: fields[8] as DateTime?,
-    );
+    )..lastUpdatedMillis = fields[8] as int;
   }
 
   @override
@@ -50,7 +49,7 @@ class VendorProfileAdapter extends TypeAdapter<VendorProfile> {
       ..writeByte(7)
       ..write(obj.needsSync)
       ..writeByte(8)
-      ..write(obj.lastUpdated);
+      ..write(obj.lastUpdatedMillis);
   }
 
   @override
