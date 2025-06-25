@@ -31,6 +31,26 @@ jobs:
         with:
           node-version: '20'
 
+      # Cache Flutter pub dependencies for validation
+      - name: Cache Flutter pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: flutter-pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            flutter-pub-${{ runner.os }}-
+
+      # Cache Node.js dependencies for validation
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: functions/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('functions/package-lock.json', 'functions/package.json') }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
@@ -123,6 +143,60 @@ jobs:
         with:
           node-version: '20'
 
+      # Cache Flutter pub dependencies
+      - name: Cache Flutter pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: flutter-pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            flutter-pub-${{ runner.os }}-
+
+      # Cache Gradle dependencies and wrapper
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle.kts', 'android/app/build.gradle.kts') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # Cache Gradle build outputs for faster incremental builds
+      - name: Cache Gradle build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/build
+            android/app/build
+          key: gradle-build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            gradle-build-${{ runner.os }}-
+
+      # Cache Node.js dependencies for Firebase Functions
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: functions/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('functions/package-lock.json', 'functions/package.json') }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
+      # Cache Firebase CLI and tools
+      - name: Cache Firebase CLI
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/firebase
+            ~/.npm
+          key: firebase-cli-${{ runner.os }}-${{ hashFiles('functions/package.json') }}
+          restore-keys: |
+            firebase-cli-${{ runner.os }}-
+
       - name: Install Firebase Tools
         run: |
           npm install -g firebase-tools
@@ -152,8 +226,14 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo $GOOGLE_SERVICES_JSON > android/app/google-services.json
 
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Install Flutter dependencies
+        run: |
+          echo "📦 Installing Flutter dependencies with caching..."
+          if [ -d "~/.pub-cache" ]; then
+            echo "✅ Flutter pub cache restored successfully"
+          fi
+          flutter pub get
+          echo "✅ Flutter dependencies installed"
       
       - name: Create .env file
         env:
@@ -187,10 +267,28 @@ jobs:
           
           echo "✅ Release keystore and signing configuration ready"
 
-      - name: Build Android APK
+      - name: Build Android APK with caching optimization
         run: |
-          flutter clean
-          flutter build apk --release
+          echo "🏗️ Building Android APK with optimized caching..."
+          
+          # Check cache status
+          if [ -d "~/.gradle/caches" ]; then
+            echo "✅ Gradle dependencies cache restored"
+          fi
+          if [ -d "android/build" ]; then
+            echo "✅ Gradle build cache restored"
+          fi
+          
+          # Enable Gradle daemon and parallel builds for faster compilation
+          export GRADLE_OPTS="-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+          
+          # Skip flutter clean to preserve cached builds
+          echo "⚡ Skipping flutter clean to preserve build cache..."
+          
+          # Build with verbose output for debugging
+          flutter build apk --release --verbose
+          
+          echo "✅ Android APK built successfully with caching optimizations"
 
       - name: Deploy to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -213,6 +311,35 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+
+      # Cache Node.js dependencies for backend deployment
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: functions/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('functions/package-lock.json', 'functions/package.json') }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
+      # Cache Firebase CLI for backend deployment
+      - name: Cache Firebase CLI
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/firebase
+            ~/.npm
+          key: firebase-cli-${{ runner.os }}-${{ hashFiles('functions/package.json') }}
+          restore-keys: |
+            firebase-cli-${{ runner.os }}-
+
+      # Cache compiled TypeScript build
+      - name: Cache Functions build
+        uses: actions/cache@v4
+        with:
+          path: functions/lib
+          key: functions-build-${{ runner.os }}-${{ hashFiles('functions/src/**/*.ts', 'functions/tsconfig.json') }}
+          restore-keys: |
+            functions-build-${{ runner.os }}-
 
       - name: Install Firebase Tools
         run: |
@@ -245,12 +372,36 @@ jobs:
 
       - name: Deploy Firebase Backend
         run: |
+          echo "🚀 Deploying Firebase backend with caching optimizations..."
+          
           cd functions
+          
+          # Check if dependencies are cached
+          if [ -d "node_modules" ]; then
+            echo "✅ Node.js dependencies cache restored"
+          fi
+          
+          # Install dependencies (will be fast if cached)
           npm install
+          
+          # Check if TypeScript build is cached
+          if [ -d "lib" ]; then
+            echo "✅ Functions build cache restored"
+          fi
+          
+          # Build (will be fast if cached and no TS changes)
           npm run build
+          
           cd ..
-          firebase deploy --only functions,firestore,storage --non-interactive
-          echo "✅ Firebase backend deployed successfully"
+          
+          # Deploy with verbose output
+          firebase deploy --only functions,firestore,storage --non-interactive --debug || {
+            echo "❌ Firebase deployment failed, retrying once..."
+            sleep 5
+            firebase deploy --only functions,firestore,storage --non-interactive
+          }
+          
+          echo "✅ Firebase backend deployed successfully with optimized caching"
 
       - name: Activate Service Account for gcloud
         run: |
