@@ -610,7 +610,22 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       );
     }
 
-    return CameraPreview(_cameraService.controller!);
+    // ✅ ASPECT RATIO FIX: Wrap CameraPreview with proper aspect ratio to prevent distortion
+    final double aspectRatio = _cameraService.controller!.value.aspectRatio;
+    
+    // Enhanced debugging info for aspect ratio
+    debugPrint('[CameraPreviewScreen] ========== ASPECT RATIO DEBUG ==========');
+    debugPrint('[CameraPreviewScreen] Camera aspect ratio: $aspectRatio');
+    debugPrint('[CameraPreviewScreen] Preview size: ${_cameraService.controller!.value.previewSize}');
+    debugPrint('[CameraPreviewScreen] Using AspectRatio widget to prevent stretching');
+    debugPrint('[CameraPreviewScreen] =======================================');
+    
+    return Center(
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: CameraPreview(_cameraService.controller!),
+      ),
+    );
   }
 
   /// Build simulator camera preview
