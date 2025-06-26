@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 
 import '../../../../shared/presentation/theme/app_colors.dart';
@@ -6,6 +7,9 @@ import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../settings/application/settings_service.dart';
+import '../../../../main.dart' as main;
 
 /// Vendor Profile Form Screen
 /// Allows vendors to create/edit their profile with stall name, market city, and avatar upload
@@ -31,7 +35,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   final _stallNameController = TextEditingController();
   final _marketCityController = TextEditingController();
 
-  bool _allowLocation = false;
+  // Note: Location setting now managed in Settings & Help screen
   String? _localAvatarPath;
   String? _errorMessage;
   bool _isLoading = false;
@@ -70,7 +74,6 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           _displayNameController.text = profile.displayName;
           _stallNameController.text = profile.stallName;
           _marketCityController.text = profile.marketCity;
-          _allowLocation = profile.allowLocation;
           _localAvatarPath = profile.localAvatarPath;
         });
       } else {
@@ -215,7 +218,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         displayName: _displayNameController.text,
         stallName: _stallNameController.text,
         marketCity: _marketCityController.text,
-        allowLocation: _allowLocation,
+        allowLocation: false, // Default - managed in Settings
         localAvatarPath: _localAvatarPath,
       );
 
@@ -314,6 +317,22 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     );
   }
 
+  /// Navigate to settings screen
+  void _navigateToSettings(BuildContext context) {
+    developer.log(
+      '[VendorProfileScreen] Navigating to settings screen',
+      name: 'VendorProfileScreen',
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          settingsService: SettingsService(hiveService: main.hiveService),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -337,6 +356,14 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         // Disable automatic back button during initial setup or tab navigation
         automaticallyImplyLeading:
             widget.onProfileComplete == null && !widget.isInTabNavigation,
+        actions: [
+          // Settings button for navigation to settings screen
+          IconButton(
+            icon: const Icon(Icons.settings, color: AppColors.soilCharcoal),
+            onPressed: () => _navigateToSettings(context),
+            tooltip: 'Settings & Help',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(
@@ -409,53 +436,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
-                      // Location Permission
-                      MarketSnapCard(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              color: AppColors.marketBlue,
-                              size: AppSpacing.iconMd,
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Share Location',
-                                    style: AppTypography.bodyLG.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    'Allow coarse location tagging on your snaps to help customers find your market',
-                                    style: AppTypography.body.copyWith(
-                                      color: AppColors.soilTaupe,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Switch(
-                              value: _allowLocation,
-                              onChanged: (value) {
-                                setState(() {
-                                  _allowLocation = value;
-                                });
-                              },
-                              activeColor: AppColors.leafGreen,
-                              inactiveThumbColor: AppColors.soilTaupe,
-                              inactiveTrackColor: AppColors.seedBrown
-                                  .withValues(alpha: 0.3),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
+                      // Note: Location setting moved to Settings & Help screen
+                      const SizedBox(height: AppSpacing.md),
 
                       // Save Button
                       MarketSnapPrimaryButton(

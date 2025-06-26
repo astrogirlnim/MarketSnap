@@ -70,15 +70,20 @@ class StoryCarouselWidget extends StatelessWidget {
                     padding: const EdgeInsets.all(3),
                     child: CircleAvatar(
                       backgroundColor: AppColors.marketBlue,
-                      child: Text(
-                        story.vendorName.isNotEmpty
-                            ? story.vendorName[0].toUpperCase()
-                            : 'V',
-                        style: AppTypography.bodyLG.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      backgroundImage: story.vendorAvatarUrl.isNotEmpty
+                          ? NetworkImage(story.vendorAvatarUrl)
+                          : null,
+                      child: story.vendorAvatarUrl.isEmpty
+                          ? Text(
+                              story.vendorName.isNotEmpty
+                                  ? story.vendorName[0].toUpperCase()
+                                  : 'V',
+                              style: AppTypography.bodyLG.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ),

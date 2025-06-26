@@ -91,10 +91,10 @@ Legend:
   - [X] Vertical feed showing latest three snaps per followed vendor.
   - [X] Thumbnail placeholder until media downloads completes.
 
-- [ ] **4. Settings & Help**
-  - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.
-  - [ ] External link to support email.
-  - [ ] Display free‑storage indicator (≥ 100 MB check).
+- [X] **4. Settings & Help**
+  - [X] Toggles: coarse location, auto‑compress video, save‑to‑device default.
+  - [X] External link to support email.
+  - [X] Display free‑storage indicator (≥ 100 MB check).
 
 - [ ] **5. Messaging UI**
   - [ ] Conversation list showing recent chats (24 h TTL badge).

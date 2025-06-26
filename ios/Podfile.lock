@@ -1210,6 +1210,8 @@ PODS:
     - Firebase/Firestore (= 11.13.0)
     - firebase_core
     - Flutter
+  - device_info_plus (0.0.1):
+    - Flutter
   - Firebase/Auth (11.13.0):
     - Firebase/CoreOnly
     - FirebaseAuth (~> 11.13.0)
@@ -1499,6 +1501,8 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
   - video_compress (0.3.0):
     - Flutter
   - video_player_avfoundation (0.0.1):
@@ -1510,6 +1514,7 @@ PODS:
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
@@ -1524,6 +1529,7 @@ DEPENDENCIES:
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - video_compress (from `.symlinks/plugins/video_compress/ios`)
   - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
   - workmanager (from `.symlinks/plugins/workmanager/ios`)
@@ -1569,6 +1575,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
   firebase_app_check:
     :path: ".symlinks/plugins/firebase_app_check/ios"
   firebase_auth:
@@ -1597,6 +1605,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqflite_darwin:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
   video_compress:
     :path: ".symlinks/plugins/video_compress/ios"
   video_player_avfoundation:
@@ -1611,6 +1621,7 @@ SPEC CHECKSUMS:
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
   cloud_firestore: 2fdc3301bcc486957ff7fa705430a185468c1987
+  device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
   Firebase: 3435bc66b4d494c2f22c79fd3aae4c1db6662327
   firebase_app_check: 9dd264a91837205c607bb2abc6bb3e71b5071bb7
   firebase_auth: ebc1f561cc3077efebad5005974c9ed58008973b
@@ -1654,6 +1665,7 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
   video_compress: f2133a07762889d67f0711ac831faa26f956980e
   video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
   workmanager: 01be2de7f184bd15de93a1812936a2b7f42ef07e

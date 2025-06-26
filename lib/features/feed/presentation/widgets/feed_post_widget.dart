@@ -104,15 +104,20 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.marketBlue,
-            child: Text(
-              widget.snap.vendorName.isNotEmpty
-                  ? widget.snap.vendorName[0].toUpperCase()
-                  : 'V',
-              style: AppTypography.bodyLG.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            backgroundImage: widget.snap.vendorAvatarUrl.isNotEmpty
+                ? NetworkImage(widget.snap.vendorAvatarUrl)
+                : null,
+            child: widget.snap.vendorAvatarUrl.isEmpty
+                ? Text(
+                    widget.snap.vendorName.isNotEmpty
+                        ? widget.snap.vendorName[0].toUpperCase()
+                        : 'V',
+                    style: AppTypography.bodyLG.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: AppSpacing.sm),
 
