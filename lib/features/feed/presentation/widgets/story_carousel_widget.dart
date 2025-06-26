@@ -60,8 +60,8 @@ class StoryCarouselWidget extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: story.hasUnseenSnaps 
-                          ? AppColors.harvestOrange 
+                      color: story.hasUnseenSnaps
+                          ? AppColors.harvestOrange
                           : AppColors.seedBrown,
                       width: 2,
                     ),
@@ -71,7 +71,7 @@ class StoryCarouselWidget extends StatelessWidget {
                     child: CircleAvatar(
                       backgroundColor: AppColors.marketBlue,
                       child: Text(
-                        story.vendorName.isNotEmpty 
+                        story.vendorName.isNotEmpty
                             ? story.vendorName[0].toUpperCase()
                             : 'V',
                         style: AppTypography.bodyLG.copyWith(
@@ -84,9 +84,9 @@ class StoryCarouselWidget extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: AppSpacing.xs),
-            
+
             // Vendor name
             Text(
               story.vendorName,
@@ -103,4 +103,4 @@ class StoryCarouselWidget extends StatelessWidget {
       ),
     );
   }
-} 
+}

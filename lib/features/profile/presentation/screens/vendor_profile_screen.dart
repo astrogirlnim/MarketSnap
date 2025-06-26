@@ -325,12 +325,18 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         // Hide back button in these cases:
         // 1. During initial profile setup (when onProfileComplete is provided)
         // 2. When used in tab navigation (nowhere to go back to)
-        leading: (widget.onProfileComplete != null || widget.isInTabNavigation) ? null : IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.soilCharcoal),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: (widget.onProfileComplete != null || widget.isInTabNavigation)
+            ? null
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: AppColors.soilCharcoal,
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         // Disable automatic back button during initial setup or tab navigation
-        automaticallyImplyLeading: widget.onProfileComplete == null && !widget.isInTabNavigation,
+        automaticallyImplyLeading:
+            widget.onProfileComplete == null && !widget.isInTabNavigation,
       ),
       body: _isLoading
           ? const Center(

@@ -268,7 +268,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       // Trigger immediate sync to upload the media right away
       bool uploadSuccessful = false;
       String? uploadError;
-      
+
       try {
         debugPrint('[MediaReviewScreen] Triggering immediate sync...');
         final backgroundSyncService = BackgroundSyncService();
@@ -464,7 +464,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build filter selection row
+  /// Build filter selection row with optimized rendering
   Widget _buildFilterSelection() {
     // Video doesn't support filters yet
     if (widget.mediaType == MediaType.video) {
@@ -478,140 +478,27 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: LutFilterType.values.length,
-        // Add caching to prevent rebuilding thumbnails
-        cacheExtent: 500,
+        // ✅ BUFFER OVERFLOW FIX: Optimized caching and rendering
+        cacheExtent: 200, // Reduced cache extent to save memory
+        addAutomaticKeepAlives:
+            false, // Don't keep items alive when scrolled away
+        addRepaintBoundaries: true, // Optimize repainting
         itemBuilder: (context, index) {
           final filterType = LutFilterType.values[index];
           final isSelected = _selectedFilter == filterType;
 
-          return GestureDetector(
+          // ✅ OPTIMIZATION: Use AutomaticKeepAlive for selected item only
+          return _FilterThumbnailWidget(
+            key: ValueKey('filter_${filterType.name}'),
+            filterType: filterType,
+            isSelected: isSelected,
+            mediaPath: widget.mediaPath,
             onTap: () => _applyFilter(filterType),
-            child: Container(
-              width: 70,
-              margin: const EdgeInsets.only(right: 12),
-              child: Column(
-                children: [
-                  // Filter preview thumbnail
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.deepPurple
-                            : Colors.grey.shade300,
-                        width: isSelected ? 3 : 1,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: _buildFilterThumbnail(filterType),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Filter name
-                  Text(
-                    filterType.displayName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? Colors.deepPurple
-                          : Colors.grey.shade700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+            lutFilterService: _lutFilterService,
           );
         },
       ),
     );
-  }
-
-  /// Build filter thumbnail preview
-  Widget _buildFilterThumbnail(LutFilterType filterType) {
-    if (filterType == LutFilterType.none) {
-      // Show original image thumbnail
-      return Image.file(
-        File(widget.mediaPath),
-        fit: BoxFit.cover,
-        // Add memory cache optimization
-        cacheWidth: 56,
-        cacheHeight: 56,
-      );
-    }
-
-    // For other filters, show a preview with caching and error handling
-    return FutureBuilder<Uint8List?>(
-      future: _lutFilterService.getFilterPreview(
-        inputImagePath: widget.mediaPath,
-        filterType: filterType,
-        previewSize: 56, // Match the container size
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // Show simplified loading indicator
-          return Container(
-            color: Colors.grey.shade200,
-            child: Icon(Icons.image, color: Colors.grey.shade400, size: 24),
-          );
-        } else if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
-            fit: BoxFit.cover,
-            // Add memory cache optimization
-            cacheWidth: 56,
-            cacheHeight: 56,
-          );
-        } else {
-          // Fallback to original image with filter name overlay
-          return Stack(
-            children: [
-              Image.file(
-                File(widget.mediaPath),
-                fit: BoxFit.cover,
-                cacheWidth: 56,
-                cacheHeight: 56,
-              ),
-              Container(
-                color: _getFilterColor(filterType).withValues(alpha: 0.3),
-                child: Center(
-                  child: Text(
-                    filterType.name.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
-
-  /// Get color representation for filter type
-  Color _getFilterColor(LutFilterType filterType) {
-    switch (filterType) {
-      case LutFilterType.warm:
-        return Colors.orange;
-      case LutFilterType.cool:
-        return Colors.blue;
-      case LutFilterType.contrast:
-        return Colors.grey;
-      case LutFilterType.none:
-        return Colors.transparent;
-    }
   }
 
   /// Build caption input section
@@ -796,5 +683,219 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 extension StringExtension on String {
   String capitalize() {
     return "${this[0].toUpperCase()}${substring(1)}";
+  }
+}
+
+/// ✅ BUFFER OVERFLOW FIX: Optimized filter thumbnail widget with proper lifecycle management
+class _FilterThumbnailWidget extends StatefulWidget {
+  final LutFilterType filterType;
+  final bool isSelected;
+  final String mediaPath;
+  final VoidCallback onTap;
+  final LutFilterService lutFilterService;
+
+  const _FilterThumbnailWidget({
+    super.key,
+    required this.filterType,
+    required this.isSelected,
+    required this.mediaPath,
+    required this.onTap,
+    required this.lutFilterService,
+  });
+
+  @override
+  State<_FilterThumbnailWidget> createState() => _FilterThumbnailWidgetState();
+}
+
+class _FilterThumbnailWidgetState extends State<_FilterThumbnailWidget>
+    with AutomaticKeepAliveClientMixin {
+  // ✅ BUFFER OVERFLOW FIX: Cache preview data to prevent regeneration
+  Uint8List? _cachedPreviewData;
+  bool _isLoading = false;
+  bool _hasError = false;
+
+  @override
+  bool get wantKeepAlive => widget.isSelected; // Only keep selected item alive
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreview();
+  }
+
+  @override
+  void didUpdateWidget(_FilterThumbnailWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only reload if filter type changed
+    if (oldWidget.filterType != widget.filterType) {
+      _loadPreview();
+    }
+  }
+
+  /// Load preview with error handling and caching
+  Future<void> _loadPreview() async {
+    if (widget.filterType == LutFilterType.none || _cachedPreviewData != null) {
+      return; // No need to load for 'none' filter or if already cached
+    }
+
+    if (_isLoading) return; // Prevent multiple simultaneous loads
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final previewData = await widget.lutFilterService.getFilterPreview(
+        inputImagePath: widget.mediaPath,
+        filterType: widget.filterType,
+        previewSize: 48,
+      );
+
+      if (mounted) {
+        setState(() {
+          _cachedPreviewData = previewData;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        width: 70,
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            // Filter preview thumbnail
+            Container(
+              width: 48, // Reduced size for memory optimization
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: widget.isSelected
+                      ? Colors.deepPurple
+                      : Colors.grey.shade300,
+                  width: widget.isSelected ? 3 : 1,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: _buildThumbnailContent(),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Filter name
+            Text(
+              widget.filterType.displayName,
+              style: TextStyle(
+                fontSize: 11, // Slightly smaller text
+                fontWeight: widget.isSelected
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: widget.isSelected
+                    ? Colors.deepPurple
+                    : Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailContent() {
+    if (widget.filterType == LutFilterType.none) {
+      // Show original image thumbnail
+      return Image.file(
+        File(widget.mediaPath),
+        fit: BoxFit.cover,
+        cacheWidth: 48,
+        cacheHeight: 48,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.image_not_supported, size: 20),
+          );
+        },
+      );
+    }
+
+    if (_isLoading) {
+      return Container(
+        color: _getFilterColor().withValues(alpha: 0.2),
+        child: Icon(Icons.filter, color: _getFilterColor(), size: 16),
+      );
+    }
+
+    if (_hasError || _cachedPreviewData == null) {
+      return Container(
+        color: _getFilterColor().withValues(alpha: 0.3),
+        child: Center(
+          child: Text(
+            widget.filterType.name[0].toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Image.memory(
+      _cachedPreviewData!,
+      fit: BoxFit.cover,
+      cacheWidth: 48,
+      cacheHeight: 48,
+      gaplessPlayback: false,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: _getFilterColor().withValues(alpha: 0.3),
+          child: Center(
+            child: Text(
+              widget.filterType.name[0].toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getFilterColor() {
+    switch (widget.filterType) {
+      case LutFilterType.warm:
+        return Colors.orange;
+      case LutFilterType.cool:
+        return Colors.blue;
+      case LutFilterType.contrast:
+        return Colors.grey;
+      case LutFilterType.none:
+        return Colors.transparent;
+    }
   }
 }
