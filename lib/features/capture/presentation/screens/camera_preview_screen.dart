@@ -625,19 +625,19 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     debugPrint('[CameraPreviewScreen] Device ratio: $deviceRatio');
     debugPrint('[CameraPreviewScreen] Camera ratio: $cameraRatio');
     debugPrint('[CameraPreviewScreen] Preview size: ${controller.value.previewSize}');
-    debugPrint('[CameraPreviewScreen] Using natural camera view approach');
+    debugPrint('[CameraPreviewScreen] Using device ratio + BoxFit.cover for full-screen preview');
     debugPrint('[CameraPreviewScreen] ==========================================');
     
-    // ✅ CAMERA ZOOM FIX: Use natural camera view like default camera app
-    // Instead of Transform.scale, use the camera preview directly with proper fitting
+    // ✅ PROPER FULL-SCREEN CAMERA: Use device ratio, not camera ratio
+    // This fills the entire screen by cropping camera output, just like default camera apps
     return ClipRect(
       child: OverflowBox(
         alignment: Alignment.center,
         child: FittedBox(
-          fit: BoxFit.fitWidth,
+          fit: BoxFit.cover,
           child: SizedBox(
             width: size.width,
-            height: size.width / cameraRatio,
+            height: size.width / deviceRatio, // Force device aspect ratio
             child: CameraPreview(controller),
           ),
         ),
