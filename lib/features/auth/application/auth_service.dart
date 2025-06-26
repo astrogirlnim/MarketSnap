@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
@@ -132,13 +131,7 @@ class AuthService {
     debugPrint('[AuthService] Signing in with phone credential');
 
     try {
-      final UserCredential result = await _firebaseAuth.signInWithCredential(
-        credential,
-      );
-      debugPrint(
-        '[AuthService] Phone sign-in successful for user: ${result.user?.uid}',
-      );
-      return result;
+      return await _signInWithCredentialWrapper(credential);
     } catch (e) {
       debugPrint('[AuthService] Phone sign-in failed: $e');
       rethrow;
@@ -254,19 +247,17 @@ class AuthService {
         email: email,
         emailLink: emailLink,
       );
-
       debugPrint(
-        '[AuthService] Email link sign-in successful for user: ${result.user?.uid}',
+        '[AuthService] Email sign-in successful for user: ${result.user?.uid}',
       );
       return result;
     } on FirebaseAuthException catch (e) {
-      debugPrint(
-        '[AuthService] Email link sign-in failed: ${e.code} - ${e.message}',
-      );
-      throw Exception(_getEmailAuthErrorMessage(e));
+      debugPrint('[AuthService] Email sign-in failed: ${e.code}');
+      await handleFirebaseAuthException(e);
+      rethrow;
     } catch (e) {
-      debugPrint('[AuthService] Email link sign-in error: $e');
-      throw Exception('Failed to sign in with email link. Please try again.');
+      debugPrint('[AuthService] Email sign-in error: $e');
+      throw Exception('Failed to sign in with email link.');
     }
   }
 
@@ -315,35 +306,19 @@ class AuthService {
 
   /// Signs out the current user
   Future<void> signOut() async {
-    debugPrint('[AuthService] Signing out user: ${currentUser?.uid}');
-
+    debugPrint('[AuthService] Signing out user...');
     try {
-      // Add timeout to prevent infinite spinning
-      await _firebaseAuth.signOut().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('[AuthService] Sign out timed out after 10 seconds');
-          throw Exception('Sign out operation timed out');
-        },
-      );
-      debugPrint('[AuthService] Sign out successful');
-    } catch (e) {
-      debugPrint('[AuthService] Sign out failed: $e');
-
-      // Provide more specific error handling
-      if (e.toString().contains('timeout') ||
-          e.toString().contains('Timeout')) {
-        throw Exception(
-          'Sign out timed out. Please check your connection and try again.',
-        );
-      } else if (e.toString().contains('network') ||
-          e.toString().contains('connection')) {
-        throw Exception(
-          'Network error during sign out. Please check your connection.',
-        );
-      } else {
-        throw Exception('Failed to sign out: ${e.toString()}');
+      // Also sign out from Google if that was the last sign-in method
+      if (await GoogleSignIn().isSignedIn()) {
+        await GoogleSignIn().signOut();
+        debugPrint('[AuthService] Signed out from Google');
       }
+      await _firebaseAuth.signOut();
+      debugPrint('[AuthService] Signed out from Firebase');
+    } catch (e) {
+      debugPrint('[AuthService] Error during sign out: $e');
+      // Even if there's an error, we should probably assume sign-out happened
+      // or at least not block the user.
     }
   }
 
@@ -645,6 +620,87 @@ class AuthService {
     }
   }
 
+  /// Private wrapper for signing in with any credential, with robust error handling
+  Future<UserCredential> _signInWithCredentialWrapper(
+    AuthCredential credential,
+  ) async {
+    try {
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
+      debugPrint(
+        '[AuthService] Successfully signed in with credential. UID: ${userCredential.user?.uid}',
+      );
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      debugPrint(
+        '[AuthService] _signInWithCredentialWrapper failed: ${e.code}',
+      );
+      await handleFirebaseAuthException(e);
+      rethrow;
+    } catch (e) {
+      debugPrint(
+        '[AuthService] An unexpected error occurred during _signInWithCredentialWrapper: $e',
+      );
+      throw Exception('An unexpected error occurred during sign-in.');
+    }
+  }
+
+  /// Handles Firebase Authentication exceptions and signs out if necessary
+  Future<void> handleFirebaseAuthException(FirebaseAuthException e) async {
+    debugPrint('[AuthService] Handling FirebaseAuthException: ${e.code}');
+
+    final isCriticalError = [
+      'invalid-refresh-token',
+      'user-disabled',
+      'user-not-found',
+      'invalid-credential',
+    ].contains(e.code);
+
+    if (isCriticalError) {
+      debugPrint(
+        '[AuthService] Critical auth error detected. Signing out user.',
+      );
+      await signOut();
+      throw Exception(
+        'Your session has expired or is invalid. Please sign in again.',
+      );
+    } else {
+      throw Exception(_getGeneralAuthErrorMessage(e));
+    }
+  }
+
+  String _getGeneralAuthErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'user-disabled':
+        return 'This user account has been disabled.';
+      case 'user-not-found':
+        return 'No user found for this email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'email-already-in-use':
+        return 'An account already exists for this email.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled.';
+      case 'too-many-requests':
+        return 'Too many requests. Please try again later.';
+      case 'invalid-verification-code':
+        return 'The verification code is invalid.';
+      case 'invalid-verification-id':
+        return 'The verification session has expired. Please request a new code.';
+      case 'invalid-phone-number':
+        return 'The phone number is not valid.';
+      case 'invalid-credential':
+        return 'Your credentials have expired or are invalid. Please sign in again.';
+      case 'invalid-refresh-token':
+        return 'Your session has expired. Please sign in again.';
+      default:
+        return 'An unknown authentication error occurred.';
+    }
+  }
+
   // ================================
   // UTILITY METHODS
   // ================================
@@ -686,177 +742,34 @@ class AuthService {
 
   /// Signs in with Google account
   Future<UserCredential> signInWithGoogle() async {
-    debugPrint('[AuthService] Starting Google sign-in process...');
-
+    debugPrint('[AuthService] Initiating Google Sign-In');
     try {
-      // Initialize GoogleSignIn with configuration
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        // For Android, scopes are configured in Firebase Console
-        // For iOS, scopes can be specified here if needed
-        scopes: <String>['email', 'profile'],
-      );
-
-      debugPrint('[AuthService] Initiating Google sign-in dialog...');
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser == null) {
-        debugPrint('[AuthService] Google sign-in was cancelled by user');
-        throw Exception('Google sign-in was cancelled');
+        throw Exception('Google sign-in was cancelled.');
       }
-
-      debugPrint(
-        '[AuthService] Google sign-in successful, getting authentication details...',
-      );
-      debugPrint('[AuthService] Google user email: ${googleUser.email}');
-      debugPrint(
-        '[AuthService] Google user display name: ${googleUser.displayName}',
-      );
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        debugPrint('[AuthService] Missing Google authentication tokens');
-        throw Exception('Failed to get Google authentication tokens');
-      }
-
-      debugPrint(
-        '[AuthService] Google authentication tokens received, creating Firebase credential...',
-      );
-      final credential = GoogleAuthProvider.credential(
+      final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      debugPrint(
-        '[AuthService] Signing in to Firebase with Google credential...',
-      );
-      final UserCredential result = await _firebaseAuth.signInWithCredential(
-        credential,
-      );
-
-      debugPrint(
-        '[AuthService] Google sign-in successful for user: ${result.user?.uid}',
-      );
-      debugPrint('[AuthService] User email: ${result.user?.email}');
-      debugPrint(
-        '[AuthService] User display name: ${result.user?.displayName}',
-      );
-
-      return result;
+      debugPrint('[AuthService] Google credential obtained, signing in...');
+      return await _signInWithCredentialWrapper(credential);
     } on PlatformException catch (e) {
-      debugPrint(
-        '[AuthService] Google sign-in PlatformException: ${e.code} - ${e.message}',
-      );
-      debugPrint('[AuthService] PlatformException details: ${e.details}');
-
-      // Handle specific Google Sign-In errors
-      switch (e.code) {
-        case 'sign_in_failed':
-          if (e.message?.contains('ApiException: 10') == true) {
-            debugPrint(
-              '[AuthService] ApiException: 10 - This is a developer configuration error',
-            );
-            debugPrint('[AuthService] Possible causes:');
-            debugPrint(
-              '[AuthService] 1. SHA-1 fingerprint not registered in Firebase Console',
-            );
-            debugPrint(
-              '[AuthService] 2. Wrong package name in Firebase Console',
-            );
-            debugPrint(
-              '[AuthService] 3. Google Services configuration file is outdated',
-            );
-            debugPrint(
-              '[AuthService] 4. Google Play Services on emulator needs update',
-            );
-
-            // Log configuration details for debugging (without exposing sensitive data)
-            debugPrint(
-              '[AuthService] Google Sign-In configuration error details:',
-            );
-            debugPrint('[AuthService] Platform: Android');
-            debugPrint('[AuthService] Package name: com.example.marketsnap');
-
-            // In debug mode, show expected SHA-1 from environment
-            if (kDebugMode) {
-              final expectedSha1 =
-                  dotenv.env['ANDROID_DEBUG_SHA1'] ?? 'Not configured';
-              debugPrint(
-                '[AuthService] Expected debug SHA-1: ${expectedSha1.isNotEmpty ? expectedSha1 : "Not set in .env file"}',
-              );
-              debugPrint(
-                '[AuthService] Note: Ensure SHA-1 is registered in Firebase Console',
-              );
-            } else {
-              debugPrint(
-                '[AuthService] Production mode - SHA-1 configured via Firebase Console',
-              );
-            }
-
-            throw Exception(
-              'Google Sign-In configuration error. Please check that:\n'
-              '1. SHA-1 fingerprint is registered in Firebase Console\n'
-              '2. Package name matches in Firebase Console\n'
-              '3. google-services.json is up to date\n'
-              '4. Try restarting the emulator',
-            );
-          }
-          throw Exception('Google sign-in failed: ${e.message}');
-        case 'network_error':
-          throw Exception(
-            'Network error during Google sign-in. Please check your internet connection.',
-          );
-        case 'sign_in_canceled':
-          throw Exception('Google sign-in was cancelled');
-        default:
-          throw Exception(
-            'Google sign-in failed: ${e.message ?? 'Unknown error'}',
-          );
+      debugPrint('[AuthService] Google Sign-In PlatformException: ${e.code}');
+      if (e.code == 'network_error') {
+        throw Exception(
+          'A network error occurred. Please check your connection.',
+        );
       }
-    } on FirebaseAuthException catch (e) {
-      debugPrint(
-        '[AuthService] Firebase auth error during Google sign-in: ${e.code} - ${e.message}',
-      );
-
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          throw Exception(
-            'An account already exists with this email using a different sign-in method. Please try signing in with that method.',
-          );
-        case 'invalid-credential':
-          throw Exception(
-            'The Google sign-in credential is invalid. Please try again.',
-          );
-        case 'operation-not-allowed':
-          throw Exception(
-            'Google sign-in is not enabled for this app. Please contact support.',
-          );
-        case 'user-disabled':
-          throw Exception(
-            'This account has been disabled. Please contact support.',
-          );
-        default:
-          throw Exception(
-            'Google sign-in failed: ${e.message ?? 'Unknown Firebase error'}',
-          );
-      }
+      throw Exception('Failed to sign in with Google. Please try again.');
     } catch (e) {
-      debugPrint('[AuthService] Unexpected error during Google sign-in: $e');
-      debugPrint('[AuthService] Error type: ${e.runtimeType}');
-
-      // Provide more specific error information
-      if (e.toString().contains('MissingPluginException')) {
-        throw Exception(
-          'Google Sign-In plugin not properly installed. Please restart the app.',
-        );
-      } else if (e.toString().contains('PlatformException')) {
-        throw Exception(
-          'Platform error during Google sign-in. Please try again or restart the app.',
-        );
-      } else {
-        throw Exception('Google sign-in failed: ${e.toString()}');
-      }
+      debugPrint('[AuthService] Google sign-in failed: $e');
+      throw Exception('An unknown error occurred during Google sign-in.');
     }
   }
 }

@@ -33,7 +33,7 @@ class PendingMediaItem extends HiveObject {
 
   /// The timestamp when the item was created.
   @HiveField(3)
-  final DateTime timestamp;
+  final DateTime createdAt;
 
   /// Optional: User-added caption for the media.
   @HiveField(4)
@@ -44,16 +44,23 @@ class PendingMediaItem extends HiveObject {
   @HiveField(5)
   final Map<String, double>? location;
 
+  /// The ID of the vendor who created this snap.
+  @HiveField(6)
+  final String vendorId;
+
   PendingMediaItem({
     required this.filePath,
     required this.mediaType,
+    required this.vendorId,
     this.caption,
     this.location,
-  }) : id = _uuid.v4(),
-       timestamp = DateTime.now();
+    String? id,
+    DateTime? createdAt,
+  }) : id = id ?? _uuid.v4(),
+       createdAt = createdAt ?? DateTime.now();
 
   @override
   String toString() {
-    return 'PendingMediaItem(id: $id, type: $mediaType, path: $filePath, queuedAt: $timestamp)';
+    return 'PendingMediaItem(id: $id, vendorId: $vendorId, type: $mediaType, path: $filePath, queuedAt: $createdAt)';
   }
 }

@@ -6,12 +6,23 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     // Match the path for vendor snaps.
-    // Allow writes only if the user is authenticated, the path matches their UID,
-    // and the file size is less than 1MB.
+    // Ensure the user is authenticated and the file size is within limits.
+    // The user's UID must match the {userId} in the path.
     match /vendors/{userId}/snaps/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId
-                   && request.resource.size < 1 * 1024 * 1024; // 1 MB
+      allow read; // Anyone can read snaps
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      request.resource.size < 1 * 1024 * 1024; // 1 MB limit
+    }
+
+    // Match the path for vendor avatars.
+    // Ensure the user is authenticated and is uploading to their own avatar path.
+    match /vendors/{userId}/avatar/{fileName} {
+      allow read; // Publicly readable
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      request.resource.size < 500 * 1024 && // 500 KB limit
+                      request.resource.contentType.matches('image/.*'); // Image files only
     }
   }
 }
