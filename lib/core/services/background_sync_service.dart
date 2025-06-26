@@ -287,6 +287,9 @@ Future<void> _uploadPendingItem(
     'storyVendorId': user.uid,
   };
 
+  debugPrint('$logPrefix Creating Firestore document with filterType: "${pendingItem.filterType}"');
+  debugPrint('$logPrefix Full snapData: $snapData');
+
   await FirebaseFirestore.instance.collection('snaps').add(snapData);
   debugPrint(
     '$logPrefix Firestore document created for snap: ${pendingItem.id}',

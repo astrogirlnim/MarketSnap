@@ -189,6 +189,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         filterType: _selectedFilter.name,
       );
 
+      debugPrint('[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})');
+
       await widget.hiveService.addPendingMedia(pendingItem);
 
       // Trigger immediate sync
