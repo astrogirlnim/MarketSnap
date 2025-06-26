@@ -410,23 +410,29 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath');
       // Use a post-frame callback to avoid navigation during build
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (mounted) {
-          // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
-          await _cameraService.pauseCamera();
+        if (!mounted) return; // Early return if widget is not mounted
+        
+        // Capture context before async operations
+        final navigator = Navigator.of(context);
+        
+        // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
+        await _cameraService.pauseCamera();
 
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => MediaReviewScreen(
-                mediaPath: finalVideoPath,
-                mediaType: MediaType.video,
-                hiveService: widget.hiveService,
-              ),
+        // Check mounted again after async operation
+        if (!mounted) return;
+
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (context) => MediaReviewScreen(
+              mediaPath: finalVideoPath,
+              mediaType: MediaType.video,
+              hiveService: widget.hiveService,
             ),
-          );
+          ),
+        );
 
-          // ✅ BUFFER OVERFLOW FIX: Resume camera when returning from review screen
-          await _cameraService.resumeCamera();
-        }
+        // ✅ BUFFER OVERFLOW FIX: Resume camera when returning from review screen
+        await _cameraService.resumeCamera();
       });
     } else {
       debugPrint('[CameraPreviewScreen] ERROR: No video path available for navigation');

@@ -167,16 +167,19 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 400),
+      // Different constraints for videos vs photos
+      constraints: widget.snap.mediaType == MediaType.video
+          ? null // No height constraint for videos - let them use natural aspect ratio
+          : const BoxConstraints(maxHeight: 400), // Keep height constraint for photos
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(8),
           bottom: Radius.circular(8),
         ),
         child: widget.snap.mediaType == MediaType.video
-            ? _buildVideoPlayer()
+            ? _buildVideoPlayer() // Videos use their natural aspect ratio
             : AspectRatio(
-                aspectRatio: 1.0, // Enforce square aspect ratio for photos
+                aspectRatio: 1.0, // Enforce square aspect ratio for photos only
                 child: _buildImageDisplay(),
               ),
       ),
@@ -195,12 +198,21 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       );
     }
 
+    // Get video aspect ratio
+    final videoAspectRatio = _videoController!.value.aspectRatio;
+    
     // Determine overlay color from the snap's filterType
     Color overlayColor = Colors.transparent;
     final filterType = widget.snap.filterType;
 
     debugPrint(
-      '[FeedPostWidget] Processing video for snap ${widget.snap.id} with filterType: "$filterType"',
+      '[FeedPostWidget] 🎥 Processing video for snap ${widget.snap.id}',
+    );
+    debugPrint(
+      '[FeedPostWidget] 📐 Video aspect ratio: $videoAspectRatio (${videoAspectRatio > 1 ? 'landscape' : 'portrait'})',
+    );
+    debugPrint(
+      '[FeedPostWidget] 🎨 Video filterType: "$filterType"',
     );
 
     if (filterType != null && filterType != 'none') {
@@ -214,11 +226,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     }
 
     debugPrint(
-      '[FeedPostWidget] Applied overlay color: $overlayColor for filter: $filterType',
+      '[FeedPostWidget] 🎨 Applied overlay color: $overlayColor for filter: $filterType',
     );
 
     return AspectRatio(
-      aspectRatio: _videoController!.value.aspectRatio,
+      aspectRatio: videoAspectRatio, // Use the pre-calculated aspect ratio
       child: Stack(
         alignment: Alignment.center,
         children: [
