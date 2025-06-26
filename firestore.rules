@@ -35,12 +35,15 @@ service cloud.firestore {
     // Only the sender (fromUid) and recipient (toUid) can read/write messages.
     // Messages auto-expire after 24h via TTL field.
     match /messages/{messageId} {
-      // Allow read if user is either the sender or recipient
+      // Allow read if user is authenticated AND is either the sender or recipient
+      // Note: We don't require the OTHER party to be authenticated - just that the
+      // current user is authenticated and is involved in the conversation
       allow read: if request.auth != null && 
                      (request.auth.uid == resource.data.fromUid || 
                       request.auth.uid == resource.data.toUid);
       
       // Allow create if user is authenticated and is the sender
+      // The recipient (toUid) doesn't need to be currently authenticated
       allow create: if request.auth != null && 
                        request.auth.uid == request.resource.data.fromUid &&
                        request.resource.data.toUid != null &&
@@ -50,6 +53,7 @@ service cloud.firestore {
                        request.resource.data.conversationId != null;
       
       // Allow update only for marking messages as read, and only by the recipient
+      // The sender doesn't need to be currently authenticated for this
       allow update: if request.auth != null && 
                        request.auth.uid == resource.data.toUid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
