@@ -5,6 +5,8 @@ import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 
 class FeedService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Note: _auth will be used for user-specific feed filtering in future updates
+  // ignore: unused_field
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // In a real app, we would also fetch user's follow list.

@@ -75,7 +75,7 @@ Future<void> main() async {
       }
 
       try {
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8081);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
@@ -285,12 +285,19 @@ class AuthWrapper extends StatelessWidget {
                 debugPrint(
                   '[AuthWrapper] Profile complete, navigating to MainShellScreen',
                 );
-                return const MainShellScreen();
+                return MainShellScreen(profileService: profileService);
               } else {
                 debugPrint(
                   '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
                 );
-                return const VendorProfileScreen();
+                return VendorProfileScreen(
+                  profileService: profileService,
+                  onProfileComplete: () {
+                    debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                    // Trigger a rebuild of the AuthWrapper to check profile status again
+                    setState(() {});
+                  },
+                );
               }
             },
           );

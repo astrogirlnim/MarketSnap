@@ -12,11 +12,13 @@ import '../../application/profile_service.dart';
 class VendorProfileScreen extends StatefulWidget {
   final ProfileService profileService;
   final VoidCallback? onProfileComplete;
+  final bool isInTabNavigation;
 
   const VendorProfileScreen({
     super.key,
     required this.profileService,
     this.onProfileComplete,
+    this.isInTabNavigation = false,
   });
 
   @override
@@ -320,10 +322,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         title: Text('Vendor Profile', style: AppTypography.h1),
         backgroundColor: AppColors.cornsilk,
         elevation: 0,
-        leading: IconButton(
+        // Hide back button in these cases:
+        // 1. During initial profile setup (when onProfileComplete is provided)
+        // 2. When used in tab navigation (nowhere to go back to)
+        leading: (widget.onProfileComplete != null || widget.isInTabNavigation) ? null : IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.soilCharcoal),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        // Disable automatic back button during initial setup or tab navigation
+        automaticallyImplyLeading: widget.onProfileComplete == null && !widget.isInTabNavigation,
       ),
       body: _isLoading
           ? const Center(
