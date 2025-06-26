@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:marketsnap/features/capture/presentation/screens/camera_preview_screen.dart';
+import 'package:marketsnap/features/capture/application/camera_service.dart';
 import 'package:marketsnap/features/feed/presentation/screens/feed_screen.dart';
 import 'package:marketsnap/features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'package:marketsnap/features/profile/application/profile_service.dart';
@@ -22,6 +23,7 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int _selectedIndex = 0;
+  final CameraService _cameraService = CameraService.instance;
 
   List<Widget> get _widgetOptions => <Widget>[
     const FeedScreen(),
@@ -33,10 +35,41 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
   ];
 
+  /// ✅ BUFFER OVERFLOW FIX: Handle tab navigation with camera lifecycle management
   void _onItemTapped(int index) {
+    final int previousIndex = _selectedIndex;
+    
     setState(() {
       _selectedIndex = index;
     });
+
+    // ✅ BUFFER OVERFLOW FIX: Manage camera lifecycle based on tab visibility
+    _handleCameraVisibilityChange(previousIndex, index);
+  }
+
+  /// ✅ BUFFER OVERFLOW FIX: Pause/resume camera based on tab visibility
+  void _handleCameraVisibilityChange(int previousIndex, int currentIndex) {
+    const int cameraTabIndex = 1; // Camera is at index 1
+
+    // If navigating away from camera tab, pause camera to free resources
+    if (previousIndex == cameraTabIndex && currentIndex != cameraTabIndex) {
+      debugPrint('[MainShellScreen] Navigating away from camera tab - pausing camera');
+      _cameraService.pauseCamera().catchError((error) {
+        debugPrint('[MainShellScreen] Error pausing camera: $error');
+      });
+    }
+    
+    // If navigating to camera tab, resume camera
+    else if (previousIndex != cameraTabIndex && currentIndex == cameraTabIndex) {
+      debugPrint('[MainShellScreen] Navigating to camera tab - resuming camera');
+      _cameraService.resumeCamera().then((success) {
+        if (!success) {
+          debugPrint('[MainShellScreen] Camera resume failed');
+        }
+      }).catchError((error) {
+        debugPrint('[MainShellScreen] Error resuming camera: $error');
+      });
+    }
   }
 
   @override

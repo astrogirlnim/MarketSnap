@@ -75,20 +75,40 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   bool _isRecordingVideo = false;
   int _recordingCountdown = 0;
   StreamSubscription<int>? _countdownSubscription;
+  
+  // ✅ BUFFER OVERFLOW FIX: Track widget visibility for camera lifecycle management
+  bool _isWidgetVisible = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _isWidgetVisible = true;
     debugPrint('[CameraPreviewScreen] Initializing camera preview screen');
     _initializeCamera();
   }
 
   @override
   void dispose() {
+    debugPrint('[CameraPreviewScreen] Disposing camera preview screen with enhanced cleanup');
+    
+    // ✅ BUFFER OVERFLOW FIX: Mark widget as not visible
+    _isWidgetVisible = false;
+    
+    // ✅ BUFFER OVERFLOW FIX: Enhanced disposal with proper cleanup order
     WidgetsBinding.instance.removeObserver(this);
+    
+    // Cancel countdown subscription first
     _countdownSubscription?.cancel();
-    debugPrint('[CameraPreviewScreen] Disposing camera preview screen');
+    _countdownSubscription = null;
+    
+    // ✅ BUFFER OVERFLOW FIX: Ensure camera is properly disposed when widget is destroyed
+    // This is critical for preventing buffer overflow when navigating away from camera
+    _cameraService.disposeController().catchError((error) {
+      debugPrint('[CameraPreviewScreen] Error during camera disposal: $error');
+    });
+    
+    debugPrint('[CameraPreviewScreen] Camera preview screen disposal completed');
     super.dispose();
   }
 
@@ -96,27 +116,68 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint('[CameraPreviewScreen] App lifecycle state changed: $state');
 
-    // Handle app lifecycle changes for camera
-    if (_cameraService.controller == null ||
-        !_cameraService.controller!.value.isInitialized) {
-      return;
+    // ✅ BUFFER OVERFLOW FIX: Enhanced lifecycle management to prevent buffer overflow
+    switch (state) {
+      case AppLifecycleState.inactive:
+        // App is becoming inactive (e.g., phone call, notification)
+        debugPrint('[CameraPreviewScreen] App inactive - pausing camera operations');
+        _cameraService.pauseCamera();
+        break;
+        
+      case AppLifecycleState.paused:
+        // App is going to background
+        debugPrint('[CameraPreviewScreen] App paused - handling background state');
+        _cameraService.handleAppInBackground();
+        break;
+        
+      case AppLifecycleState.resumed:
+        // App is resuming from background
+        debugPrint('[CameraPreviewScreen] App resumed - handling foreground state');
+        _handleAppResumed();
+        break;
+        
+      case AppLifecycleState.detached:
+        // App is being detached
+        debugPrint('[CameraPreviewScreen] App detached - disposing camera');
+        _cameraService.disposeController();
+        break;
+        
+      case AppLifecycleState.hidden:
+        // App is hidden (iOS specific)
+        debugPrint('[CameraPreviewScreen] App hidden - pausing camera operations');
+        _cameraService.pauseCamera();
+        break;
     }
+  }
 
-    if (state == AppLifecycleState.inactive) {
-      // App is becoming inactive (e.g., phone call, notification)
-      debugPrint(
-        '[CameraPreviewScreen] App inactive - disposing camera controller',
-      );
-      _cameraService.disposeController();
-    } else if (state == AppLifecycleState.resumed) {
-      // App is resuming - reinitialize camera
-      debugPrint('[CameraPreviewScreen] App resumed - reinitializing camera');
-      _initializeCamera();
+  /// ✅ BUFFER OVERFLOW FIX: Handle app resumed with proper error handling
+  Future<void> _handleAppResumed() async {
+    try {
+      final success = await _cameraService.handleAppInForeground();
+      
+      if (!success && mounted) {
+        // If camera resume failed, try full reinitialization
+        debugPrint('[CameraPreviewScreen] Camera resume failed, attempting full reinitialization');
+        await _initializeCamera();
+      }
+    } catch (e) {
+      debugPrint('[CameraPreviewScreen] Error handling app resume: $e');
+      
+      if (mounted) {
+        // Fallback to full reinitialization
+        await _initializeCamera();
+      }
     }
   }
 
   /// Initialize camera service and controller
   Future<void> _initializeCamera() async {
+    // ✅ BUFFER OVERFLOW FIX: Only initialize if widget is visible and mounted
+    if (!_isWidgetVisible || !mounted) {
+      debugPrint('[CameraPreviewScreen] Skipping camera initialization - widget not visible or mounted');
+      return;
+    }
+    
     debugPrint('[CameraPreviewScreen] Starting camera initialization...');
 
     setState(() {
