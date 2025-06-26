@@ -50,6 +50,14 @@ Future<void> main() async {
     try {
       debugPrint('[main] Debug mode detected, using local emulators.');
 
+      // ✅ CRITICAL FIX: Clear any existing authentication state before connecting to emulators
+      try {
+        await FirebaseAuth.instance.signOut();
+        debugPrint('[main] Cleared existing authentication state for emulator setup.');
+      } catch (signOutError) {
+        debugPrint('[main] No existing auth to clear: $signOutError');
+      }
+
       // Configure emulators with proper error handling and platform-specific logic
       try {
         // For iOS simulator, we need to be more careful with emulator configuration
@@ -90,6 +98,13 @@ Future<void> main() async {
         FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
         debugPrint('Mapping Firestore Emulator host "localhost" to "$firestoreHost".');
         debugPrint('[main] Firestore emulator configured.');
+        
+        // ✅ Additional configuration to ensure emulator persistence is disabled
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: false,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+        debugPrint('[main] Firestore settings configured for emulator mode.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
       }

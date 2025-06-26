@@ -279,7 +279,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build video preview
+  /// Build video preview with filter overlay
   Widget _buildVideoPreview() {
     if (!_isVideoInitialized || _videoController == null) {
       return Container(
@@ -307,19 +307,46 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        aspectRatio: _videoController!.value.aspectRatio,
-        child: VideoPlayer(_videoController!),
+      child: Stack(
+        children: [
+          AspectRatio(
+            aspectRatio: _videoController!.value.aspectRatio,
+            child: VideoPlayer(_videoController!),
+          ),
+          // Filter overlay for video preview
+          if (_selectedFilter != LutFilterType.none)
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _getFilterOverlayColor(_selectedFilter),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
+  /// Get filter overlay color for video preview
+  Color _getFilterOverlayColor(LutFilterType filterType) {
+    switch (filterType) {
+      case LutFilterType.warm:
+        return Colors.orange.withValues(alpha: 0.15);
+      case LutFilterType.cool:
+        return Colors.blue.withValues(alpha: 0.15);
+      case LutFilterType.contrast:
+        return Colors.grey.withValues(alpha: 0.1);
+      case LutFilterType.none:
+        return Colors.transparent;
+    }
+  }
+
   /// Build filter selection row with optimized rendering
   Widget _buildFilterSelection() {
-    // Video doesn't support filters yet
-    if (widget.mediaType == MediaType.video) {
-      return const SizedBox.shrink();
-    }
+    // Show filters for both images and videos
+    // Note: For videos, filters are applied as preview overlays only
+    // The actual video file remains unmodified
 
     return Container(
       height: 100,

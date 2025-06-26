@@ -214,10 +214,28 @@ Future<void> _uploadPendingItem(
       .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
   debugPrint('$logPrefix Uploading to Storage: ${storageRef.fullPath}');
-  final uploadTask = storageRef.putFile(file);
-  final snapshot = await uploadTask;
-  final downloadUrl = await snapshot.ref.getDownloadURL();
-  debugPrint('$logPrefix Upload complete. Download URL: $downloadUrl');
+  debugPrint('$logPrefix File exists: ${await file.exists()}');
+  debugPrint('$logPrefix File size: ${await file.length()} bytes');
+  debugPrint('$logPrefix User UID: ${user.uid}');
+  debugPrint('$logPrefix User email: ${user.email}');
+  debugPrint('$logPrefix User providers: ${user.providerData.map((p) => p.providerId).toList()}');
+  
+  late final String downloadUrl;
+  try {
+    final uploadTask = storageRef.putFile(file);
+    final snapshot = await uploadTask;
+    downloadUrl = await snapshot.ref.getDownloadURL();
+    debugPrint('$logPrefix Upload complete. Download URL: $downloadUrl');
+  } catch (uploadError) {
+    debugPrint('$logPrefix UPLOAD ERROR: $uploadError');
+    debugPrint('$logPrefix Error type: ${uploadError.runtimeType}');
+    if (uploadError.toString().contains('unauthenticated')) {
+      debugPrint('$logPrefix Authentication token issue detected');
+      debugPrint('$logPrefix Current user: ${FirebaseAuth.instance.currentUser?.uid}');
+      debugPrint('$logPrefix ID token: ${await user.getIdToken(true)}');
+    }
+    rethrow;
+  }
 
   // Get vendor profile for snap metadata
   String vendorName = 'Unknown Vendor';
