@@ -38,20 +38,38 @@ class _VendorDiscoveryScreenState extends State<VendorDiscoveryScreen> {
         return;
       }
 
+      debugPrint('[VendorDiscoveryScreen] Loading vendors for user: $currentUserId');
+
+      // First, try to get all vendors
       final snapshot = await FirebaseFirestore.instance
           .collection('vendors')
-          .where(FieldPath.documentId, isNotEqualTo: currentUserId)
           .get();
 
-      final vendors = snapshot.docs
-          .map((doc) => VendorProfile.fromFirestore(doc.data(), doc.id))
+      debugPrint('[VendorDiscoveryScreen] Total vendors found: ${snapshot.docs.length}');
+
+      final allVendors = snapshot.docs
+          .map((doc) {
+            debugPrint('[VendorDiscoveryScreen] Processing vendor: ${doc.id}');
+            try {
+              return VendorProfile.fromFirestore(doc.data(), doc.id);
+            } catch (e) {
+              debugPrint('[VendorDiscoveryScreen] Error parsing vendor ${doc.id}: $e');
+              return null;
+            }
+          })
+          .where((vendor) => vendor != null)
+          .cast<VendorProfile>()
+          .where((vendor) => vendor.uid != currentUserId) // Exclude current user
           .toList();
 
+      debugPrint('[VendorDiscoveryScreen] Vendors after filtering: ${allVendors.length}');
+
       setState(() {
-        _vendors = vendors;
+        _vendors = allVendors;
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('[VendorDiscoveryScreen] Error loading vendors: $e');
       setState(() {
         _error = 'Failed to load vendors: $e';
         _isLoading = false;
