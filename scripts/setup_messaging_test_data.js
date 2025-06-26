@@ -21,7 +21,7 @@ async function setupMessagingTestData() {
     // Test vendor profiles for messaging with authentication
     const testVendors = [
       {
-        uid: 'vendor-alice-farm',
+        uid: 'SOKSFu35niG6lUQbsIz6WY30poN6',
         email: 'alice@farmstand.com',
         phoneNumber: '+15551001001',
         displayName: 'Alice\'s Farm Stand',
