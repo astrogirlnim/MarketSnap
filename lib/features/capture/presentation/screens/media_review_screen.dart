@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
-import '../../../../main.dart';
+import '../../../../core/services/background_sync_service.dart';
+import '../../../../core/services/hive_service.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -12,11 +13,13 @@ class MediaReviewScreen extends StatefulWidget {
   final String mediaPath;
   final MediaType mediaType;
   final String? caption;
+  final HiveService hiveService;
 
   const MediaReviewScreen({
     super.key,
     required this.mediaPath,
     required this.mediaType,
+    required this.hiveService,
     this.caption,
   });
 
@@ -256,27 +259,72 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       );
 
       // Add to Hive queue for background upload
-      await hiveService.addPendingMedia(pendingItem);
+      await widget.hiveService.addPendingMedia(pendingItem);
 
       debugPrint(
         '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
       );
 
-      // Show success message
+      // Trigger immediate sync to upload the media right away
+      bool uploadSuccessful = false;
+      String? uploadError;
+      
+      try {
+        debugPrint('[MediaReviewScreen] Triggering immediate sync...');
+        final backgroundSyncService = BackgroundSyncService();
+        await backgroundSyncService.triggerImmediateSync();
+        debugPrint('[MediaReviewScreen] Immediate sync completed successfully');
+        uploadSuccessful = true;
+      } catch (e) {
+        debugPrint('[MediaReviewScreen] Immediate sync failed: $e');
+        uploadError = e.toString();
+        // Note: Media is still in queue for background retry
+      }
+
+      // Show appropriate message based on upload result
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Media posted successfully! Uploading in background...')),
-              ],
+        if (uploadSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Media posted successfully!')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
             ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Upload failed - queued for retry'),
+                        if (uploadError != null)
+                          Text(
+                            'Error: $uploadError',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
 
         // Navigate back to camera (or main screen)
         Navigator.of(context).popUntil((route) => route.isFirst);

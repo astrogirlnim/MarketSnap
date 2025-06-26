@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 /// Based on the design system defined in snap_design.md
 /// Inspiration: Snapchat's playful minimalism + farmers-market warmth
 class AppColors {
+  AppColors._(); // This class is not meant to be instantiated.
+
   // Primary CTA Colors
   static const Color marketBlue = Color(0xFF007AFF); // Market Blue
   static const Color marketBlueDark = Color(0xFF4D9DFF);
@@ -29,7 +31,7 @@ class AppColors {
   static const Color backgroundDark = Color(0xFF1E1E1E);
 
   // Surface Colors
-  static const Color eggshell = Color(0xFFFFFFEA); // Eggshell
+  static const Color eggshell = Color(0xFFFFFCEA); // Eggshell
   static const Color surfaceDark = Color(0xFF2A2A2A);
 
   // Outline Colors
@@ -37,14 +39,10 @@ class AppColors {
   static const Color outlineDark = Color(0xFF3F3F3F);
 
   // Text Colors
-  static const Color soilCharcoal = Color(
-    0xFF3C3C3C,
-  ); // Soil Charcoal (Primary Text)
+  static const Color soilCharcoal = Color(0xFF3C3C3C); // Soil Charcoal (Primary Text)
   static const Color textPrimaryDark = Color(0xFFF2F2F2);
 
-  static const Color soilTaupe = Color(
-    0xFF6E6E6E,
-  ); // Soil Taupe (Secondary Text)
+  static const Color soilTaupe = Color(0xFF6E6E6E); // Soil Taupe (Secondary Text)
   static const Color textSecondaryDark = Color(0xFFBDBDBD);
 
   // Additional semantic colors for better theming

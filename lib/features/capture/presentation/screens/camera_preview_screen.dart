@@ -5,6 +5,7 @@ import 'package:camera/camera.dart';
 import '../../application/camera_service.dart';
 import 'media_review_screen.dart';
 import '../../../../core/models/pending_media.dart';
+import '../../../../core/services/hive_service.dart';
 import '../../../auth/application/auth_service.dart';
 import '../../../../shared/presentation/widgets/version_display_widget.dart';
 
@@ -53,7 +54,9 @@ class ViewfinderGridPainter extends CustomPainter {
 /// Camera preview screen with photo capture functionality
 /// Provides a full-screen camera interface with controls for taking photos
 class CameraPreviewScreen extends StatefulWidget {
-  const CameraPreviewScreen({super.key});
+  final HiveService hiveService;
+  
+  const CameraPreviewScreen({super.key, required this.hiveService});
 
   @override
   State<CameraPreviewScreen> createState() => _CameraPreviewScreenState();
@@ -202,6 +205,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               builder: (context) => MediaReviewScreen(
                 mediaPath: photoPath,
                 mediaType: MediaType.photo,
+                hiveService: widget.hiveService,
               ),
             ),
           );
@@ -352,6 +356,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               builder: (context) => MediaReviewScreen(
                 mediaPath: videoPath,
                 mediaType: MediaType.video,
+                hiveService: widget.hiveService,
               ),
             ),
           );

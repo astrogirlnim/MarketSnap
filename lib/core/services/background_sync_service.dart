@@ -3,6 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:marketsnap/core/models/pending_media.dart';
+
+
 
 // Unique name for the background task
 const syncTaskName = "syncPendingMediaTask";
@@ -26,6 +34,19 @@ void callbackDispatcher() {
       );
       debugPrint('[Background Isolate] Timestamp: $timestamp');
       debugPrint('[Background Isolate] Platform: ${Platform.operatingSystem}');
+
+      // Initialize Firebase in the background isolate
+      await Firebase.initializeApp();
+      debugPrint('[Background Isolate] Firebase initialized');
+
+      // Initialize Hive in the background isolate
+      await Hive.initFlutter();
+      Hive.registerAdapter(MediaTypeAdapter());
+      Hive.registerAdapter(PendingMediaItemAdapter());
+      debugPrint('[Background Isolate] Hive initialized');
+
+      // Process pending media uploads
+      await _processPendingUploads();
 
       // Store execution info differently based on platform
       if (Platform.isAndroid) {
@@ -58,15 +79,6 @@ void callbackDispatcher() {
         debugPrint('[Background Isolate] iOS: Task name: $task');
       }
 
-      // Simulate the work that will be done in Phase 4
-      // In the future, this will:
-      // 1. Load pending media items from Hive (may need iOS-specific handling)
-      // 2. Upload them to Firebase Storage
-      // 3. Create Firestore documents
-      // 4. Remove successfully uploaded items from the queue
-
-      await Future.delayed(const Duration(seconds: 2)); // Simulate work
-
       debugPrint(
         '[Background Isolate] Background sync task completed successfully.',
       );
@@ -80,6 +92,140 @@ void callbackDispatcher() {
   });
 }
 
+/// Process pending media uploads in the background isolate
+Future<void> _processPendingUploads() async {
+  debugPrint('[Background Isolate] Processing pending media uploads...');
+
+  try {
+    // Check if user is authenticated
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint('[Background Isolate] No authenticated user, skipping upload');
+      return;
+    }
+
+    debugPrint('[Background Isolate] Authenticated user: ${user.uid}');
+
+    // Open Hive box for pending media
+    final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+    debugPrint('[Background Isolate] Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items');
+
+    if (pendingBox.isEmpty) {
+      debugPrint('[Background Isolate] No pending media to upload');
+      await pendingBox.close();
+      return;
+    }
+
+    debugPrint('[Background Isolate] Found ${pendingBox.length} items to process.');
+    // Process each pending media item
+    final List<String> keysToRemove = [];
+    
+    for (var key in pendingBox.keys) {
+      final pendingItem = pendingBox.get(key);
+      if (pendingItem == null) {
+        debugPrint('[Background Isolate] Skipping null item for key: $key');
+        continue;
+      }
+
+      debugPrint('[Background Isolate] Processing pending item: ${pendingItem.id}');
+
+      try {
+        // Upload the media item
+        await _uploadPendingItem(pendingItem, user);
+        
+        // Mark for removal from queue
+        keysToRemove.add(key);
+        debugPrint('[Background Isolate] Successfully uploaded: ${pendingItem.id}');
+        
+      } catch (e) {
+        debugPrint('[Background Isolate] Failed to upload ${pendingItem.id}: $e');
+        // Keep item in queue for retry
+      }
+    }
+
+    // Remove successfully uploaded items from queue
+    for (final key in keysToRemove) {
+      await pendingBox.delete(key);
+      debugPrint('[Background Isolate] Removed uploaded item from queue: $key');
+    }
+
+    debugPrint('[Background Isolate] Upload processing complete. Uploaded ${keysToRemove.length} items');
+
+  } catch (e, stackTrace) {
+    debugPrint('[Background Isolate] Error processing pending uploads: $e');
+    debugPrint('[Background Isolate] Stack trace: $stackTrace');
+  }
+}
+
+/// Upload a single pending media item
+Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
+  debugPrint('[Background Isolate] Uploading media item: ${pendingItem.id}');
+
+  // Check if file still exists
+  final file = File(pendingItem.filePath);
+  if (!await file.exists()) {
+    throw Exception('Media file no longer exists: ${pendingItem.filePath}');
+  }
+
+  // Upload to Firebase Storage
+  final storageRef = FirebaseStorage.instance
+      .ref()
+      .child('vendors')
+      .child(user.uid)
+      .child('snaps')
+      .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
+
+  debugPrint('[Background Isolate] Uploading to Storage: ${storageRef.fullPath}');
+  
+  final uploadTask = storageRef.putFile(file);
+  final snapshot = await uploadTask;
+  final downloadUrl = await snapshot.ref.getDownloadURL();
+
+  debugPrint('[Background Isolate] Upload complete. Download URL: $downloadUrl');
+
+  // Get vendor profile for snap metadata
+  final vendorDoc = await FirebaseFirestore.instance
+      .collection('vendors')
+      .doc(user.uid)
+      .get();
+
+  String vendorName = 'Unknown Vendor';
+  String vendorAvatarUrl = '';
+  
+  if (vendorDoc.exists) {
+    final vendorData = vendorDoc.data()!;
+    vendorName = vendorData['displayName'] ?? vendorData['stallName'] ?? 'Unknown Vendor';
+    vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+  }
+
+  // Create Firestore document
+  final now = DateTime.now();
+  final expiresAt = now.add(const Duration(hours: 24)); // 24-hour expiry
+
+  final snapData = {
+    'vendorId': user.uid,
+    'vendorName': vendorName,
+    'vendorAvatarUrl': vendorAvatarUrl,
+    'mediaUrl': downloadUrl,
+    'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
+    'caption': pendingItem.caption ?? '',
+    'createdAt': Timestamp.fromDate(now),
+    'expiresAt': Timestamp.fromDate(expiresAt),
+    'location': pendingItem.location,
+  };
+
+  await FirebaseFirestore.instance
+      .collection('snaps')
+      .add(snapData);
+
+  debugPrint('[Background Isolate] Firestore document created for snap: ${pendingItem.id}');
+}
+
+/// Get file extension from file path
+String _getFileExtension(String filePath) {
+  return filePath.split('.').last.toLowerCase();
+}
+
 /// Service responsible for managing background synchronization tasks
 class BackgroundSyncService {
   static const String _uniqueTaskName = syncTaskName;
@@ -87,7 +233,6 @@ class BackgroundSyncService {
 
   // Track iOS executions in memory (since SharedPreferences doesn't work in background isolate)
   static DateTime? _lastIOSExecution;
-  static String? _lastIOSTaskName;
 
   /// Initialize the WorkManager plugin
   Future<void> initialize() async {
@@ -172,7 +317,6 @@ class BackgroundSyncService {
 
         // Track when we schedule the task for iOS
         _lastIOSExecution = DateTime.now();
-        _lastIOSTaskName = uniqueId;
 
         await Workmanager().registerOneOffTask(
           uniqueId,
@@ -198,118 +342,173 @@ class BackgroundSyncService {
     }
   }
 
-  /// Check if the background task has executed recently
-  /// This is useful for testing and debugging
-  Future<Map<String, dynamic>> getLastExecutionInfo() async {
+  /// Manually trigger an immediate sync (for development/testing)
+  Future<void> triggerImmediateSync() async {
+    debugPrint('Triggering immediate sync...');
+    
     try {
-      if (Platform.isIOS) {
-        // For iOS, we use in-memory tracking since SharedPreferences doesn't work in background isolate
-        if (_lastIOSExecution != null) {
-          return {
-            'executed': true,
-            'timestamp': _lastIOSExecution!.millisecondsSinceEpoch,
-            'executionTime': _lastIOSExecution!.toString(),
-            'taskName': _lastIOSTaskName ?? 'unknown',
-            'platform': 'ios',
-            'minutesAgo': DateTime.now()
-                .difference(_lastIOSExecution!)
-                .inMinutes,
-            'note':
-                'iOS: Task was scheduled. Check logs for actual execution confirmation.',
-          };
-        } else {
-          return {
-            'executed': false,
-            'platform': 'ios',
-            'note': 'iOS: No tasks scheduled yet.',
-          };
-        }
-      } else {
-        // Android uses SharedPreferences as before
-        final prefs = await SharedPreferences.getInstance();
-        final timestamp = prefs.getInt('last_background_execution');
-        final taskName = prefs.getString('last_background_task');
-        final platform = prefs.getString('last_background_platform');
+      // Process uploads immediately in the main isolate
+      await _processPendingUploadsInMainIsolate();
+      debugPrint('Immediate sync completed successfully');
+    } catch (e) {
+      debugPrint('Immediate sync failed: $e');
+      rethrow;
+    }
+  }
 
-        if (timestamp != null) {
-          final executionTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-          return {
-            'executed': true,
-            'timestamp': timestamp,
-            'executionTime': executionTime.toString(),
-            'taskName': taskName,
-            'platform': platform ?? 'android',
-            'minutesAgo': DateTime.now().difference(executionTime).inMinutes,
-          };
-        } else {
-          return {'executed': false, 'platform': 'android'};
+  /// Process pending uploads in the main isolate (for immediate sync)
+  Future<void> _processPendingUploadsInMainIsolate() async {
+    debugPrint('[Main Isolate] Processing pending media uploads...');
+
+    try {
+      // Check if user is authenticated
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('[Main Isolate] No authenticated user, skipping upload');
+        return;
+      }
+
+      debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
+
+      // Open the correct Hive box
+      final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final pendingItems = pendingBox.values.toList();
+      
+      debugPrint('[Main Isolate] Opened "pendingMediaQueue" box with ${pendingItems.length} pending items.');
+
+      if (pendingItems.isEmpty) {
+        debugPrint('[Main Isolate] No pending media to upload');
+        await pendingBox.close();
+        return;
+      }
+
+      // Process each pending media item
+      final List<PendingMediaItem> itemsToRemove = [];
+      
+      for (final pendingItem in pendingItems) {
+        debugPrint('[Main Isolate] Processing pending item: ${pendingItem.id}');
+
+        try {
+          // Upload the media item
+          await _uploadPendingItemInMainIsolate(pendingItem, user);
+          
+          // Mark for removal from queue
+          itemsToRemove.add(pendingItem);
+          debugPrint('[Main Isolate] Successfully uploaded: ${pendingItem.id}');
+          
+        } catch (e) {
+          debugPrint('[Main Isolate] Failed to upload ${pendingItem.id}: $e');
+          // Keep item in queue for retry
         }
       }
-    } catch (e) {
-      debugPrint('Error getting last execution info: $e');
-      return {'executed': false, 'error': e.toString()};
+
+      // Remove successfully uploaded items from queue
+      for (final item in itemsToRemove) {
+        await pendingBox.delete(item.id);
+        debugPrint('[Main Isolate] Removed uploaded item from queue: ${item.id}');
+      }
+      
+      debugPrint('[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items');
+
+    } catch (e, stackTrace) {
+      debugPrint('[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e');
+      debugPrint('[Main Isolate] Stack trace: $stackTrace');
+      // Re-throwing the error so the caller can handle it
+      rethrow;
+    }
+  }
+
+  /// Upload a single pending media item in the main isolate
+  Future<void> _uploadPendingItemInMainIsolate(PendingMediaItem pendingItem, User user) async {
+    debugPrint('[Main Isolate] Uploading media item: ${pendingItem.id}');
+
+    // Check if file still exists
+    final file = File(pendingItem.filePath);
+    if (!await file.exists()) {
+      throw Exception('Media file no longer exists: ${pendingItem.filePath}');
+    }
+
+    // Upload to Firebase Storage
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('vendors')
+        .child(user.uid)
+        .child('snaps')
+        .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
+
+    debugPrint('[Main Isolate] Uploading to Storage: ${storageRef.fullPath}');
+    
+    final uploadTask = storageRef.putFile(file);
+    final snapshot = await uploadTask;
+    final downloadUrl = await snapshot.ref.getDownloadURL();
+
+    debugPrint('[Main Isolate] Upload complete. Download URL: $downloadUrl');
+
+    // Get vendor profile for snap metadata
+    final vendorDoc = await FirebaseFirestore.instance
+        .collection('vendors')
+        .doc(user.uid)
+        .get();
+
+    String vendorName = 'Unknown Vendor';
+    String vendorAvatarUrl = '';
+    
+    if (vendorDoc.exists) {
+      final vendorData = vendorDoc.data()!;
+      vendorName = vendorData['displayName'] ?? vendorData['stallName'] ?? 'Unknown Vendor';
+      vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+    }
+
+    // Create Firestore document
+    final now = DateTime.now();
+    final expiresAt = now.add(const Duration(hours: 24)); // 24-hour expiry
+
+    final snapData = {
+      'vendorId': user.uid,
+      'vendorName': vendorName,
+      'vendorAvatarUrl': vendorAvatarUrl,
+      'mediaUrl': downloadUrl,
+      'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
+      'caption': pendingItem.caption ?? '',
+      'createdAt': Timestamp.fromDate(now),
+      'expiresAt': Timestamp.fromDate(expiresAt),
+      'location': pendingItem.location,
+    };
+
+    await FirebaseFirestore.instance
+        .collection('snaps')
+        .add(snapData);
+
+    debugPrint('[Main Isolate] Firestore document created for snap: ${pendingItem.id}');
+  }
+
+  /// Get the last background execution time (for debugging)
+  Future<DateTime?> getLastExecutionTime() async {
+    if (Platform.isIOS) {
+      return _lastIOSExecution;
+    } else {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final timestamp = prefs.getInt('last_background_execution');
+        return timestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+            : null;
+      } catch (e) {
+        debugPrint('Error getting last execution time: $e');
+        return null;
+      }
     }
   }
 
   /// Cancel all background sync tasks
   Future<void> cancelAllTasks() async {
     debugPrint('Cancelling all background sync tasks...');
-
     try {
       await Workmanager().cancelAll();
-
-      // Clear iOS tracking
-      if (Platform.isIOS) {
-        _lastIOSExecution = null;
-        _lastIOSTaskName = null;
-      }
-
       debugPrint('All background sync tasks cancelled.');
     } catch (e) {
       debugPrint('Error cancelling background sync tasks: $e');
       rethrow;
-    }
-  }
-
-  /// Restart the WorkManager service to pick up updated callback function
-  /// This is useful when the callback function has been updated
-  Future<void> restartWorkManager() async {
-    debugPrint('Restarting WorkManager to pick up updated callback...');
-
-    try {
-      // Cancel all existing tasks first
-      await cancelAllTasks();
-
-      // Small delay to ensure cleanup
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Reinitialize WorkManager with the updated callback
-      await initialize();
-
-      // Reschedule the periodic task
-      await scheduleSyncTask();
-
-      debugPrint('WorkManager restarted successfully.');
-    } catch (e) {
-      debugPrint('Error restarting WorkManager: $e');
-      rethrow;
-    }
-  }
-
-  /// Get platform-specific information about background task limitations
-  String getPlatformInfo() {
-    if (Platform.isIOS) {
-      return 'iOS: Background tasks are limited and may not execute immediately. '
-          'SharedPreferences is not available in iOS background isolates. '
-          'Enable Background App Refresh in Settings > General > Background App Refresh. '
-          'Tasks are more likely to run when the app is backgrounded and the device is charging. '
-          'Check console logs for "[Background Isolate]" messages to confirm execution.';
-    } else if (Platform.isAndroid) {
-      return 'Android: Background tasks use WorkManager and should execute reliably. '
-          'May be affected by battery optimization settings. '
-          'Execution is tracked via SharedPreferences.';
-    } else {
-      return 'Platform: ${Platform.operatingSystem} - Background task support varies.';
     }
   }
 }

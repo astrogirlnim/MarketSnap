@@ -18,6 +18,7 @@ import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
 import 'features/profile/application/profile_service.dart';
 import 'features/profile/presentation/screens/vendor_profile_screen.dart';
+import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
@@ -74,7 +75,7 @@ Future<void> main() async {
       }
 
       try {
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8081);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
         debugPrint('[main] Firestore emulator configured.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
@@ -224,9 +225,14 @@ class MyApp extends StatelessWidget {
 }
 
 /// Authentication wrapper that handles routing based on auth state and profile completion
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
   /// Handles post-authentication flow including account linking
   Future<void> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
@@ -282,24 +288,22 @@ class AuthWrapper extends StatelessWidget {
               // Check if user has a complete profile
               if (profileService.hasCompleteProfile()) {
                 debugPrint(
-                  '[AuthWrapper] Profile complete - redirecting to camera',
+                  '[AuthWrapper] Profile complete, navigating to MainShellScreen',
                 );
-                return const CameraPreviewScreen();
+                return MainShellScreen(
+                  profileService: profileService,
+                  hiveService: hiveService,
+                );
               } else {
                 debugPrint(
-                  '[AuthWrapper] Profile incomplete - redirecting to profile setup',
+                  '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
                 );
                 return VendorProfileScreen(
                   profileService: profileService,
                   onProfileComplete: () {
-                    debugPrint(
-                      '[AuthWrapper] Profile completed - refreshing auth wrapper',
-                    );
-                    // Trigger a rebuild by navigating back to main screen
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const MyApp()),
-                      (route) => false,
-                    );
+                    debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                    // Trigger a rebuild of the AuthWrapper to check profile status again
+                    setState(() {});
                   },
                 );
               }
@@ -308,10 +312,8 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
-        debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
-        return kDebugMode
-            ? const DevelopmentAuthScreen()
-            : const AuthWelcomeScreen();
+        debugPrint('[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen');
+        return const AuthWelcomeScreen();
       },
     );
   }
@@ -428,7 +430,7 @@ class DevelopmentCameraWrapper extends StatelessWidget {
       body: Stack(
         children: [
           // Camera preview screen
-          const CameraPreviewScreen(),
+          CameraPreviewScreen(hiveService: hiveService),
 
           // Development overlay banner
           Positioned(
@@ -507,10 +509,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _checkBackgroundExecution() async {
-    final info = await backgroundSyncService.getLastExecutionInfo();
-    setState(() {
-      _lastExecutionInfo = info;
-    });
+                      final lastExecution = await backgroundSyncService.getLastExecutionTime();
+      setState(() {
+        _lastExecutionInfo = {
+          'platform': Platform.operatingSystem,
+          'executed': lastExecution != null ? 'Yes' : 'Never',
+          'executionTime': lastExecution?.toString(),
+          'note': null,
+        };
+      });
   }
 
   Future<void> _scheduleOneTimeTask() async {
