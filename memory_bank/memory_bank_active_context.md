@@ -1,6 +1,33 @@
 # Active Context
 
-*Last Updated: January 25, 2025*
+*Last Updated: January 27, 2025*
+
+---
+
+## 🚨 **CRITICAL BUG: Media Posting Failure**
+
+**Current Status:** BLOCKING - Media posts not appearing in feed despite "success" messages
+
+**Problem:** Users can authenticate, capture media, and receive "Media posted successfully!" confirmation, but posts do not appear in the feed. Analysis shows **0 items actually uploaded** to Firebase Storage.
+
+**Root Causes Identified:**
+1. **File Path Issues:** Media files deleted/moved before upload completion
+2. **Firebase Storage Auth Mismatch:** Auth emulator shows user authenticated, but Storage emulator rejects with `[firebase_storage/unauthenticated]`
+3. **Silent Upload Failures:** BackgroundSyncService reports "Uploaded 0 items" but user sees success message
+
+**Evidence:**
+- User UID: `1MnCt9iVf7Lw1sxGsD7dUNvIiETd` authenticated in Firebase Auth
+- Firebase Storage rejects same user with "unauthenticated" error
+- Multiple file path failures: `Exception: Media file no longer exists`
+- Queue processing: 5 pending items, 0 successful uploads
+
+**Immediate Actions Required:**
+1. Fix file persistence until upload completes
+2. Resolve Firebase emulator authentication connectivity
+3. Enhance error handling and user feedback
+4. Add retry logic for failed uploads
+
+**Detailed Analysis:** See `docs/media_posting_bug_analysis.md`
 
 ---
 
