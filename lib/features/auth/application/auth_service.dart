@@ -28,17 +28,24 @@ class AuthService {
     
     _offlineAuthController = StreamController<User?>.broadcast();
     
-    // Monitor connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      final isOffline = results.contains(ConnectivityResult.none);
-      _handleConnectivityChange(isOffline);
-    });
+    // Initialize with current Firebase user if available
+    _cachedUser = _firebaseAuth.currentUser;
     
     // Check initial connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
     _isOfflineMode = connectivityResult.contains(ConnectivityResult.none);
     
     debugPrint('[AuthService] 📡 Initial connectivity: ${_isOfflineMode ? 'OFFLINE' : 'ONLINE'}');
+    
+    // Emit initial auth state immediately to prevent loading state
+    _offlineAuthController?.add(_cachedUser);
+    debugPrint('[AuthService] 🚀 Initial auth state emitted: ${_cachedUser?.uid ?? 'null'}');
+    
+    // Monitor connectivity changes
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final isOffline = results.contains(ConnectivityResult.none);
+      _handleConnectivityChange(isOffline);
+    });
     
     // Monitor Firebase auth state changes when online
     _firebaseAuth.authStateChanges().listen((User? user) {
@@ -52,8 +59,6 @@ class AuthService {
       }
     });
     
-    // Initialize with current Firebase user if available
-    _cachedUser = _firebaseAuth.currentUser;
     if (_cachedUser != null) {
       debugPrint('[AuthService] 💾 Restored cached user: ${_cachedUser!.uid}');
     }
