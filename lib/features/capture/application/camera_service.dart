@@ -578,12 +578,18 @@ class CameraService {
 
       debugPrint('[CameraService] Starting camera video recording...');
 
+      // Log the resolution preset and platform for debugging
+      debugPrint('[CameraService] Video Recording Debug:');
+      debugPrint('  Platform: [32m${Platform.operatingSystem}[0m');
+      debugPrint('  Is Android: ${Platform.isAndroid}');
+      debugPrint('  Is Emulator: ${_isAndroidEmulator()}');
+      debugPrint('  ResolutionPreset: ${_isAndroidEmulator() ? 'LOW' : 'HIGH'}');
+      debugPrint('  Controller Preview Size: [36m${_controller?.value.previewSize}[0m');
+
       // Start recording with optimized settings for emulators
       if (_isAndroidEmulator()) {
-        debugPrint(
-          '[CameraService] Using emulator-optimized video recording settings',
-        );
-        // For emulators, we could add additional optimizations here if needed
+        debugPrint('[CameraService] Using emulator-optimized video recording settings. Video will be at lowest possible quality to avoid buffer overflow.');
+        debugPrint('[CameraService] If buffer overflow persists, video recording may be disabled on emulator.');
       }
 
       // Start recording
@@ -739,6 +745,20 @@ class CameraService {
         );
       }
 
+      // Emulator-specific: If buffer overflow persists, consider disabling video recording on emulator
+      if (_isAndroidEmulator()) {
+        final fileSize = await savedVideo.length();
+        debugPrint('[CameraService] Emulator video file size: ${(fileSize / 1024).toStringAsFixed(1)} KB');
+        if (fileSize > 2 * 1024 * 1024) { // 2MB threshold for emulator
+          debugPrint('[CameraService] WARNING: Emulator video file is too large, buffer overflow may occur.');
+          // Optionally, delete the file and return null to disable video on emulator
+          // await savedVideo.delete();
+          // _lastError = 'Emulator video recording disabled due to buffer overflow risk.';
+          // await _cleanupVideoRecording();
+          // return null;
+        }
+      }
+
       // Cleanup recording state
       await _cleanupVideoRecording();
 
@@ -746,9 +766,7 @@ class CameraService {
       debugPrint('[CameraService] Video recorded successfully');
       debugPrint('[CameraService] Video path: $videoPath');
       debugPrint('[CameraService] Video duration: $_recordingDuration seconds');
-      debugPrint(
-        '[CameraService] Video size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
-      );
+      debugPrint('[CameraService] Video size: [32m${(fileSize / 1024).toStringAsFixed(1)} KB[0m');
 
       return videoPath;
     } catch (e) {
