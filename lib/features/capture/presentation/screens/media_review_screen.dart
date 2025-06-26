@@ -6,6 +6,7 @@ import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/background_sync_service.dart';
 import '../../../../core/services/hive_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -237,6 +238,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   /// Post the media with applied filters and caption
   Future<void> _postMedia() async {
     debugPrint('[MediaReviewScreen] Posting media...');
+
+    // Add authentication debugging
+    final currentUser = FirebaseAuth.instance.currentUser;
+    debugPrint('[MediaReviewScreen] Current user: ${currentUser?.uid ?? "NULL"}');
+    debugPrint('[MediaReviewScreen] User email: ${currentUser?.email ?? "No email"}');
+    debugPrint('[MediaReviewScreen] User providers: ${currentUser?.providerData.map((p) => p.providerId).toList() ?? "No providers"}');
 
     setState(() {
       _isPosting = true;

@@ -378,10 +378,18 @@ class BackgroundSyncService {
 
     Box<PendingMediaItem>? pendingBox;
     try {
-      // Check if user is authenticated
+      // Check if user is authenticated with detailed debugging
       final user = FirebaseAuth.instance.currentUser;
+      debugPrint('[Main Isolate] FirebaseAuth.instance.currentUser: ${user?.uid ?? "NULL"}');
+      debugPrint('[Main Isolate] User email: ${user?.email ?? "No email"}');
+      debugPrint('[Main Isolate] User providers: ${user?.providerData.map((p) => p.providerId).toList() ?? "No providers"}');
+      debugPrint('[Main Isolate] User isAnonymous: ${user?.isAnonymous ?? "N/A"}');
+      debugPrint('[Main Isolate] User emailVerified: ${user?.emailVerified ?? "N/A"}');
+      
       if (user == null) {
         debugPrint('[Main Isolate] No authenticated user, skipping upload');
+        debugPrint('[Main Isolate] This means FirebaseAuth.instance.currentUser returned null');
+        debugPrint('[Main Isolate] Check if Firebase Auth is properly initialized');
         return;
       }
 
