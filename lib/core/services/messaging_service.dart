@@ -104,29 +104,22 @@ class MessagingService {
     required String userId,
     int limit = 20,
   }) {
-    debugPrint('[MessagingService] Getting conversations for user: $userId');
+    debugPrint('[MessagingService] Getting conversations for user: $userId using participants field');
 
-    // Get messages where user is either sender or recipient
+    // Query for messages where the user is a participant
     return _firestore
         .collection('messages')
-        .where('fromUid', isEqualTo: userId)
+        .where('participants', arrayContains: userId)
         .orderBy('createdAt', descending: true)
-        .limit(limit * 2) // Get more to account for filtering
+        .limit(limit * 5) // Get more to account for filtering and grouping
         .snapshots()
-        .asyncMap((fromSnapshot) async {
-          // Also get messages where user is recipient
-          final toSnapshot = await _firestore
-              .collection('messages')
-              .where('toUid', isEqualTo: userId)
-              .orderBy('createdAt', descending: true)
-              .limit(limit * 2)
-              .get();
-
-          // Combine both queries
-          final allDocs = [...fromSnapshot.docs, ...toSnapshot.docs];
+        .map((snapshot) {
+          debugPrint(
+            '[MessagingService] Received ${snapshot.docs.length} messages for user $userId',
+          );
 
           // Convert to messages and filter expired ones
-          final allMessages = allDocs
+          final allMessages = snapshot.docs
               .map((doc) => Message.fromFirestore(doc))
               .where((message) => !message.hasExpired)
               .toList();
@@ -218,11 +211,12 @@ class MessagingService {
   /// Gets the count of unread messages for a user
   Stream<int> getUnreadMessageCount({required String userId}) {
     debugPrint(
-      '[MessagingService] Getting unread message count for user: $userId',
+      '[MessagingService] Getting unread message count for user: $userId using participants field',
     );
 
     return _firestore
         .collection('messages')
+        .where('participants', arrayContains: userId)
         .where('toUid', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
         .snapshots()
