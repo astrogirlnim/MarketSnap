@@ -615,28 +615,32 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       );
     }
 
-    // ✅ CAMERA QUALITY FIX: Remove AspectRatio wrapper that was causing compression
-    // Use proper scaling to prevent stretching/compression
     final controller = _cameraService.controller!;
     final size = MediaQuery.of(context).size;
     final deviceRatio = size.width / size.height;
     final cameraRatio = controller.value.aspectRatio;
     
-    // Enhanced debugging info for camera scaling
-    debugPrint('[CameraPreviewScreen] ========== CAMERA SCALING DEBUG ==========');
+    // Enhanced debugging info for camera display
+    debugPrint('[CameraPreviewScreen] ========== CAMERA DISPLAY DEBUG ==========');
     debugPrint('[CameraPreviewScreen] Device ratio: $deviceRatio');
     debugPrint('[CameraPreviewScreen] Camera ratio: $cameraRatio');
     debugPrint('[CameraPreviewScreen] Preview size: ${controller.value.previewSize}');
-    debugPrint('[CameraPreviewScreen] Using Transform.scale for proper aspect ratio');
+    debugPrint('[CameraPreviewScreen] Using natural camera view approach');
     debugPrint('[CameraPreviewScreen] ==========================================');
     
-    // Calculate scale to fill screen properly without compression
-    final scale = cameraRatio / deviceRatio;
-    
-    return Transform.scale(
-      scale: scale,
-      child: Center(
-        child: CameraPreview(controller),
+    // ✅ CAMERA ZOOM FIX: Use natural camera view like default camera app
+    // Instead of Transform.scale, use the camera preview directly with proper fitting
+    return ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.center,
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
+          child: SizedBox(
+            width: size.width,
+            height: size.width / cameraRatio,
+            child: CameraPreview(controller),
+          ),
+        ),
       ),
     );
   }
