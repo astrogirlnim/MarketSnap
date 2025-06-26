@@ -3,69 +3,58 @@ import 'package:marketsnap/core/models/vendor_profile.dart';
 import 'package:marketsnap/core/models/message.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
 import 'package:marketsnap/shared/presentation/theme/app_typography.dart';
+import 'package:marketsnap/shared/presentation/theme/app_spacing.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ConversationListItem extends StatelessWidget {
   final VendorProfile otherParticipant;
   final Message lastMessage;
-  final String currentUserId;
   final VoidCallback onTap;
+  final bool isUnread;
 
   const ConversationListItem({
     super.key,
     required this.otherParticipant,
     required this.lastMessage,
-    required this.currentUserId,
     required this.onTap,
+    this.isUnread = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isUnread = !lastMessage.isRead && lastMessage.toUid == currentUserId;
-
     return ListTile(
-      onTap: onTap,
       leading: CircleAvatar(
-        radius: 28,
-        backgroundColor: AppColors.cornsilk,
-        backgroundImage: otherParticipant.avatarURL != null
+        backgroundImage: otherParticipant.avatarURL?.isNotEmpty == true
             ? NetworkImage(otherParticipant.avatarURL!)
             : null,
-        child: otherParticipant.avatarURL == null
-            ? const Icon(Icons.person, color: AppColors.soilTaupe)
+        child: otherParticipant.avatarURL?.isEmpty != false
+            ? Text(
+                otherParticipant.displayName.isNotEmpty
+                    ? otherParticipant.displayName[0].toUpperCase()
+                    : '?',
+                style: AppTypography.bodyLG.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
             : null,
+        backgroundColor: AppColors.marketBlue,
       ),
-      title: Text(
-        otherParticipant.displayName,
-        style: AppTypography.bodyLG.copyWith(
-          fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
-          color: isUnread ? AppColors.textPrimary : AppColors.textPrimary,
-        ),
-      ),
-      subtitle: Text(
-        lastMessage.text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppTypography.body.copyWith(
-          fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-          color: isUnread ? AppColors.textPrimary : AppColors.textSecondary,
-        ),
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
+      title: Row(
         children: [
-          Text(
-            timeago.format(lastMessage.createdAt),
-            style: AppTypography.caption.copyWith(
-              color: isUnread ? AppColors.marketBlue : AppColors.textSecondary,
+          Expanded(
+            child: Text(
+              otherParticipant.displayName,
+              style: AppTypography.bodyLG.copyWith(
+                fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                color: isUnread ? AppColors.textPrimary : AppColors.textPrimary,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
           if (isUnread)
             Container(
-              width: 12,
-              height: 12,
+              width: 8,
+              height: 8,
               decoration: const BoxDecoration(
                 color: AppColors.marketBlue,
                 shape: BoxShape.circle,
@@ -73,6 +62,34 @@ class ConversationListItem extends StatelessWidget {
             ),
         ],
       ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            otherParticipant.marketCity,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            lastMessage.text,
+            style: AppTypography.body.copyWith(
+              fontWeight: isUnread ? FontWeight.w500 : FontWeight.w400,
+              color: isUnread ? AppColors.textPrimary : AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+      trailing: Text(
+        timeago.format(lastMessage.createdAt),
+        style: AppTypography.caption.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

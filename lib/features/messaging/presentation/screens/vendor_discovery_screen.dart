@@ -29,29 +29,22 @@ class _VendorDiscoveryScreenState extends State<VendorDiscoveryScreen> {
 
   Future<void> _loadVendors() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      final currentUserId = _authService.getCurrentUser()?.uid;
+      final currentUserId = _authService.currentUser?.uid;
       if (currentUserId == null) {
         setState(() {
-          _error = 'Not authenticated';
+          _error = 'Please log in to discover vendors';
           _isLoading = false;
         });
         return;
       }
 
-      // Fetch all vendors except the current user
-      final querySnapshot = await FirebaseFirestore.instance
+      final snapshot = await FirebaseFirestore.instance
           .collection('vendors')
-          .where('isComplete', isEqualTo: true)
+          .where(FieldPath.documentId, isNotEqualTo: currentUserId)
           .get();
 
-      final vendors = querySnapshot.docs
-          .map((doc) => VendorProfile.fromMap(doc.data(), doc.id))
-          .where((vendor) => vendor.uid != currentUserId) // Exclude current user
+      final vendors = snapshot.docs
+          .map((doc) => VendorProfile.fromFirestore(doc.data(), doc.id))
           .toList();
 
       setState(() {
@@ -59,21 +52,11 @@ class _VendorDiscoveryScreenState extends State<VendorDiscoveryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('[VendorDiscoveryScreen] Error loading vendors: $e');
       setState(() {
         _error = 'Failed to load vendors: $e';
         _isLoading = false;
       });
     }
-  }
-
-  void _startConversation(VendorProfile vendor) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(otherUser: vendor),
-      ),
-    );
   }
 
   @override
@@ -86,206 +69,174 @@ class _VendorDiscoveryScreenState extends State<VendorDiscoveryScreen> {
         elevation: 0,
       ),
       backgroundColor: AppColors.cornsilk,
-      body: _buildBody(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error',
+                        style: AppTypography.bodyLG,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _error!,
+                        style: AppTypography.caption,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _isLoading = true;
+                            _error = null;
+                          });
+                          _loadVendors();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : _vendors.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.store_outlined, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No vendors found',
+                            style: AppTypography.bodyLG,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Check back later for new vendors',
+                            style: AppTypography.caption,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: _vendors.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) {
+                        final vendor = _vendors[index];
+                        return _VendorCard(
+                          vendor: vendor,
+                          onMessageTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(otherUser: vendor),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
     );
   }
+}
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
-        ),
-      );
-    }
+class _VendorCard extends StatelessWidget {
+  final VendorProfile vendor;
+  final VoidCallback onMessageTap;
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.appleRed,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Error loading vendors',
-              style: AppTypography.h2.copyWith(color: AppColors.appleRed),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              _error!,
-              style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(
-              onPressed: _loadVendors,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.marketBlue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
+  const _VendorCard({
+    required this.vendor,
+    required this.onMessageTap,
+  });
 
-    if (_vendors.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
-              color: AppColors.soilTaupe,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'No vendors found',
-              style: AppTypography.h2.copyWith(color: AppColors.soilTaupe),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Check back later for more vendors in your area',
-              style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(
-              onPressed: _loadVendors,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.marketBlue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Refresh'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadVendors,
-      color: AppColors.marketBlue,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: _vendors.length,
-        itemBuilder: (context, index) {
-          final vendor = _vendors[index];
-          return _buildVendorCard(vendor);
-        },
-      ),
-    );
-  }
-
-  Widget _buildVendorCard(VendorProfile vendor) {
+  @override
+  Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      color: AppColors.eggshell,
-      child: InkWell(
-        onTap: () => _startConversation(vendor),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: AppColors.marketBlue,
-                backgroundImage: vendor.avatarUrl.isNotEmpty
-                    ? NetworkImage(vendor.avatarUrl)
-                    : null,
-                child: vendor.avatarUrl.isEmpty
-                    ? Text(
-                        vendor.displayName.isNotEmpty
-                            ? vendor.displayName[0].toUpperCase()
-                            : 'V',
-                        style: AppTypography.h2.copyWith(color: Colors.white),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              
-              // Vendor info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vendor.displayName,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: vendor.avatarURL?.isNotEmpty == true
+                  ? NetworkImage(vendor.avatarURL!)
+                  : null,
+              child: vendor.avatarURL?.isEmpty != false
+                  ? Text(
+                      vendor.displayName.isNotEmpty
+                          ? vendor.displayName[0].toUpperCase()
+                          : '?',
                       style: AppTypography.bodyLG.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.soilCharcoal,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
+                    )
+                  : null,
+              backgroundColor: AppColors.marketBlue,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vendor.displayName,
+                    style: AppTypography.bodyLG.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    if (vendor.stallName.isNotEmpty && vendor.stallName != vendor.displayName) ...[
-                      const SizedBox(height: 2),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    vendor.stallName,
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        vendor.stallName,
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.soilTaupe,
+                        vendor.marketCity,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
-                    if (vendor.marketCity.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 16,
-                            color: AppColors.soilTaupe,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            vendor.marketCity,
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.soilTaupe,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (vendor.bio.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        vendor.bio,
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.soilTaupe,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
-              
-              // Message button
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.marketBlue,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            ElevatedButton(
+              onPressed: onMessageTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.marketBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.message_outlined,
-                  color: Colors.white,
-                  size: 20,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
                 ),
               ),
-            ],
-          ),
+              child: const Text('Message'),
+            ),
+          ],
         ),
       ),
     );

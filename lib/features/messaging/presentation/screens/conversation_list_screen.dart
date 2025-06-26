@@ -8,6 +8,7 @@ import 'package:marketsnap/features/messaging/presentation/widgets/conversation_
 import 'package:marketsnap/features/messaging/presentation/screens/chat_screen.dart';
 import 'package:marketsnap/features/messaging/presentation/screens/vendor_discovery_screen.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
+import 'package:marketsnap/shared/presentation/theme/app_typography.dart';
 import 'package:marketsnap/main.dart'; // Import main to access global services
 
 class ConversationListScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = _authService.getCurrentUser()?.uid;
+    final currentUserId = _authService.currentUser?.uid;
     
     if (currentUserId == null) {
       return Scaffold(
@@ -49,7 +50,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         ),
         backgroundColor: AppColors.cornsilk,
         body: const Center(
-          child: Text('Please sign in to view messages'),
+          child: Text('Please log in to see messages.'),
         ),
       );
     }
@@ -62,168 +63,130 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         elevation: 0,
       ),
       backgroundColor: AppColors.cornsilk,
-      body: StreamBuilder<List<String>>(
-        stream: _messagingService.getConversations(currentUserId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
-                    ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.appleRed,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading conversations',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.appleRed,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${snapshot.error}',
-                          style: TextStyle(color: AppColors.soilTaupe),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: AppColors.soilTaupe,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No conversations yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.soilTaupe,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Start a conversation with other vendors',
-                          style: TextStyle(color: AppColors.soilTaupe),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const VendorDiscoveryScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.search),
-                          label: const Text('Discover Vendors'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.marketBlue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final conversationIds = snapshot.data!;
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: conversationIds.length,
-                  itemBuilder: (context, index) {
-                    final otherUserId = conversationIds[index];
-                    
-                    return FutureBuilder<VendorProfile?>(
-                      future: _profileService.loadProfileFromFirestore(otherUserId),
-                      builder: (context, profileSnapshot) {
-                        if (profileSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Card(
-                            margin: EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: AppColors.soilTaupe,
-                              ),
-                              title: Text('Loading...'),
-                              subtitle: Text('Fetching conversation details'),
-                            ),
-                          );
-                        }
-
-                        final otherUser = profileSnapshot.data;
-                        if (otherUser == null) {
-                          return const SizedBox.shrink();
-                        }
-
-                                                 return StreamBuilder<Message?>(
-                           stream: _messagingService.getLastMessage(currentUserId, otherUserId),
-                          builder: (context, messageSnapshot) {
-                            final lastMessage = messageSnapshot.data;
-                            final unreadCount = 0; // TODO: Implement unread count
-
-                            if (lastMessage == null) {
-                              return const SizedBox.shrink();
-                            }
-
-                            return ConversationListItem(
-                              otherParticipant: otherUser,
-                              lastMessage: lastMessage,
-                              unreadCount: unreadCount,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatScreen(otherUser: otherUser),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const VendorDiscoveryScreen(),
             ),
           );
         },
         backgroundColor: AppColors.marketBlue,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: StreamBuilder<List<Message>>(
+        stream: _messagingService.getUserConversations(userId: currentUserId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading conversations',
+                    style: AppTypography.bodyLG,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: AppTypography.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final conversations = snapshot.data ?? [];
+
+          if (conversations.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No conversations yet',
+                    style: AppTypography.bodyLG,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap the + button to start a new conversation',
+                    style: AppTypography.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.separated(
+            itemCount: conversations.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final lastMessage = conversations[index];
+              final otherUserId = lastMessage.fromUid == currentUserId 
+                  ? lastMessage.toUid 
+                  : lastMessage.fromUid;
+
+              return FutureBuilder<VendorProfile?>(
+                future: _profileService.loadProfileFromFirestore(otherUserId),
+                builder: (context, profileSnapshot) {
+                  if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                    return const ListTile(
+                      leading: CircleAvatar(child: Icon(Icons.person)),
+                      title: Text('Loading...'),
+                      subtitle: Text(''),
+                    );
+                  }
+
+                  final otherUser = profileSnapshot.data;
+                  if (otherUser == null) {
+                    return const ListTile(
+                      leading: CircleAvatar(child: Icon(Icons.person)),
+                      title: Text('Unknown User'),
+                      subtitle: Text('Profile not found'),
+                    );
+                  }
+
+                  // Calculate unread count for this conversation
+                  return StreamBuilder<List<Message>>(
+                    stream: _messagingService.getConversationMessages(
+                      userId1: currentUserId,
+                      userId2: otherUserId,
+                    ),
+                    builder: (context, messagesSnapshot) {
+                      final messages = messagesSnapshot.data ?? [];
+                      final unreadCount = messages
+                          .where((msg) => msg.toUid == currentUserId && !msg.isRead)
+                          .length;
+
+                      return ConversationListItem(
+                        otherParticipant: otherUser,
+                        lastMessage: lastMessage,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(otherUser: otherUser),
+                            ),
+                          );
+                        },
+                        isUnread: unreadCount > 0,
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
