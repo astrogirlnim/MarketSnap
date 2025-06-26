@@ -60,6 +60,8 @@ dependencies:
   # Package info for version display
   package_info_plus: ^8.1.0
   cached_network_image: ^3.3.0
+  # URL launcher for external links (support email)
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
