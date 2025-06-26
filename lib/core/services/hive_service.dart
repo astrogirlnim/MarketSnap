@@ -33,56 +33,61 @@ class HiveService {
   /// Initializes the Hive database.
   /// This must be called on app startup before using any Hive-related features.
   Future<void> init() async {
-    debugPrint('[HiveService] Initializing Hive...');
-
-    // 1. Initialize Hive with the app's document directory
-    final appDocumentDir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(appDocumentDir.path);
-    debugPrint('[HiveService] Hive initialized at ${appDocumentDir.path}');
-
-    // 2. Register all necessary TypeAdapters
+    await Hive.initFlutter();
     _registerAdapters();
+    final cipher = await _getEncryptionCipher();
+    await _openBoxes(cipher);
+  }
 
-    // 3. Get encryption key
+  void _registerAdapters() {
+    // Only register adapters if they haven't been registered already
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(UserSettingsAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(VendorProfileAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(MediaTypeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(PendingMediaItemAdapter());
+    }
+  }
+
+  Future<HiveCipher> _getEncryptionCipher() async {
     final encryptionKey = await _secureStorageService.getHiveEncryptionKey();
-    final cipher = HiveAesCipher(encryptionKey);
-    debugPrint('[HiveService] Encryption key retrieved, cipher created.');
+    return HiveAesCipher(encryptionKey);
+  }
 
+  Future<void> _openBoxes(HiveCipher cipher) async {
     try {
-      // 4. Open encrypted boxes with error handling for corrupted data
       await _openBoxWithRecovery<PendingMediaItem>(
         pendingMediaQueueBoxName,
         cipher,
         (box) => pendingMediaQueueBox = box,
       );
-      debugPrint('[HiveService] "$pendingMediaQueueBoxName" box opened.');
 
       await _openBoxWithRecovery<UserSettings>(
         userSettingsBoxName,
         cipher,
         (box) => userSettingsBox = box,
       );
-      debugPrint('[HiveService] "$userSettingsBoxName" box opened.');
 
       await _openBoxWithRecovery<VendorProfile>(
         vendorProfileBoxName,
         cipher,
         (box) => vendorProfileBox = box,
       );
-      debugPrint('[HiveService] "$vendorProfileBoxName" box opened.');
 
       // Ensure user settings has a default value if the box is new
       if (userSettingsBox.isEmpty) {
-        debugPrint(
-          '[HiveService] UserSettings box is empty. Seeding with default settings.',
-        );
         await userSettingsBox.put('settings', UserSettings());
       }
-
-      debugPrint('[HiveService] Hive initialization complete.');
     } catch (e) {
-      debugPrint('[HiveService] Error during Hive initialization: $e');
-      // If we still get errors after recovery attempts, we have a more serious issue
       rethrow;
     }
   }
@@ -125,37 +130,6 @@ class HiveService {
     }
   }
 
-  void _registerAdapters() {
-    debugPrint('[HiveService] Registering Hive type adapters...');
-
-    // Only register adapters if they haven't been registered already
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(UserSettingsAdapter());
-      debugPrint('[HiveService] UserSettingsAdapter registered with typeId: 0');
-    }
-
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(VendorProfileAdapter());
-      debugPrint(
-        '[HiveService] VendorProfileAdapter registered with typeId: 1',
-      );
-    }
-
-    if (!Hive.isAdapterRegistered(2)) {
-      Hive.registerAdapter(MediaTypeAdapter());
-      debugPrint('[HiveService] MediaTypeAdapter registered with typeId: 2');
-    }
-
-    if (!Hive.isAdapterRegistered(3)) {
-      Hive.registerAdapter(PendingMediaItemAdapter());
-      debugPrint(
-        '[HiveService] PendingMediaItemAdapter registered with typeId: 3',
-      );
-    }
-
-    debugPrint('[HiveService] All adapters registered.');
-  }
-
   /// Creates the directory for pending uploads if it doesn't exist.
   Future<String> _getPendingDirectoryPath() async {
     final tempDir = await getTemporaryDirectory();
@@ -170,123 +144,101 @@ class HiveService {
   /// Add a pending media item to the upload queue.
   /// This now MOVES the file to a dedicated 'pending' directory to prevent duplicates.
   Future<void> addPendingMedia(PendingMediaItem item) async {
-    debugPrint('[HiveService] Attempting to add pending media item to queue...');
-    debugPrint('[HiveService] Received item for filePath: ${item.filePath}, caption: "${item.caption}"');
-
     try {
       final File originalFile = File(item.filePath);
       if (!await originalFile.exists()) {
-        throw Exception('Source file does not exist for queuing: ${item.filePath}');
+        throw Exception('Source file does not exist: ${item.filePath}');
       }
 
-      // Move the file to the quarantined pending directory
-      final pendingDirPath = await _getPendingDirectoryPath();
-      final newPath = path.join(pendingDirPath, path.basename(item.filePath));
-      
-      debugPrint('[HiveService] Moving file to pending directory: $newPath');
-      await originalFile.rename(newPath);
-      debugPrint('[HiveService] File moved successfully.');
+      final pendingDir = await _getPendingDirectoryPath();
+      final newPath = path.join(pendingDir, path.basename(item.filePath));
 
-      // Create a new item with the updated path to store in Hive
+      // Move the file to the quarantined directory
+      final File newFile = await originalFile.rename(newPath);
+
+      // Create a new item with the updated path
       final quarantinedItem = PendingMediaItem(
-        filePath: newPath, // Use the new path
-        mediaType: item.mediaType,
+        id: item.id,
+        filePath: newFile.path,
         caption: item.caption,
+        mediaType: item.mediaType,
         location: item.location,
+        createdAt: item.createdAt,
+        vendorId: item.vendorId,
       );
 
       // Use the ID from the new quarantined item as the key
       await pendingMediaQueueBox.put(quarantinedItem.id, quarantinedItem);
-      debugPrint('[HiveService] Quarantined media item added successfully.');
-      debugPrint('[HiveService]   - ID: ${quarantinedItem.id}');
-      debugPrint('[HiveService]   - Path: ${quarantinedItem.filePath}');
-      debugPrint('[HiveService]   - Caption: "${quarantinedItem.caption}"');
-      debugPrint('[HiveService]   - Queue size: ${pendingMediaQueueBox.length}');
-
     } catch (e) {
-      debugPrint('[HiveService] Error adding pending media: $e');
       rethrow;
     }
   }
 
-  /// Get all pending media items
-  List<PendingMediaItem> getAllPendingMedia() {
-    debugPrint('[HiveService] Retrieving all pending media items');
-    final items = pendingMediaQueueBox.values.toList();
-    debugPrint('[HiveService] Found ${items.length} pending media items');
-    return items;
+  /// Retrieves a single pending media item by its key.
+  PendingMediaItem? getPendingMedia(String key) {
+    return pendingMediaQueueBox.get(key);
   }
 
-  /// Remove a pending media item by ID
+  /// Retrieves all pending media items from the queue.
+  List<PendingMediaItem> getAllPendingMedia() {
+    return pendingMediaQueueBox.values.toList();
+  }
+
+  /// Removes a pending media item from the queue by its ID.
   Future<void> removePendingMedia(String id) async {
-    debugPrint('[HiveService] Removing pending media item: $id');
     await pendingMediaQueueBox.delete(id);
-    debugPrint('[HiveService] Pending media item removed successfully');
+  }
+
+  /// Gets the dedicated directory for pending uploads, creating it if it doesn't exist.
+  Future<Directory> _getPendingDirectory() async {
+    final tempDir = await getTemporaryDirectory();
+    final pendingDir = Directory(path.join(tempDir.path, _pendingDirectoryName));
+    if (!await pendingDir.exists()) {
+      await pendingDir.create(recursive: true);
+      debugPrint('[HiveService] Created pending uploads directory at: ${pendingDir.path}');
+    }
+    return pendingDir;
   }
 
   /// Get user settings
   UserSettings? getUserSettings() {
-    debugPrint('[HiveService] Retrieving user settings');
     return userSettingsBox.get('settings');
   }
 
   /// Update user settings
   Future<void> updateUserSettings(UserSettings settings) async {
-    debugPrint('[HiveService] Updating user settings');
     await userSettingsBox.put('settings', settings);
-    debugPrint('[HiveService] User settings updated successfully');
   }
 
   /// Get vendor profile for the given UID
   VendorProfile? getVendorProfile(String uid) {
-    debugPrint('[HiveService] Retrieving vendor profile for UID: $uid');
-    final profile = vendorProfileBox.get(uid);
-    if (profile != null) {
-      debugPrint('[HiveService] Found vendor profile: ${profile.stallName}');
-    } else {
-      debugPrint('[HiveService] No vendor profile found for UID: $uid');
-    }
-    return profile;
+    return vendorProfileBox.get(uid);
   }
 
   /// Save or update vendor profile
   Future<void> saveVendorProfile(VendorProfile profile) async {
-    debugPrint('[HiveService] Saving vendor profile for UID: ${profile.uid}');
-    debugPrint(
-      '[HiveService] Profile details: ${profile.stallName} in ${profile.marketCity}',
-    );
     await vendorProfileBox.put(profile.uid, profile);
-    debugPrint('[HiveService] Vendor profile saved successfully');
   }
 
   /// Get all vendor profiles that need syncing to Firestore
   List<VendorProfile> getProfilesNeedingSync() {
-    debugPrint('[HiveService] Getting vendor profiles that need sync');
-    final profiles = vendorProfileBox.values
+    return vendorProfileBox.values
         .where((profile) => profile.needsSync)
         .toList();
-    debugPrint('[HiveService] Found ${profiles.length} profiles needing sync');
-    return profiles;
   }
 
   /// Mark vendor profile as synced
   Future<void> markProfileAsSynced(String uid) async {
-    debugPrint('[HiveService] Marking vendor profile as synced: $uid');
     final profile = vendorProfileBox.get(uid);
     if (profile != null) {
       final updatedProfile = profile.copyWith(needsSync: false);
       await vendorProfileBox.put(uid, updatedProfile);
-      debugPrint('[HiveService] Profile marked as synced successfully');
-    } else {
-      debugPrint('[HiveService] Profile not found for UID: $uid');
     }
   }
 
   /// Delete vendor profile
   Future<void> deleteVendorProfile(String uid) async {
-    debugPrint('[HiveService] Deleting vendor profile for UID: $uid');
     await vendorProfileBox.delete(uid);
-    debugPrint('[HiveService] Vendor profile deleted successfully');
   }
 
   /// Check if vendor profile exists and is complete
@@ -297,7 +249,6 @@ class HiveService {
 
   /// Closes all open Hive boxes.
   Future<void> close() async {
-    debugPrint('[HiveService] Closing all Hive boxes.');
     await Hive.close();
   }
 }

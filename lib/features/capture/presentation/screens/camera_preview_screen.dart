@@ -84,16 +84,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _isWidgetVisible = true;
-    debugPrint('[CameraPreviewScreen] Initializing camera preview screen');
     _initializeCamera();
   }
 
   @override
   void dispose() {
-    debugPrint(
-      '[CameraPreviewScreen] Disposing camera preview screen with enhanced cleanup',
-    );
-
     // ✅ BUFFER OVERFLOW FIX: Mark widget as not visible
     _isWidgetVisible = false;
 
@@ -110,53 +105,34 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       debugPrint('[CameraPreviewScreen] Error during camera disposal: $error');
     });
 
-    debugPrint(
-      '[CameraPreviewScreen] Camera preview screen disposal completed',
-    );
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint('[CameraPreviewScreen] App lifecycle state changed: $state');
-
-    // ✅ BUFFER OVERFLOW FIX: Enhanced lifecycle management to prevent buffer overflow
     switch (state) {
       case AppLifecycleState.inactive:
         // App is becoming inactive (e.g., phone call, notification)
-        debugPrint(
-          '[CameraPreviewScreen] App inactive - pausing camera operations',
-        );
         _cameraService.pauseCamera();
         break;
 
       case AppLifecycleState.paused:
         // App is going to background
-        debugPrint(
-          '[CameraPreviewScreen] App paused - handling background state',
-        );
         _cameraService.handleAppInBackground();
         break;
 
       case AppLifecycleState.resumed:
         // App is resuming from background
-        debugPrint(
-          '[CameraPreviewScreen] App resumed - handling foreground state',
-        );
         _handleAppResumed();
         break;
 
       case AppLifecycleState.detached:
         // App is being detached
-        debugPrint('[CameraPreviewScreen] App detached - disposing camera');
         _cameraService.disposeController();
         break;
 
       case AppLifecycleState.hidden:
         // App is hidden (iOS specific)
-        debugPrint(
-          '[CameraPreviewScreen] App hidden - pausing camera operations',
-        );
         _cameraService.pauseCamera();
         break;
     }
@@ -169,14 +145,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
       if (!success && mounted) {
         // If camera resume failed, try full reinitialization
-        debugPrint(
-          '[CameraPreviewScreen] Camera resume failed, attempting full reinitialization',
-        );
         await _initializeCamera();
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Error handling app resume: $e');
-
       if (mounted) {
         // Fallback to full reinitialization
         await _initializeCamera();
@@ -188,13 +159,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   Future<void> _initializeCamera() async {
     // ✅ BUFFER OVERFLOW FIX: Only initialize if widget is visible and mounted
     if (!_isWidgetVisible || !mounted) {
-      debugPrint(
-        '[CameraPreviewScreen] Skipping camera initialization - widget not visible or mounted',
-      );
       return;
     }
-
-    debugPrint('[CameraPreviewScreen] Starting camera initialization...');
 
     setState(() {
       _isInitializing = true;
@@ -204,7 +170,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     try {
       // Initialize camera service
       if (!_cameraService.isInitialized) {
-        debugPrint('[CameraPreviewScreen] Initializing camera service...');
         final serviceInitialized = await _cameraService.initialize();
         if (!serviceInitialized) {
           throw Exception(
@@ -214,7 +179,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
 
       // Initialize camera controller
-      debugPrint('[CameraPreviewScreen] Initializing camera controller...');
       final controllerInitialized = await _cameraService.initializeCamera();
       if (!controllerInitialized) {
         throw Exception(
@@ -225,10 +189,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       // Set initial flash mode
       _currentFlashMode = _cameraService.getCurrentFlashMode();
 
-      debugPrint(
-        '[CameraPreviewScreen] Camera initialization completed successfully',
-      );
-
       if (mounted) {
         setState(() {
           _isInitializing = false;
@@ -236,8 +196,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         });
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Camera initialization failed: $e');
-
       if (mounted) {
         setState(() {
           _isInitializing = false;
@@ -250,13 +208,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Capture a photo using the camera service
   Future<void> _capturePhoto() async {
     if (_isTakingPhoto || _isRecordingVideo) {
-      debugPrint(
-        '[CameraPreviewScreen] Photo capture blocked - operation in progress',
-      );
       return;
     }
-
-    debugPrint('[CameraPreviewScreen] Starting photo capture...');
 
     setState(() {
       _isTakingPhoto = true;
@@ -264,22 +217,16 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
     try {
       // Provide haptic feedback
-      await _cameraService.provideCameraFeedback();
+      await HapticFeedback.mediumImpact();
 
-      // Capture the photo
       final photoPath = await _cameraService.capturePhoto();
 
       if (photoPath != null) {
-        debugPrint(
-          '[CameraPreviewScreen] Photo captured successfully: $photoPath',
-        );
-
         // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating to review screen
         await _cameraService.pauseCamera();
 
         // Navigate to review screen
         if (mounted) {
-          debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with path: $photoPath');
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MediaReviewScreen(
@@ -291,15 +238,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           );
           // ✅ BUFFER OVERFLOW FIX: Resume camera when returning from review screen
           await _cameraService.resumeCamera();
-          // ✅ CAMERA NOT AVAILABLE FIX: Always re-initialize camera after resume
-          await _initializeCamera();
         }
       } else {
         throw Exception(_cameraService.lastError ?? 'Failed to capture photo');
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Photo capture failed: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -328,24 +271,18 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Start video recording with 5-second countdown
   Future<void> _startVideoRecording() async {
     if (_isTakingPhoto || _isRecordingVideo) {
-      debugPrint(
-        '[CameraPreviewScreen] Video recording blocked - operation in progress',
-      );
       return;
     }
 
-    debugPrint('[CameraPreviewScreen] Starting video recording...');
-
     try {
       // Provide haptic feedback
-      await _cameraService.provideCameraFeedback();
+      await HapticFeedback.mediumImpact();
 
       // Start video recording
       final success = await _cameraService.startVideoRecording();
 
       if (success) {
         // Log that recording has started, but wait for stop to get the path
-        debugPrint('[CameraPreviewScreen] Video recording started...');
         setState(() {
           _isRecordingVideo = true;
           _recordingCountdown = _cameraService.maxRecordingDuration;
@@ -354,10 +291,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         // Listen to countdown updates
         _countdownSubscription = _cameraService.countdownStream?.listen(
           (remainingTime) {
-            debugPrint(
-              '[CameraPreviewScreen] Countdown update: $remainingTime seconds remaining',
-            );
-
             if (mounted) {
               setState(() {
                 _recordingCountdown = remainingTime;
@@ -366,9 +299,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
             // Auto-stop when countdown reaches 0 (handled by service, but we update UI)
             if (remainingTime <= 0) {
-              debugPrint(
-                '[CameraPreviewScreen] Countdown finished, video should be stopping',
-              );
               _handleVideoRecordingComplete();
             }
           },
@@ -376,13 +306,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
             debugPrint('[CameraPreviewScreen] Countdown stream error: $error');
           },
           onDone: () {
-            debugPrint('[CameraPreviewScreen] Countdown stream completed');
             _handleVideoRecordingComplete();
           },
-        );
-
-        debugPrint(
-          '[CameraPreviewScreen] Video recording started successfully',
         );
       } else {
         throw Exception(
@@ -390,8 +315,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         );
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Video recording start failed: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -420,25 +343,19 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   /// Stop video recording manually (before 5 seconds)
   Future<void> _stopVideoRecording() async {
     if (!_isRecordingVideo) {
-      debugPrint('[CameraPreviewScreen] No video recording to stop');
       return;
     }
-
-    debugPrint('[CameraPreviewScreen] Manually stopping video recording...');
 
     try {
       // Stop video recording
       final videoPath = await _cameraService.stopVideoRecording();
 
       if (videoPath != null) {
-        debugPrint(
-          '[CameraReviewScreen] Video recorded successfully: $videoPath',
-        );
+        // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
+        await _cameraService.pauseCamera();
 
-        // Navigate to review screen
         if (mounted) {
-          debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with path: $videoPath');
-          Navigator.of(context).push(
+          await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MediaReviewScreen(
                 mediaPath: videoPath,
@@ -452,8 +369,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         throw Exception(_cameraService.lastError ?? 'Failed to save video');
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Video recording stop failed: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -477,8 +392,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Handle video recording completion (auto or manual stop)
   void _handleVideoRecordingComplete() {
-    debugPrint('[CameraPreviewScreen] Handling video recording completion...');
-
     // Cancel countdown subscription
     _countdownSubscription?.cancel();
     _countdownSubscription = null;
@@ -490,18 +403,13 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         _recordingCountdown = 0;
       });
     }
-
-    debugPrint('[CameraPreviewScreen] Video recording completion handled');
   }
 
   /// Cancel video recording without saving
   Future<void> _cancelVideoRecording() async {
     if (!_isRecordingVideo) {
-      debugPrint('[CameraPreviewScreen] No video recording to cancel');
       return;
     }
-
-    debugPrint('[CameraPreviewScreen] Cancelling video recording...');
 
     try {
       await _cameraService.cancelVideoRecording();
@@ -533,8 +441,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Switch between front and back cameras
   Future<void> _switchCamera() async {
-    debugPrint('[CameraPreviewScreen] Switching camera...');
-
     try {
       final success = await _cameraService.switchCamera();
       if (success) {
@@ -542,13 +448,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         setState(() {
           _currentFlashMode = _cameraService.getCurrentFlashMode();
         });
-        debugPrint('[CameraPreviewScreen] Camera switched successfully');
       } else {
         throw Exception(_cameraService.lastError ?? 'Failed to switch camera');
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Camera switch failed: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -563,8 +466,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Toggle flash mode
   Future<void> _toggleFlash() async {
-    debugPrint('[CameraPreviewScreen] Toggling flash mode...');
-
     // Cycle through flash modes: off -> auto -> on -> off
     FlashMode nextMode;
     switch (_currentFlashMode) {
@@ -586,9 +487,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       setState(() {
         _currentFlashMode = nextMode;
       });
-      debugPrint('[CameraPreviewScreen] Flash mode changed to: $nextMode');
-    } else {
-      debugPrint('[CameraPreviewScreen] Failed to change flash mode');
     }
   }
 
@@ -608,8 +506,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   /// Sign out the current user
   Future<void> _signOut() async {
-    debugPrint('[CameraPreviewScreen] User sign out requested');
-
     // Show confirmation dialog
     final bool? shouldSignOut = await showDialog<bool>(
       context: context,
@@ -651,7 +547,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
     try {
       await _authService.signOut();
-      debugPrint('[CameraPreviewScreen] User signed out successfully');
 
       // Close loading dialog and navigate to auth
       if (mounted) {
@@ -659,9 +554,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         Navigator.of(context).popUntil((route) => route.isFirst); // Go to auth
       }
     } catch (e) {
-      debugPrint('[CameraPreviewScreen] Error signing out: $e');
-
-      // Close loading dialog and show error
       if (mounted) {
         Navigator.of(context).pop();
 
@@ -1175,7 +1067,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 ),
                 child: IconButton(
                   onPressed: () {
-                    debugPrint('[CameraPreviewScreen] Close button pressed');
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Icons.close, color: Colors.white, size: 24),

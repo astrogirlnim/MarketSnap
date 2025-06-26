@@ -8,6 +8,7 @@ import '../../../../core/services/background_sync_service.dart';
 import '../../../../core/services/hive_service.dart';
 import '../../../../main.dart' show backgroundSyncService;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -51,16 +52,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   @override
   void initState() {
     super.initState();
-    debugPrint(
-      '[MediaReviewScreen] Initializing review screen for: ${widget.mediaPath}',
-    );
-    debugPrint('[MediaReviewScreen] Received mediaPath: ${widget.mediaPath}');
-    debugPrint('[MediaReviewScreen] Received mediaType: ${widget.mediaType}');
-    debugPrint('[MediaReviewScreen] Received hiveService: ${widget.hiveService}');
-
     // Initialize caption with provided text
     if (widget.caption != null) {
       _captionController.text = widget.caption!;
+    }
+
+    _isPhoto = widget.mediaType == MediaType.photo;
+    if (!_isPhoto) {
+      _initializeVideoPlayer();
     }
 
     // Initialize animation controller
@@ -75,55 +74,30 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
 
-    // Initialize video player if media is video
-    if (widget.mediaType == MediaType.video) {
-      _initializeVideoPlayer();
-    }
-
     // Initialize LUT filter service
     _initializeLutService();
   }
 
   @override
   void dispose() {
-    debugPrint('[MediaReviewScreen] Disposing review screen');
-
+    _videoController?.dispose();
     _captionController.dispose();
     _filterAnimationController.dispose();
-    _videoController?.dispose();
-
-    // Clean up filtered image if it exists
-    if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
-      _cleanupFilteredImage();
-    }
-
-    // Clear preview cache to free memory
     _lutFilterService.clearPreviewCache();
-
     super.dispose();
   }
 
   /// Initialize LUT filter service
   Future<void> _initializeLutService() async {
-    debugPrint('[MediaReviewScreen] Initializing LUT filter service...');
     try {
       await _lutFilterService.initialize();
-      debugPrint(
-        '[MediaReviewScreen] LUT filter service initialized successfully',
-      );
     } catch (e) {
-      debugPrint(
-        '[MediaReviewScreen] Error initializing LUT filter service: $e',
-      );
+      // Handle error
     }
   }
 
   /// Initialize video player for video media
   Future<void> _initializeVideoPlayer() async {
-    debugPrint(
-      '[MediaReviewScreen] Initializing video player for: ${widget.mediaPath}',
-    );
-
     try {
       _videoController = VideoPlayerController.file(File(widget.mediaPath));
       await _videoController!.initialize();
@@ -137,223 +111,90 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           _isVideoInitialized = true;
         });
       }
-
-      debugPrint('[MediaReviewScreen] Video player initialized successfully');
     } catch (e) {
-      debugPrint('[MediaReviewScreen] Error initializing video player: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading video: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      // Handle error
     }
   }
 
   /// Apply selected filter to the image
-  Future<void> _applyFilter(LutFilterType filterType) async {
-    if (widget.mediaType == MediaType.video) {
-      debugPrint(
-        '[MediaReviewScreen] Filter application not supported for videos',
-      );
-      return;
-    }
-
-    debugPrint(
-      '[MediaReviewScreen] Applying filter: ${filterType.displayName}',
-    );
+  Future<void> _applyFilter(String filterName) async {
+    if (_isApplyingFilter) return;
 
     setState(() {
       _isApplyingFilter = true;
-      _selectedFilter = filterType;
+      _selectedFilter = filterName;
     });
 
     try {
-      // Clean up previous filtered image
-      if (_filteredImagePath != null &&
-          _filteredImagePath != widget.mediaPath) {
-        await _cleanupFilteredImage();
-      }
+      final newPath =
+          await _lutFilterService.applyFilterToImage(widget.mediaPath, filterName);
 
-      // Apply the filter
-      final String? filteredPath = await _lutFilterService.applyFilterToImage(
-        inputImagePath: widget.mediaPath,
-        filterType: filterType,
-      );
-
-      if (filteredPath != null) {
+      if (newPath != null) {
+        // Clean up the previously filtered image if it exists
+        if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
+          final oldFile = File(_filteredImagePath!);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        }
         setState(() {
-          _filteredImagePath = filteredPath;
+          _filteredImagePath = newPath;
         });
-
-        // Animate filter application
-        _filterAnimationController.forward().then((_) {
-          _filterAnimationController.reset();
-        });
-
-        debugPrint(
-          '[MediaReviewScreen] Filter applied successfully: $filteredPath',
-        );
-      } else {
-        throw Exception('Failed to apply filter');
       }
     } catch (e) {
-      debugPrint('[MediaReviewScreen] Error applying filter: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error applying filter: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      // Handle error
     } finally {
-      if (mounted) {
-        setState(() {
-          _isApplyingFilter = false;
-        });
-      }
-    }
-  }
-
-  /// Clean up filtered image file
-  Future<void> _cleanupFilteredImage() async {
-    if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
-      try {
-        final File filteredFile = File(_filteredImagePath!);
-        if (await filteredFile.exists()) {
-          await filteredFile.delete();
-          debugPrint(
-            '[MediaReviewScreen] Cleaned up filtered image: $_filteredImagePath',
-          );
-        }
-      } catch (e) {
-        debugPrint('[MediaReviewScreen] Error cleaning up filtered image: $e');
-      }
+      setState(() {
+        _isApplyingFilter = false;
+      });
     }
   }
 
   /// Post the media with applied filters and caption
   Future<void> _postMedia() async {
-    debugPrint('[MediaReviewScreen] Posting media...');
-
-    // Add authentication debugging
-    final currentUser = FirebaseAuth.instance.currentUser;
-    debugPrint('[MediaReviewScreen] Current user: ${currentUser?.uid ?? "NULL"}');
-    debugPrint('[MediaReviewScreen] User email: ${currentUser?.email ?? "No email"}');
-    debugPrint('[MediaReviewScreen] User providers: ${currentUser?.providerData.map((p) => p.providerId).toList() ?? "No providers"}');
+    if (_isPosting) return;
 
     setState(() {
       _isPosting = true;
     });
 
     try {
-      // Determine the final media path (filtered or original)
-      final String finalMediaPath = _filteredImagePath ?? widget.mediaPath;
-      final String caption = _captionController.text.trim();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception("User not authenticated");
+      }
 
-      debugPrint('[MediaReviewScreen] Preparing to queue media. Final Path: $finalMediaPath, Caption: "$caption"');
+      final mediaPath = _filteredImagePath ?? widget.mediaPath;
+      final caption = _captionController.text;
+      final mediaType = widget.mediaType;
+      // Note: location is not implemented in this screen yet
 
-      // Create pending media item for upload queue
-      final PendingMediaItem pendingItem = PendingMediaItem(
-        filePath: finalMediaPath,
-        mediaType: widget.mediaType,
-        caption: caption.isNotEmpty ? caption : null,
-        location: null, // TODO: Add location support in future
+      final pendingItem = PendingMediaItem(
+        id: Uuid().v4(),
+        filePath: mediaPath,
+        caption: caption,
+        mediaType: mediaType,
+        createdAt: DateTime.now(),
+        vendorId: currentUser.uid,
       );
 
-      // Add to Hive queue for background upload
       await widget.hiveService.addPendingMedia(pendingItem);
 
-      debugPrint(
-        '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
-      );
-
-      // Trigger immediate sync to upload the media right away
-      bool uploadSuccessful = false;
-      String? uploadError;
-
-      try {
-        debugPrint('[MediaReviewScreen] Triggering immediate sync...');
-        await backgroundSyncService.triggerImmediateSync();
-        debugPrint('[MediaReviewScreen] Immediate sync completed successfully');
-        uploadSuccessful = true;
-      } catch (e) {
-        debugPrint('[MediaReviewScreen] Immediate sync failed: $e');
-        uploadError = e.toString();
-        // Note: Media is still in queue for background retry
-      }
-
-      // Show appropriate message based on upload result
-      if (mounted) {
-        if (uploadSuccessful) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Media posted successfully!')),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.warning, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Upload failed - queued for retry'),
-                        if (uploadError != null)
-                          Text(
-                            'Error: $uploadError',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-
-        // Navigate back to camera (or main screen)
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-    } catch (e) {
-      debugPrint('[MediaReviewScreen] Error posting media: $e');
+      // Trigger immediate sync
+      await widget.backgroundSyncService.triggerImmediateSync();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Error posting media: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+          const SnackBar(content: Text('Post added to upload queue!')),
+        );
+        // Navigate back to the main shell (or wherever is appropriate)
+        // This pops all routes until the main shell.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to post: $e')),
         );
       }
     } finally {
@@ -502,7 +343,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             filterType: filterType,
             isSelected: isSelected,
             mediaPath: widget.mediaPath,
-            onTap: () => _applyFilter(filterType),
+            onTap: () => _applyFilter(filterType.name),
             lutFilterService: _lutFilterService,
           );
         },
@@ -622,7 +463,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         elevation: 0,
         leading: IconButton(
           onPressed: () {
-            debugPrint('[MediaReviewScreen] Back button pressed');
             Navigator.of(context).pop();
           },
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -640,7 +480,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           IconButton(
             onPressed: () {
               // TODO: Implement share functionality
-              debugPrint('[MediaReviewScreen] Share button pressed');
             },
             icon: const Icon(Icons.share, color: Colors.grey),
           ),
