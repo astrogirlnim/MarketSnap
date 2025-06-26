@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 import '../models/pending_media.dart';
 import '../models/user_settings.dart';
@@ -22,6 +24,9 @@ class HiveService {
   static const String pendingMediaQueueBoxName = 'pendingMediaQueue';
   static const String userSettingsBoxName = 'userSettings';
   static const String vendorProfileBoxName = 'vendorProfile';
+
+  // Directory for quarantined media files
+  static const String _pendingDirectoryName = 'pending_uploads';
 
   HiveService(this._secureStorageService);
 
@@ -151,11 +156,53 @@ class HiveService {
     debugPrint('[HiveService] All adapters registered.');
   }
 
-  /// Add a pending media item to the upload queue
+  /// Creates the directory for pending uploads if it doesn't exist.
+  Future<String> _getPendingDirectoryPath() async {
+    final tempDir = await getTemporaryDirectory();
+    final pendingDir = Directory(path.join(tempDir.path, _pendingDirectoryName));
+    if (!await pendingDir.exists()) {
+      await pendingDir.create(recursive: true);
+      debugPrint('[HiveService] Created pending uploads directory at: ${pendingDir.path}');
+    }
+    return pendingDir.path;
+  }
+
+  /// Add a pending media item to the upload queue.
+  /// This now MOVES the file to a dedicated 'pending' directory to prevent duplicates.
   Future<void> addPendingMedia(PendingMediaItem item) async {
     debugPrint('[HiveService] Adding pending media item to queue: ${item.id}');
-    await pendingMediaQueueBox.put(item.id, item);
-    debugPrint('[HiveService] Pending media item added successfully');
+    debugPrint('[HiveService] Original file path: ${item.filePath}');
+
+    try {
+      final File originalFile = File(item.filePath);
+      if (!await originalFile.exists()) {
+        throw Exception('Source file does not exist for queuing: ${item.filePath}');
+      }
+
+      // Move the file to the quarantined pending directory
+      final pendingDirPath = await _getPendingDirectoryPath();
+      final newPath = path.join(pendingDirPath, path.basename(item.filePath));
+      
+      debugPrint('[HiveService] Moving file to pending directory: $newPath');
+      await originalFile.rename(newPath);
+      debugPrint('[HiveService] File moved successfully.');
+
+      // Create a new item with the updated path to store in Hive
+      final quarantinedItem = PendingMediaItem(
+        filePath: newPath, // Use the new path
+        mediaType: item.mediaType,
+        caption: item.caption,
+        location: item.location,
+      );
+
+      // Use the ID from the new quarantined item as the key
+      await pendingMediaQueueBox.put(quarantinedItem.id, quarantinedItem);
+      debugPrint('[HiveService] Quarantined media item added to queue successfully with id: ${quarantinedItem.id}');
+
+    } catch (e) {
+      debugPrint('[HiveService] Error adding pending media: $e');
+      rethrow;
+    }
   }
 
   /// Get all pending media items

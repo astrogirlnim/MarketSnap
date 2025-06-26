@@ -236,6 +236,19 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
   debugPrint(
     '[Background Isolate] Firestore document created for snap: ${pendingItem.id}',
   );
+
+  // Clean up the quarantined file after successful upload
+  try {
+    await file.delete();
+    debugPrint(
+      '[Background Isolate] Deleted uploaded media file: ${pendingItem.filePath}',
+    );
+  } catch (e) {
+    debugPrint(
+      '[Background Isolate] Error deleting media file ${pendingItem.filePath}: $e',
+    );
+    // Non-fatal error, as the main task (upload) is complete.
+  }
 }
 
 /// Get file extension from file path
