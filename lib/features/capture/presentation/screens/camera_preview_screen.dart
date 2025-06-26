@@ -258,9 +258,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           '[CameraPreviewScreen] Photo captured successfully: $photoPath',
         );
 
+        // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating to review screen
+        await _cameraService.pauseCamera();
+
         // Navigate to review screen
         if (mounted) {
-          Navigator.of(context).push(
+          await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MediaReviewScreen(
                 mediaPath: photoPath,
@@ -269,6 +272,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
               ),
             ),
           );
+          // ✅ BUFFER OVERFLOW FIX: Resume camera when returning from review screen
+          await _cameraService.resumeCamera();
+          // ✅ CAMERA NOT AVAILABLE FIX: Always re-initialize camera after resume
+          await _initializeCamera();
         }
       } else {
         throw Exception(_cameraService.lastError ?? 'Failed to capture photo');
