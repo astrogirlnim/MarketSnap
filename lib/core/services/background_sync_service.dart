@@ -154,12 +154,6 @@ Future<void> _processPendingUploads() async {
   } catch (e, stackTrace) {
     debugPrint('[Background Isolate] Error processing pending uploads: $e');
     debugPrint('[Background Isolate] Stack trace: $stackTrace');
-  } finally {
-    // Ensure the box is always closed
-    if (Hive.isBoxOpen('pendingMediaQueue')) {
-      await Hive.box('pendingMediaQueue').close();
-      debugPrint('[Background Isolate] "pendingMediaQueue" box closed.');
-    }
   }
 }
 
@@ -414,18 +408,13 @@ class BackgroundSyncService {
         debugPrint('[Main Isolate] Removed uploaded item from queue: ${item.id}');
       }
       
-      // Close the box
-      await pendingBox.close();
-      debugPrint('[Main Isolate] "pendingMediaQueue" box closed.');
+      debugPrint('[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items');
 
     } catch (e, stackTrace) {
       debugPrint('[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e');
       debugPrint('[Main Isolate] Stack trace: $stackTrace');
-      // Ensure box is closed on error too
-      if (Hive.isBoxOpen('pendingMediaQueue')) {
-        await Hive.box('pendingMediaQueue').close();
-        debugPrint('[Main Isolate] "pendingMediaQueue" box closed after error.');
-      }
+      // Re-throwing the error so the caller can handle it
+      rethrow;
     }
   }
 

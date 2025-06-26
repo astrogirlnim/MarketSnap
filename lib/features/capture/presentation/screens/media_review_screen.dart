@@ -258,39 +258,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         location: null, // TODO: Add location support in future
       );
 
-      // Add to Hive queue for background upload with error handling for closed boxes
-      try {
-        await widget.hiveService.addPendingMedia(pendingItem);
-        debugPrint(
-          '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
-        );
-      } catch (e) {
-        debugPrint('[MediaReviewScreen] Error adding to Hive queue: $e');
-        
-        // Check if this is a "box already closed" error
-        if (e.toString().contains('Box has already been closed') ||
-            e.toString().contains('box is closed')) {
-          debugPrint('[MediaReviewScreen] Hive box closed - attempting to reinitialize...');
-          
-          try {
-            // Try to reinitialize HiveService
-            await widget.hiveService.init();
-            debugPrint('[MediaReviewScreen] HiveService reinitialized successfully');
-            
-            // Retry adding to queue
-            await widget.hiveService.addPendingMedia(pendingItem);
-            debugPrint(
-              '[MediaReviewScreen] Media added to upload queue after reinit: ${pendingItem.id}',
-            );
-          } catch (reinitError) {
-            debugPrint('[MediaReviewScreen] Failed to reinitialize HiveService: $reinitError');
-            throw Exception('Failed to save media locally: $reinitError');
-          }
-        } else {
-          // Re-throw other errors
-          rethrow;
-        }
-      }
+      // Add to Hive queue for background upload
+      await widget.hiveService.addPendingMedia(pendingItem);
+
+      debugPrint(
+        '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
+      );
 
       // Trigger immediate sync to upload the media right away
       bool uploadSuccessful = false;
