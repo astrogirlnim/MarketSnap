@@ -45,7 +45,7 @@ void callbackDispatcher() {
       debugPrint('[Background Isolate] Hive initialized');
 
       // Process pending media uploads
-      await _processPendingUploads();
+      await _processQueue(isInBackground: true);
 
       // Store execution info differently based on platform
       if (Platform.isAndroid) {
@@ -91,93 +91,126 @@ void callbackDispatcher() {
   });
 }
 
-/// Process pending media uploads in the background isolate
-Future<void> _processPendingUploads() async {
-  debugPrint('[Background Isolate] Processing pending media uploads...');
+/// This is the new, unified processing loop for handling the media queue.
+/// It can be called from a background isolate or the main isolate.
+///
+/// [isInBackground] determines the logging prefix.
+/// [hiveService] is an optional parameter. If provided (from the main isolate),
+/// it will be passed to `_uploadPendingItem` to fetch user profiles from the local cache.
+Future<void> _processQueue({
+  required bool isInBackground,
+  HiveService? hiveService,
+}) async {
+  final logPrefix = isInBackground ? '[Background Isolate]' : '[Main Isolate]';
+  debugPrint('$logPrefix Processing pending media uploads...');
 
   try {
     // Check if user is authenticated
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      debugPrint('[Background Isolate] No authenticated user, skipping upload');
+      debugPrint('$logPrefix No authenticated user, skipping upload');
       return;
     }
 
-    debugPrint('[Background Isolate] Authenticated user: ${user.uid}');
+    debugPrint('$logPrefix Authenticated user: ${user.uid}');
 
-    // Open Hive box for pending media
+    // Open Hive box for pending media. It must be managed carefully.
     final Box<PendingMediaItem> pendingBox =
         await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
     debugPrint(
-      '[Background Isolate] Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items',
+      '$logPrefix Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items',
     );
 
     if (pendingBox.isEmpty) {
-      debugPrint('[Background Isolate] No pending media to upload');
-      await pendingBox.close();
+      debugPrint('$logPrefix No pending media to upload');
+      if (isInBackground) {
+        await pendingBox.close();
+      }
       return;
     }
 
-    debugPrint(
-      '[Background Isolate] Found ${pendingBox.length} items to process.',
-    );
-    // Process each pending media item
-    final List<String> keysToRemove = [];
+    debugPrint('$logPrefix Found ${pendingBox.length} items to process.');
 
-    for (var key in pendingBox.keys) {
+    final List<dynamic> successfulKeys = [];
+    final List<dynamic> failedKeys = [];
+
+    // Use .keys.toList() to avoid issues with concurrent modification
+    for (var key in pendingBox.keys.toList()) {
       final pendingItem = pendingBox.get(key);
       if (pendingItem == null) {
-        debugPrint('[Background Isolate] Skipping null item for key: $key');
+        debugPrint('$logPrefix Skipping null item for key: $key');
+        failedKeys.add(key); // Mark corrupted/null item for removal
         continue;
       }
 
-      debugPrint(
-        '[Background Isolate] Processing pending item: ${pendingItem.id}',
-      );
+      debugPrint('$logPrefix Processing pending item: ${pendingItem.id}');
 
       try {
-        // Upload the media item
-        await _uploadPendingItem(pendingItem, user);
-
-        // Mark for removal from queue
-        keysToRemove.add(key);
-        debugPrint(
-          '[Background Isolate] Successfully uploaded: ${pendingItem.id}',
+        // Upload the media item, passing the hiveService if available
+        await _uploadPendingItem(
+          pendingItem,
+          user,
+          hiveService: hiveService,
+          isInBackground: isInBackground,
         );
+        successfulKeys.add(key);
+        debugPrint('$logPrefix Successfully uploaded: ${pendingItem.id}');
       } catch (e) {
-        debugPrint(
-          '[Background Isolate] Failed to upload ${pendingItem.id}: $e',
-        );
-        // Keep item in queue for retry
+        debugPrint('$logPrefix Failed to upload ${pendingItem.id}: $e');
+        if (e.toString().contains('Media file no longer exists')) {
+          debugPrint(
+            '$logPrefix Marking item ${pendingItem.id} for removal due to missing file.',
+          );
+          failedKeys.add(key);
+        }
       }
     }
 
-    // Remove successfully uploaded items from queue
-    for (final key in keysToRemove) {
+    // Remove successfully uploaded and permanently failed items from queue
+    for (final key in successfulKeys) {
       await pendingBox.delete(key);
-      debugPrint('[Background Isolate] Removed uploaded item from queue: $key');
+      debugPrint('$logPrefix Removed SUCCEEDED item from queue: $key');
+    }
+    for (final key in failedKeys) {
+      await pendingBox.delete(key);
+      debugPrint('$logPrefix Removed FAILED item from queue: $key');
+    }
+
+    if (isInBackground) {
+      await pendingBox.close();
     }
 
     debugPrint(
-      '[Background Isolate] Upload processing complete. Uploaded ${keysToRemove.length} items',
+      '$logPrefix Upload processing complete. Success: ${successfulKeys.length}, Failed: ${failedKeys.length}',
     );
   } catch (e, stackTrace) {
-    debugPrint('[Background Isolate] Error processing pending uploads: $e');
-    debugPrint('[Background Isolate] Stack trace: $stackTrace');
+    debugPrint('$logPrefix Error processing pending uploads: $e');
+    debugPrint('$logPrefix Stack trace: $stackTrace');
   }
 }
 
-/// Upload a single pending media item
-Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
-  debugPrint('[Background Isolate] Uploading media item: ${pendingItem.id}');
+// Wrapper for the background isolate for simplicity.
+Future<void> _processPendingUploads() async {
+  await _processQueue(isInBackground: true);
+}
 
-  // Check if file still exists
+/// Unified function to upload a single pending media item.
+/// It can be called from the main or background isolate.
+Future<void> _uploadPendingItem(
+  PendingMediaItem pendingItem,
+  User user, {
+  HiveService? hiveService,
+  required bool isInBackground,
+}) async {
+  final logPrefix = isInBackground ? '[Background Isolate]' : '[Main Isolate]';
+
+  debugPrint('$logPrefix Uploading media item: ${pendingItem.id}');
+
   final file = File(pendingItem.filePath);
   if (!await file.exists()) {
     throw Exception('Media file no longer exists: ${pendingItem.filePath}');
   }
 
-  // Upload to Firebase Storage
   final storageRef = FirebaseStorage.instance
       .ref()
       .child('vendors')
@@ -185,39 +218,44 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
       .child('snaps')
       .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
-  debugPrint(
-    '[Background Isolate] Uploading to Storage: ${storageRef.fullPath}',
-  );
-
+  debugPrint('$logPrefix Uploading to Storage: ${storageRef.fullPath}');
   final uploadTask = storageRef.putFile(file);
   final snapshot = await uploadTask;
   final downloadUrl = await snapshot.ref.getDownloadURL();
-
-  debugPrint(
-    '[Background Isolate] Upload complete. Download URL: $downloadUrl',
-  );
+  debugPrint('$logPrefix Upload complete. Download URL: $downloadUrl');
 
   // Get vendor profile for snap metadata
-  final vendorDoc = await FirebaseFirestore.instance
-      .collection('vendors')
-      .doc(user.uid)
-      .get();
-
   String vendorName = 'Unknown Vendor';
   String vendorAvatarUrl = '';
 
-  if (vendorDoc.exists) {
-    final vendorData = vendorDoc.data()!;
-    vendorName =
-        vendorData['displayName'] ??
-        vendorData['stallName'] ??
-        'Unknown Vendor';
-    vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+  // If hiveService is available (main isolate), use it for a fast lookup.
+  if (hiveService != null) {
+    final profile = await hiveService.getVendorProfile(user.uid);
+    if (profile != null) {
+      vendorName =
+          profile.displayName ?? profile.stallName ?? 'Unknown Vendor';
+      vendorAvatarUrl = profile.avatarUrl ?? '';
+      debugPrint('$logPrefix Fetched vendor profile from Hive: $vendorName');
+    }
+  } else {
+    // In background, fetch from Firestore.
+    final vendorDoc = await FirebaseFirestore.instance
+        .collection('vendors')
+        .doc(user.uid)
+        .get();
+    if (vendorDoc.exists) {
+      final vendorData = vendorDoc.data()!;
+      vendorName = vendorData['displayName'] ??
+          vendorData['stallName'] ??
+          'Unknown Vendor';
+      vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+      debugPrint('$logPrefix Fetched vendor profile from Firestore: $vendorName');
+    }
   }
 
   // Create Firestore document
   final now = DateTime.now();
-  final expiresAt = now.add(const Duration(hours: 24)); // 24-hour expiry
+  final expiresAt = now.add(const Duration(hours: 24));
 
   final snapData = {
     'vendorId': user.uid,
@@ -232,22 +270,15 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
   };
 
   await FirebaseFirestore.instance.collection('snaps').add(snapData);
+  debugPrint('$logPrefix Firestore document created for snap: ${pendingItem.id}');
 
-  debugPrint(
-    '[Background Isolate] Firestore document created for snap: ${pendingItem.id}',
-  );
-
-  // Clean up the quarantined file after successful upload
   try {
     await file.delete();
-    debugPrint(
-      '[Background Isolate] Deleted uploaded media file: ${pendingItem.filePath}',
-    );
+    debugPrint('$logPrefix Deleted uploaded media file: ${pendingItem.filePath}');
   } catch (e) {
     debugPrint(
-      '[Background Isolate] Error deleting media file ${pendingItem.filePath}: $e',
+      '$logPrefix Error deleting media file ${pendingItem.filePath}: $e',
     );
-    // Non-fatal error, as the main task (upload) is complete.
   }
 }
 
@@ -379,154 +410,23 @@ class BackgroundSyncService {
 
   /// Manually trigger an immediate sync (for development/testing)
   Future<void> triggerImmediateSync() async {
-    debugPrint('Triggering immediate sync...');
+    const String logPrefix = '[Main Isolate]';
+    if (_isSyncing) {
+      debugPrint('$logPrefix Sync already in progress, skipping.');
+      return;
+    }
+
+    _isSyncing = true;
 
     try {
       // Process uploads immediately in the main isolate
-      await _processPendingUploadsInMainIsolate();
+      await _processQueue(isInBackground: false, hiveService: _hiveService);
       debugPrint('Immediate sync completed successfully');
     } catch (e) {
       debugPrint('Immediate sync failed: $e');
       rethrow;
-    }
-  }
-
-  /// Process pending uploads in the main isolate (for immediate sync)
-  Future<void> _processPendingUploadsInMainIsolate() async {
-    debugPrint('[Main Isolate] Processing pending media uploads...');
-
-    try {
-      // Check if HiveService is available
-      if (_hiveService == null) {
-        debugPrint('[Main Isolate] ❌ HiveService not provided to BackgroundSyncService');
-        throw Exception('HiveService is required for immediate sync operations');
-      }
-
-      // Check if user is authenticated with detailed debugging
-      final user = FirebaseAuth.instance.currentUser;
-      debugPrint('[Main Isolate] FirebaseAuth.instance.currentUser: ${user?.uid ?? "NULL"}');
-      debugPrint('[Main Isolate] User email: ${user?.email ?? "No email"}');
-      debugPrint('[Main Isolate] User providers: ${user?.providerData.map((p) => p.providerId).toList() ?? "No providers"}');
-      debugPrint('[Main Isolate] User isAnonymous: ${user?.isAnonymous ?? "N/A"}');
-      debugPrint('[Main Isolate] User emailVerified: ${user?.emailVerified ?? "N/A"}');
-      
-      if (user == null) {
-        debugPrint('[Main Isolate] No authenticated user, skipping upload');
-        debugPrint('[Main Isolate] This means FirebaseAuth.instance.currentUser returned null');
-        debugPrint('[Main Isolate] Check if Firebase Auth is properly initialized');
-        return;
-      }
-
-      debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
-
-      // Use HiveService to get pending items instead of opening our own box
-      final pendingItems = _hiveService!.getAllPendingMedia();
-
-      debugPrint(
-        '[Main Isolate] Retrieved ${pendingItems.length} pending items from HiveService.',
-      );
-
-      if (pendingItems.isEmpty) {
-        debugPrint('[Main Isolate] No pending media to upload');
-        return;
-      }
-
-      // Process each pending media item
-      final List<PendingMediaItem> itemsToRemove = [];
-
-      for (final pendingItem in pendingItems) {
-        debugPrint('[Main Isolate] Processing pending item: ${pendingItem.id}');
-
-        try {
-          // Upload the media item
-          await _uploadPendingItemInMainIsolate(pendingItem, user);
-
-          // Mark for removal from queue
-          itemsToRemove.add(pendingItem);
-          debugPrint('[Main Isolate] Successfully uploaded: ${pendingItem.id}');
-        } catch (e) {
-          debugPrint('[Main Isolate] Failed to upload ${pendingItem.id}: $e');
-          // Keep item in queue for retry
-        }
-      }
-
-      // Remove successfully uploaded items from queue using HiveService
-      for (final item in itemsToRemove) {
-        await _hiveService!.removePendingMedia(item.id);
-        debugPrint(
-          '[Main Isolate] Removed uploaded item from queue: ${item.id}',
-        );
-      }
-
-      debugPrint(
-        '[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items',
-      );
-    } catch (e, stackTrace) {
-      debugPrint(
-        '[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e',
-      );
-      debugPrint('[Main Isolate] Stack trace: $stackTrace');
-      // Re-throwing the error so the caller can handle it
-      rethrow;
-    }
-  }
-
-  /// Upload a single pending media item in the main isolate
-  Future<void> _uploadPendingItemInMainIsolate(
-    PendingMediaItem pendingItem,
-    User user,
-  ) async {
-    // Check if the file exists before starting the upload process
-    final mediaFile = File(pendingItem.filePath);
-    if (!await mediaFile.exists()) {
-      await _hiveService?.pendingMediaQueueBox.delete(pendingItem.id);
-      throw Exception('Media file no longer exists: ${pendingItem.filePath}');
-    }
-
-    // Create Firebase Storage reference
-    final storageRef = FirebaseStorage.instance
-        .ref()
-        .child('vendors')
-        .child(user.uid)
-        .child('snaps')
-        .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
-
-    // Attempt upload
-    try {
-      final uploadTask = storageRef.putFile(mediaFile);
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
-
-      // Get vendor profile for snap metadata
-      final vendorDoc = await FirebaseFirestore.instance
-          .collection('vendors')
-          .doc(user.uid)
-          .get();
-
-      String vendorName = 'Unknown Vendor';
-      if (vendorDoc.exists) {
-        final vendorData = vendorDoc.data()!;
-        vendorName =
-            vendorData['displayName'] ??
-            vendorData['stallName'] ??
-            'Unknown Vendor';
-      }
-
-      // Create a document in Firestore 'snaps' collection
-      await FirebaseFirestore.instance.collection('snaps').add({
-        'vendorId': user.uid,
-        'vendorName': vendorName,
-        'mediaUrl': downloadUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-        'expiresAt': FieldValue.serverTimestamp(), // Placeholder, TTL handled by server
-        'caption': pendingItem.caption ?? '',
-        'mediaType': pendingItem.mediaType == MediaType.photo ? 'photo' : 'video',
-        'location': pendingItem.location,
-      });
-
-    } catch (e) {
-      debugPrint('[BackgroundSyncService] Upload failed: $e');
-      rethrow;
+    } finally {
+      _isSyncing = false;
     }
   }
 
@@ -560,3 +460,5 @@ class BackgroundSyncService {
     }
   }
 }
+
+
