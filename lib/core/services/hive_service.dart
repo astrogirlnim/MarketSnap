@@ -133,10 +133,14 @@ class HiveService {
   /// Creates the directory for pending uploads if it doesn't exist.
   Future<String> _getPendingDirectoryPath() async {
     final tempDir = await getTemporaryDirectory();
-    final pendingDir = Directory(path.join(tempDir.path, _pendingDirectoryName));
+    final pendingDir = Directory(
+      path.join(tempDir.path, _pendingDirectoryName),
+    );
     if (!await pendingDir.exists()) {
       await pendingDir.create(recursive: true);
-      debugPrint('[HiveService] Created pending uploads directory at: ${pendingDir.path}');
+      debugPrint(
+        '[HiveService] Created pending uploads directory at: ${pendingDir.path}',
+      );
     }
     return pendingDir.path;
   }
@@ -187,17 +191,6 @@ class HiveService {
   /// Removes a pending media item from the queue by its ID.
   Future<void> removePendingMedia(String id) async {
     await pendingMediaQueueBox.delete(id);
-  }
-
-  /// Gets the dedicated directory for pending uploads, creating it if it doesn't exist.
-  Future<Directory> _getPendingDirectory() async {
-    final tempDir = await getTemporaryDirectory();
-    final pendingDir = Directory(path.join(tempDir.path, _pendingDirectoryName));
-    if (!await pendingDir.exists()) {
-      await pendingDir.create(recursive: true);
-      debugPrint('[HiveService] Created pending uploads directory at: ${pendingDir.path}');
-    }
-    return pendingDir;
   }
 
   /// Get user settings

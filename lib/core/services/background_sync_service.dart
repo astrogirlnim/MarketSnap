@@ -189,11 +189,6 @@ Future<void> _processQueue({
   }
 }
 
-// Wrapper for the background isolate for simplicity.
-Future<void> _processPendingUploads() async {
-  await _processQueue(isInBackground: true);
-}
-
 /// Unified function to upload a single pending media item.
 /// It can be called from the main or background isolate.
 Future<void> _uploadPendingItem(
@@ -230,7 +225,7 @@ Future<void> _uploadPendingItem(
 
   // If hiveService is available (main isolate), use it for a fast lookup.
   if (hiveService != null) {
-    final profile = await hiveService.getVendorProfile(user.uid);
+    final profile = hiveService.getVendorProfile(user.uid);
     if (profile != null) {
       vendorName = profile.displayName;
       vendorAvatarUrl = profile.avatarURL ?? '';
@@ -244,11 +239,14 @@ Future<void> _uploadPendingItem(
         .get();
     if (vendorDoc.exists) {
       final vendorData = vendorDoc.data()!;
-      vendorName = vendorData['displayName'] ??
+      vendorName =
+          vendorData['displayName'] ??
           vendorData['stallName'] ??
           'Unknown Vendor';
       vendorAvatarUrl = vendorData['avatarURL'] ?? '';
-      debugPrint('$logPrefix Fetched vendor profile from Firestore: $vendorName');
+      debugPrint(
+        '$logPrefix Fetched vendor profile from Firestore: $vendorName',
+      );
     }
   }
 
@@ -269,11 +267,15 @@ Future<void> _uploadPendingItem(
   };
 
   await FirebaseFirestore.instance.collection('snaps').add(snapData);
-  debugPrint('$logPrefix Firestore document created for snap: ${pendingItem.id}');
+  debugPrint(
+    '$logPrefix Firestore document created for snap: ${pendingItem.id}',
+  );
 
   try {
     await file.delete();
-    debugPrint('$logPrefix Deleted uploaded media file: ${pendingItem.filePath}');
+    debugPrint(
+      '$logPrefix Deleted uploaded media file: ${pendingItem.filePath}',
+    );
   } catch (e) {
     debugPrint(
       '$logPrefix Error deleting media file ${pendingItem.filePath}: $e',
@@ -296,11 +298,12 @@ class BackgroundSyncService {
 
   // Track iOS executions in memory (since SharedPreferences doesn't work in background isolate)
   static DateTime? _lastIOSExecution;
-  
+
   // HiveService for accessing the queue in main isolate
   final HiveService? _hiveService;
-  
-  BackgroundSyncService({HiveService? hiveService}) : _hiveService = hiveService;
+
+  BackgroundSyncService({HiveService? hiveService})
+    : _hiveService = hiveService;
 
   /// Initialize the WorkManager plugin
   Future<void> initialize() async {
@@ -462,5 +465,3 @@ class BackgroundSyncService {
     }
   }
 }
-
-

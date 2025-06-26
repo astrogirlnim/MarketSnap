@@ -4,11 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
-import '../../../../core/services/background_sync_service.dart';
 import '../../../../core/services/hive_service.dart';
 import '../../../../main.dart' show backgroundSyncService;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:uuid/uuid.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -134,7 +132,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       if (newPath != null) {
         // Clean up the previously filtered image if it exists
-        if (_filteredImagePath != null && _filteredImagePath != widget.mediaPath) {
+        if (_filteredImagePath != null &&
+            _filteredImagePath != widget.mediaPath) {
           final oldFile = File(_filteredImagePath!);
           if (await oldFile.exists()) {
             await oldFile.delete();
@@ -194,9 +193,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to post: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
       }
     } finally {
       if (mounted) {

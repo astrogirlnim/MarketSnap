@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
@@ -623,20 +622,26 @@ class AuthService {
 
   /// Private wrapper for signing in with any credential, with robust error handling
   Future<UserCredential> _signInWithCredentialWrapper(
-      AuthCredential credential) async {
+    AuthCredential credential,
+  ) async {
     try {
-      final userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
       debugPrint(
-          '[AuthService] Successfully signed in with credential. UID: ${userCredential.user?.uid}');
+        '[AuthService] Successfully signed in with credential. UID: ${userCredential.user?.uid}',
+      );
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      debugPrint('[AuthService] _signInWithCredentialWrapper failed: ${e.code}');
+      debugPrint(
+        '[AuthService] _signInWithCredentialWrapper failed: ${e.code}',
+      );
       await handleFirebaseAuthException(e);
       rethrow;
     } catch (e) {
       debugPrint(
-          '[AuthService] An unexpected error occurred during _signInWithCredentialWrapper: $e');
+        '[AuthService] An unexpected error occurred during _signInWithCredentialWrapper: $e',
+      );
       throw Exception('An unexpected error occurred during sign-in.');
     }
   }
@@ -653,10 +658,13 @@ class AuthService {
     ].contains(e.code);
 
     if (isCriticalError) {
-      debugPrint('[AuthService] Critical auth error detected. Signing out user.');
+      debugPrint(
+        '[AuthService] Critical auth error detected. Signing out user.',
+      );
       await signOut();
       throw Exception(
-          'Your session has expired or is invalid. Please sign in again.');
+        'Your session has expired or is invalid. Please sign in again.',
+      );
     } else {
       throw Exception(_getGeneralAuthErrorMessage(e));
     }
@@ -755,7 +763,8 @@ class AuthService {
       debugPrint('[AuthService] Google Sign-In PlatformException: ${e.code}');
       if (e.code == 'network_error') {
         throw Exception(
-            'A network error occurred. Please check your connection.');
+          'A network error occurred. Please check your connection.',
+        );
       }
       throw Exception('Failed to sign in with Google. Please try again.');
     } catch (e) {

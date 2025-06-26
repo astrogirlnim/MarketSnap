@@ -56,8 +56,8 @@ class PendingMediaItem extends HiveObject {
     this.location,
     String? id,
     DateTime? createdAt,
-  })  : id = id ?? _uuid.v4(),
-        createdAt = createdAt ?? DateTime.now();
+  }) : id = id ?? _uuid.v4(),
+       createdAt = createdAt ?? DateTime.now();
 
   @override
   String toString() {
