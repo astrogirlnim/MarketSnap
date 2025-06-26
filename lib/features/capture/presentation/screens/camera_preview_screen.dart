@@ -7,7 +7,6 @@ import 'media_review_screen.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
 import '../../../auth/application/auth_service.dart';
-import '../../../../shared/presentation/widgets/version_display_widget.dart';
 
 /// Custom painter for drawing viewfinder grid overlay
 class ViewfinderGridPainter extends CustomPainter {
@@ -616,20 +615,28 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       );
     }
 
-    // ✅ ASPECT RATIO FIX: Wrap CameraPreview with proper aspect ratio to prevent distortion
-    final double aspectRatio = _cameraService.controller!.value.aspectRatio;
+    // ✅ CAMERA QUALITY FIX: Remove AspectRatio wrapper that was causing compression
+    // Use proper scaling to prevent stretching/compression
+    final controller = _cameraService.controller!;
+    final size = MediaQuery.of(context).size;
+    final deviceRatio = size.width / size.height;
+    final cameraRatio = controller.value.aspectRatio;
     
-    // Enhanced debugging info for aspect ratio
-    debugPrint('[CameraPreviewScreen] ========== ASPECT RATIO DEBUG ==========');
-    debugPrint('[CameraPreviewScreen] Camera aspect ratio: $aspectRatio');
-    debugPrint('[CameraPreviewScreen] Preview size: ${_cameraService.controller!.value.previewSize}');
-    debugPrint('[CameraPreviewScreen] Using AspectRatio widget to prevent stretching');
-    debugPrint('[CameraPreviewScreen] =======================================');
+    // Enhanced debugging info for camera scaling
+    debugPrint('[CameraPreviewScreen] ========== CAMERA SCALING DEBUG ==========');
+    debugPrint('[CameraPreviewScreen] Device ratio: $deviceRatio');
+    debugPrint('[CameraPreviewScreen] Camera ratio: $cameraRatio');
+    debugPrint('[CameraPreviewScreen] Preview size: ${controller.value.previewSize}');
+    debugPrint('[CameraPreviewScreen] Using Transform.scale for proper aspect ratio');
+    debugPrint('[CameraPreviewScreen] ==========================================');
     
-    return Center(
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: CameraPreview(_cameraService.controller!),
+    // Calculate scale to fill screen properly without compression
+    final scale = cameraRatio / deviceRatio;
+    
+    return Transform.scale(
+      scale: scale,
+      child: Center(
+        child: CameraPreview(controller),
       ),
     );
   }
@@ -1208,11 +1215,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
           if (!_isInitializing && _errorMessage == null) ...[
             _buildTopControls(),
             _buildCameraControls(),
-            
-            // Subtle version display in bottom left corner
-            const CompactVersionDisplay(
-              position: Alignment.bottomLeft,
-            ),
           ],
         ],
       ),

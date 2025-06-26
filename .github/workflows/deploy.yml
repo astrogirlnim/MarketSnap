@@ -228,36 +228,45 @@ jobs:
 
       - name: Update version number automatically
         run: |
-          echo "📋 Updating version number for release..."
+          echo "📋 Auto-incrementing semantic version for release..."
           
-          # Get current version from pubspec.yaml
-          CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          echo "Current base version: $CURRENT_VERSION"
+          # Get current version from pubspec.yaml and parse components
+          CURRENT_FULL=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          CURRENT_VERSION=$(echo $CURRENT_FULL | cut -d'+' -f1)
           
-          # Generate comprehensive build number with GitHub run number and short commit SHA
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Parse semantic version components (major.minor.patch)
+          MAJOR=$(echo $CURRENT_VERSION | cut -d'.' -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d'.' -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d'.' -f3)
+          
+          # Auto-increment patch version for each deployment
+          NEW_PATCH=$((PATCH + 1))
+          NEW_SEMANTIC_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          
+          # Use GitHub run number as build number for Android versionCode
           GITHUB_RUN_NUM=${{ github.run_number }}
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
           
-          # Create build number: run_number.short_sha
-          NEW_BUILD_NUMBER="${GITHUB_RUN_NUM}.${SHORT_SHA}"
-          echo "New build number: $NEW_BUILD_NUMBER"
+          # Create final version: semantic+buildnumber
+          NEW_VERSION="${NEW_SEMANTIC_VERSION}+${GITHUB_RUN_NUM}"
           
-          # Create new version string with comprehensive info
-          NEW_VERSION="${CURRENT_VERSION}+${NEW_BUILD_NUMBER}"
-          echo "New complete version: $NEW_VERSION"
+          echo "🚀 Version increment:"
+          echo "  • Current: $CURRENT_VERSION"
+          echo "  • New semantic: $NEW_SEMANTIC_VERSION"
+          echo "  • Build number: $GITHUB_RUN_NUM"
+          echo "  • Final version: $NEW_VERSION"
+          echo "  • Commit: $SHORT_SHA"
           
           # Update pubspec.yaml with new version
           sed -i "s/^version:.*/version: $NEW_VERSION/" pubspec.yaml
           
-          echo "✅ Version updated to: $NEW_VERSION"
-          echo "📊 Version components:"
-          echo "  • Base version: $CURRENT_VERSION"
-          echo "  • Build run: $GITHUB_RUN_NUM"
-          echo "  • Commit SHA: $SHORT_SHA"
-          echo "  • Full build number: $NEW_BUILD_NUMBER"
+          echo "✅ Version auto-incremented to: $NEW_VERSION"
           
           # Show the updated version line for verification
+          echo "📄 Updated pubspec.yaml version:"
           grep "^version:" pubspec.yaml
           
           # Create version info file for deployment reference
@@ -265,14 +274,20 @@ jobs:
           MarketSnap Release Information
           =============================
           Version: $NEW_VERSION
-          Base Version: $CURRENT_VERSION
-          Build Number: $NEW_BUILD_NUMBER
-          GitHub Run: $GITHUB_RUN_NUM
+          Semantic Version: $NEW_SEMANTIC_VERSION
+          Previous Version: $CURRENT_VERSION
+          Build Number: $GITHUB_RUN_NUM
           Commit SHA: $COMMIT_SHA
           Short SHA: $SHORT_SHA
           Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           Branch: ${{ github.ref_name }}
           Workflow: ${{ github.workflow }}
+          
+          🎯 Automatic Version Increment
+          • Major: $MAJOR (breaking changes)
+          • Minor: $MINOR (new features)
+          • Patch: $NEW_PATCH (bug fixes) ⬆️ AUTO-INCREMENTED
+          • Build: $GITHUB_RUN_NUM (CI run number)
           EOF
           
           echo "📄 Version info file created:"
