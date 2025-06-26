@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:marketsnap/core/models/pending_media.dart';
+import 'hive_service.dart'; // Import HiveService
 
 // Unique name for the background task
 const syncTaskName = "syncPendingMediaTask";
@@ -249,6 +250,11 @@ class BackgroundSyncService {
 
   // Track iOS executions in memory (since SharedPreferences doesn't work in background isolate)
   static DateTime? _lastIOSExecution;
+  
+  // HiveService for accessing the queue in main isolate
+  final HiveService? _hiveService;
+  
+  BackgroundSyncService({HiveService? hiveService}) : _hiveService = hiveService;
 
   /// Initialize the WorkManager plugin
   Future<void> initialize() async {
@@ -376,8 +382,13 @@ class BackgroundSyncService {
   Future<void> _processPendingUploadsInMainIsolate() async {
     debugPrint('[Main Isolate] Processing pending media uploads...');
 
-    Box<PendingMediaItem>? pendingBox;
     try {
+      // Check if HiveService is available
+      if (_hiveService == null) {
+        debugPrint('[Main Isolate] ❌ HiveService not provided to BackgroundSyncService');
+        throw Exception('HiveService is required for immediate sync operations');
+      }
+
       // Check if user is authenticated with detailed debugging
       final user = FirebaseAuth.instance.currentUser;
       debugPrint('[Main Isolate] FirebaseAuth.instance.currentUser: ${user?.uid ?? "NULL"}');
@@ -395,12 +406,11 @@ class BackgroundSyncService {
 
       debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
 
-      // Open the correct Hive box
-      pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
-      final pendingItems = pendingBox.values.toList();
+      // Use HiveService to get pending items instead of opening our own box
+      final pendingItems = _hiveService!.getAllPendingMedia();
 
       debugPrint(
-        '[Main Isolate] Opened "pendingMediaQueue" box with ${pendingItems.length} pending items.',
+        '[Main Isolate] Retrieved ${pendingItems.length} pending items from HiveService.',
       );
 
       if (pendingItems.isEmpty) {
@@ -427,9 +437,9 @@ class BackgroundSyncService {
         }
       }
 
-      // Remove successfully uploaded items from queue
+      // Remove successfully uploaded items from queue using HiveService
       for (final item in itemsToRemove) {
-        await pendingBox.delete(item.id);
+        await _hiveService!.removePendingMedia(item.id);
         debugPrint(
           '[Main Isolate] Removed uploaded item from queue: ${item.id}',
         );
@@ -445,16 +455,6 @@ class BackgroundSyncService {
       debugPrint('[Main Isolate] Stack trace: $stackTrace');
       // Re-throwing the error so the caller can handle it
       rethrow;
-    } finally {
-      // Always close the box to prevent resource leaks
-      if (pendingBox != null) {
-        try {
-          await pendingBox.close();
-          debugPrint('[Main Isolate] Hive box closed successfully');
-        } catch (e) {
-          debugPrint('[Main Isolate] Error closing Hive box: $e');
-        }
-      }
     }
   }
 
@@ -463,15 +463,60 @@ class BackgroundSyncService {
     PendingMediaItem pendingItem,
     User user,
   ) async {
-    debugPrint('[Main Isolate] Uploading media item: ${pendingItem.id}');
-
-    // Check if file still exists
-    final file = File(pendingItem.filePath);
-    if (!await file.exists()) {
+    debugPrint('[Main Isolate] ========================================');
+    debugPrint('[Main Isolate] 🚀 Starting upload for: ${pendingItem.id}');
+    debugPrint('[Main Isolate] ========================================');
+    debugPrint('[Main Isolate] 👤 User info:');
+    debugPrint('[Main Isolate]    - UID: ${user.uid}');
+    debugPrint('[Main Isolate]    - Email: ${user.email ?? "No email"}');
+    debugPrint('[Main Isolate]    - Email Verified: ${user.emailVerified}');
+    debugPrint('[Main Isolate]    - Anonymous: ${user.isAnonymous}');
+    debugPrint('[Main Isolate]    - Providers: ${user.providerData.map((p) => p.providerId).toList()}');
+    
+    // FIX: Check if the file exists before starting the upload process
+    debugPrint('[Main Isolate] 📁 Checking media file...');
+    final mediaFile = File(pendingItem.filePath);
+    if (!await mediaFile.exists()) {
+      debugPrint('[Main Isolate] ❌ Media file no longer exists: ${pendingItem.filePath}');
+      // Item is invalid, so remove it from the queue
+      await _hiveService?.pendingMediaQueueBox.delete(pendingItem.id);
+      debugPrint('[Main Isolate] 🗑️ Removed invalid item from queue: ${pendingItem.id}');
       throw Exception('Media file no longer exists: ${pendingItem.filePath}');
     }
 
-    // Upload to Firebase Storage
+    // Check if Firebase Auth token is valid
+    debugPrint('[Main Isolate] 🔑 Checking Firebase Auth token...');
+    try {
+      final idToken = await user.getIdToken();
+      if (idToken != null && idToken.isNotEmpty) {
+        final tokenPreview = idToken.length > 50 ? idToken.substring(0, 50) : idToken;
+        debugPrint('[Main Isolate] ✅ Firebase Auth token obtained: $tokenPreview...');
+      } else {
+        debugPrint('[Main Isolate] ❌ Firebase Auth token is null or empty');
+        throw Exception('Firebase Auth token is null or empty');
+      }
+    } catch (e) {
+      debugPrint('[Main Isolate] ❌ Failed to get Firebase Auth token: $e');
+      throw Exception('Firebase Auth token unavailable: $e');
+    }
+
+    // Check if file still exists
+    debugPrint('[Main Isolate] 📁 Checking media file...');
+    final file = File(pendingItem.filePath);
+    if (!await file.exists()) {
+      debugPrint('[Main Isolate] ❌ Media file no longer exists: ${pendingItem.filePath}');
+      throw Exception('Media file no longer exists: ${pendingItem.filePath}');
+    }
+    
+    final fileSize = await file.length();
+    debugPrint('[Main Isolate] 📏 File size: ${fileSize} bytes (${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)');
+    
+    if (fileSize > 1024 * 1024) {
+      debugPrint('[Main Isolate] ❌ File too large: ${fileSize} bytes (max 1MB)');
+      throw Exception('File too large: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB (max 1MB)');
+    }
+
+    // Create Firebase Storage reference
     final storageRef = FirebaseStorage.instance
         .ref()
         .child('vendors')
@@ -479,53 +524,108 @@ class BackgroundSyncService {
         .child('snaps')
         .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
-    debugPrint('[Main Isolate] Uploading to Storage: ${storageRef.fullPath}');
+    debugPrint('[Main Isolate] 📤 Firebase Storage path: ${storageRef.fullPath}');
+    debugPrint('[Main Isolate] 🏗️  Storage bucket: ${storageRef.bucket}');
 
-    final uploadTask = storageRef.putFile(file);
-    final snapshot = await uploadTask;
-    final downloadUrl = await snapshot.ref.getDownloadURL();
+    // Attempt upload with detailed error handling
+    debugPrint('[Main Isolate] 🔄 Starting Firebase Storage upload...');
+    
+    try {
+      // Ensure Firebase Auth context is fresh
+      // await FirebaseAuth.instance.currentUser?.reload();
+      // debugPrint('[Main Isolate] 🔄 Refreshed Firebase Auth state');
+      
+      final uploadTask = storageRef.putFile(file);
+      
+      // Monitor upload progress
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        debugPrint('[Main Isolate] 📊 Upload progress: ${progress.toStringAsFixed(1)}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)');
+      }, onError: (error) {
+        debugPrint('[Main Isolate] ❌ Upload stream error: $error');
+      });
+      
+      final snapshot = await uploadTask;
+      debugPrint('[Main Isolate] ✅ Upload completed successfully');
+      debugPrint('[Main Isolate] 📊 Final bytes transferred: ${snapshot.bytesTransferred}');
+      
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      debugPrint('[Main Isolate] 🔗 Download URL obtained: $downloadUrl');
 
-    debugPrint('[Main Isolate] Upload complete. Download URL: $downloadUrl');
+      // Get vendor profile for snap metadata
+      debugPrint('[Main Isolate] 👤 Fetching vendor profile...');
+      final vendorDoc = await FirebaseFirestore.instance
+          .collection('vendors')
+          .doc(user.uid)
+          .get();
 
-    // Get vendor profile for snap metadata
-    final vendorDoc = await FirebaseFirestore.instance
-        .collection('vendors')
-        .doc(user.uid)
-        .get();
+      String vendorName = 'Unknown Vendor';
+      String vendorAvatarUrl = '';
 
-    String vendorName = 'Unknown Vendor';
-    String vendorAvatarUrl = '';
+      if (vendorDoc.exists) {
+        final vendorData = vendorDoc.data()!;
+        vendorName =
+            vendorData['displayName'] ??
+            vendorData['stallName'] ??
+            'Unknown Vendor';
+        vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+        debugPrint('[Main Isolate] ✅ Vendor profile found: $vendorName');
+      } else {
+        debugPrint('[Main Isolate] ⚠️  No vendor profile found, using defaults');
+      }
 
-    if (vendorDoc.exists) {
-      final vendorData = vendorDoc.data()!;
-      vendorName =
-          vendorData['displayName'] ??
-          vendorData['stallName'] ??
-          'Unknown Vendor';
-      vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+      // Create Firestore document
+      debugPrint('[Main Isolate] 📝 Creating Firestore snap document...');
+      final now = DateTime.now();
+      final expiresAt = now.add(const Duration(hours: 24)); // 24-hour expiry
+
+      final snapData = {
+        'vendorId': user.uid,
+        'vendorName': vendorName,
+        'vendorAvatarUrl': vendorAvatarUrl,
+        'mediaUrl': downloadUrl,
+        'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
+        'caption': pendingItem.caption ?? '',
+        'createdAt': Timestamp.fromDate(now),
+        'expiresAt': Timestamp.fromDate(expiresAt),
+        'location': pendingItem.location,
+      };
+
+      final docRef = await FirebaseFirestore.instance.collection('snaps').add(snapData);
+      debugPrint('[Main Isolate] ✅ Firestore document created: ${docRef.id}');
+      debugPrint('[Main Isolate] ========================================');
+      debugPrint('[Main Isolate] 🎉 Upload completed successfully!');
+      debugPrint('[Main Isolate] ========================================');
+      
+    } catch (e, stackTrace) {
+      debugPrint('[Main Isolate] ========================================');
+      debugPrint('[Main Isolate] ❌ UPLOAD FAILED: $e');
+      debugPrint('[Main Isolate] ========================================');
+      debugPrint('[Main Isolate] 📋 Error Details:');
+      debugPrint('[Main Isolate]    - Error Type: ${e.runtimeType}');
+      debugPrint('[Main Isolate]    - Error Message: $e');
+      debugPrint('[Main Isolate] 📋 Stack Trace:');
+      debugPrint('[Main Isolate] $stackTrace');
+      
+      // Check specific Firebase errors
+      if (e.toString().contains('permission') || e.toString().contains('403')) {
+        debugPrint('[Main Isolate] 🔑 This appears to be a Firebase Storage permission issue');
+        debugPrint('[Main Isolate] 💡 Possible causes:');
+        debugPrint('[Main Isolate]    1. Firebase Auth token not passed to Storage emulator');
+        debugPrint('[Main Isolate]    2. Storage rules rejecting the request');
+        debugPrint('[Main Isolate]    3. User UID mismatch in storage path');
+        debugPrint('[Main Isolate]    4. Firebase Storage emulator authentication bug');
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        debugPrint('[Main Isolate] 🌐 This appears to be a network connectivity issue');
+        debugPrint('[Main Isolate] 💡 Check if Firebase Storage emulator is running on port 9199');
+      } else if (e.toString().contains('file') || e.toString().contains('size')) {
+        debugPrint('[Main Isolate] 📁 This appears to be a file-related issue');
+        debugPrint('[Main Isolate] 💡 Check file existence and size limits');
+      }
+      
+      debugPrint('[Main Isolate] ========================================');
+      rethrow;
     }
-
-    // Create Firestore document
-    final now = DateTime.now();
-    final expiresAt = now.add(const Duration(hours: 24)); // 24-hour expiry
-
-    final snapData = {
-      'vendorId': user.uid,
-      'vendorName': vendorName,
-      'vendorAvatarUrl': vendorAvatarUrl,
-      'mediaUrl': downloadUrl,
-      'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
-      'caption': pendingItem.caption ?? '',
-      'createdAt': Timestamp.fromDate(now),
-      'expiresAt': Timestamp.fromDate(expiresAt),
-      'location': pendingItem.location,
-    };
-
-    await FirebaseFirestore.instance.collection('snaps').add(snapData);
-
-    debugPrint(
-      '[Main Isolate] Firestore document created for snap: ${pendingItem.id}',
-    );
   }
 
   /// Get the last background execution time (for debugging)

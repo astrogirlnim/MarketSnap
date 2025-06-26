@@ -24,16 +24,21 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int _selectedIndex = 0;
   final CameraService _cameraService = CameraService.instance;
+  late final List<Widget> _widgetOptions;
 
-  List<Widget> get _widgetOptions => <Widget>[
-    const FeedScreen(),
-    CameraPreviewScreen(hiveService: widget.hiveService),
-    VendorProfileScreen(
-      profileService: widget.profileService,
-      isInTabNavigation: true, // This prevents back button from showing
-      // No onProfileComplete callback means this is a view/edit mode, not initial setup
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _widgetOptions = <Widget>[
+      const FeedScreen(),
+      CameraPreviewScreen(hiveService: widget.hiveService),
+      VendorProfileScreen(
+        profileService: widget.profileService,
+        isInTabNavigation: true, // This prevents back button from showing
+        // No onProfileComplete callback means this is a view/edit mode, not initial setup
+      ),
+    ];
+  }
 
   /// ✅ BUFFER OVERFLOW FIX: Handle tab navigation with camera lifecycle management
   void _onItemTapped(int index) {
@@ -77,6 +82,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
             debugPrint('[MainShellScreen] Error resuming camera: $error');
           });
     }
+  }
+
+  @override
+  void dispose() {
+    debugPrint('[MainShellScreen] Disposing MainShellScreen');
+    // While the CameraService is a singleton, if we wanted to be extra cautious,
+    // we could pause it here. However, it's managed by tab navigation.
+    super.dispose();
   }
 
   @override

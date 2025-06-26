@@ -6,6 +6,7 @@ import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/background_sync_service.dart';
 import '../../../../core/services/hive_service.dart';
+import '../../../../main.dart' show backgroundSyncService;
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Review screen for captured media with filter application and post functionality
@@ -278,7 +279,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       try {
         debugPrint('[MediaReviewScreen] Triggering immediate sync...');
-        final backgroundSyncService = BackgroundSyncService();
         await backgroundSyncService.triggerImmediateSync();
         debugPrint('[MediaReviewScreen] Immediate sync completed successfully');
         uploadSuccessful = true;

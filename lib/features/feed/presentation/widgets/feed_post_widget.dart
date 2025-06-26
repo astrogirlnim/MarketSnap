@@ -43,7 +43,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   void _initializeVideo() {
     if (widget.snap.mediaType == MediaType.video &&
         widget.snap.mediaUrl.isNotEmpty) {
-      _videoController = VideoPlayerController.file(File(widget.snap.mediaUrl))
+      final videoUri = Uri.parse(widget.snap.mediaUrl);
+      _videoController = VideoPlayerController.networkUrl(videoUri)
         ..initialize().then((_) {
           if (mounted) {
             setState(() {
@@ -235,10 +236,26 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Build image display widget
   Widget _buildImageDisplay() {
-    return Image.file(
-      File(widget.snap.mediaUrl),
+    return Image.network(
+      widget.snap.mediaUrl,
       fit: BoxFit.cover,
       width: double.infinity,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: 200,
+          color: AppColors.eggshell,
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              color: AppColors.marketBlue,
+            ),
+          ),
+        );
+      },
       errorBuilder: (context, error, stackTrace) {
         debugPrint('[FeedPostWidget] Error loading image: $error');
         return Container(
