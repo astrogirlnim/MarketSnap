@@ -187,6 +187,7 @@ class _VendorCard extends StatelessWidget {
               backgroundImage: vendor.avatarURL?.isNotEmpty == true
                   ? NetworkImage(vendor.avatarURL!)
                   : null,
+              backgroundColor: AppColors.marketBlue,
               child: vendor.avatarURL?.isEmpty != false
                   ? Text(
                       vendor.displayName.isNotEmpty
@@ -198,7 +199,6 @@ class _VendorCard extends StatelessWidget {
                       ),
                     )
                   : null,
-              backgroundColor: AppColors.marketBlue,
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(

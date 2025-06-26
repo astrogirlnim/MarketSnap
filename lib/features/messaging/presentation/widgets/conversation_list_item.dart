@@ -35,6 +35,7 @@ class ConversationListItem extends StatelessWidget {
         backgroundImage: otherParticipant.avatarURL?.isNotEmpty == true
             ? NetworkImage(otherParticipant.avatarURL!)
             : null,
+        backgroundColor: AppColors.marketBlue,
         child: otherParticipant.avatarURL?.isEmpty != false
             ? Text(
                 otherParticipant.displayName.isNotEmpty
@@ -46,7 +47,6 @@ class ConversationListItem extends StatelessWidget {
                 ),
               )
             : null,
-        backgroundColor: AppColors.marketBlue,
       ),
       title: Row(
         children: [
