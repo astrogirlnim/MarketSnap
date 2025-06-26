@@ -7,6 +7,8 @@ import 'core/services/hive_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/background_sync_service.dart';
 import 'core/services/account_linking_service.dart';
+import 'core/services/messaging_service.dart';
+import 'core/services/push_notification_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,6 +31,11 @@ late final AuthService authService;
 late final LutFilterService lutFilterService;
 late final ProfileService profileService;
 late final AccountLinkingService accountLinkingService;
+late final MessagingService messagingService;
+late final PushNotificationService pushNotificationService;
+
+// Global navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -192,6 +199,23 @@ Future<void> main() async {
     debugPrint('[main] Error initializing account linking service: $e');
   }
 
+  // Initialize messaging service
+  try {
+    messagingService = MessagingService();
+    debugPrint('[main] Messaging service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing messaging service: $e');
+  }
+
+  // Initialize push notification service
+  try {
+    pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+    await pushNotificationService.initialize();
+    debugPrint('[main] Push notification service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing push notification service: $e');
+  }
+
   debugPrint('[main] Firebase & App Check initialized.');
 
   runApp(const MyApp());
@@ -203,6 +227,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'MarketSnap',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -231,6 +256,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
       // Handle account linking after sign-in
       await accountLinkingService.handleSignInAccountLinking();
       debugPrint('[AuthWrapper] Account linking flow completed');
+
+      // Save FCM token
+      final token = await pushNotificationService.getFCMToken();
+      if (token != null) {
+        await profileService.saveFCMToken(token);
+      }
+
     } catch (e) {
       debugPrint('[AuthWrapper] Account linking failed: $e');
       // Don't block the flow if account linking fails
@@ -884,6 +916,47 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Wraps the app content, ensuring user has a complete profile before proceeding
+class ProfileCompletionWrapper extends StatefulWidget {
+  const ProfileCompletionWrapper({
+    super.key,
+    required this.profileService,
+    required this.hiveService,
+  });
+
+  final ProfileService profileService;
+  final HiveService hiveService;
+
+  @override
+  State<ProfileCompletionWrapper> createState() => _ProfileCompletionWrapperState();
+}
+
+class _ProfileCompletionWrapperState extends State<ProfileCompletionWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profileService.getCurrentUserProfile();
+
+    // If profile is null or incomplete, force user to complete it
+    if (profile == null || !profile.isComplete) {
+      return VendorProfileScreen(
+        profileService: widget.profileService,
+        onProfileComplete: () {
+          // Rebuild the widget tree to proceed to the main app
+          setState(() {
+            // This will trigger a rebuild and re-evaluate the profile state
+          });
+        },
+      );
+    }
+
+    // Profile is complete, show the main app shell
+    return MainShellScreen(
+      profileService: widget.profileService,
+      hiveService: widget.hiveService,
     );
   }
 }

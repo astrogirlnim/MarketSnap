@@ -49,6 +49,11 @@ class AppColors {
   ); // Soil Taupe (Secondary Text)
   static const Color textSecondaryDark = Color(0xFFBDBDBD);
 
+  // Convenience aliases for messaging UI
+  static const Color surface = eggshell;
+  static const Color textPrimary = soilCharcoal;
+  static const Color textSecondary = soilTaupe;
+
   // Additional semantic colors for better theming
   static const Color success = leafGreen;
   static const Color successDark = leafGreenDark;

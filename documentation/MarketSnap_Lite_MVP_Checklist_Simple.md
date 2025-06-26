@@ -96,10 +96,10 @@ Legend:
   - [X] External link to support email.
   - [X] Display free‑storage indicator (≥ 100 MB check).
 
-- [ ] **5. Messaging UI**
-  - [ ] Conversation list showing recent chats (24 h TTL badge).
-  - [ ] Chat screen with send/receive bubbles and read indicator.
-  - [ ] Deep-link from push notification to open chat thread.
+- [X] **5. Messaging UI**
+  - [X] Conversation list showing recent chats (24 h TTL badge).
+  - [X] Chat screen with send/receive bubbles and read indicator.
+  - [X] Deep-link from push notification to open chat thread.
 
 
 ---

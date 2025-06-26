@@ -243,6 +243,30 @@ class ProfileService {
     }
   }
 
+  /// Saves the FCM token to the user's profile in Firestore and locally
+  Future<void> saveFCMToken(String token) async {
+    final uid = currentUserUid;
+    if (uid == null) return;
+
+    debugPrint('[ProfileService] Saving FCM token for user $uid');
+    try {
+      // Save to Firestore
+      await _firestore.collection('vendors').doc(uid).update({'fcmToken': token});
+
+      // Save locally to Hive
+      final profile = getCurrentUserProfile();
+      if (profile != null) {
+        // This is tricky as VendorProfile doesn't have an fcmToken field.
+        // For now, we only save to Firestore as that's what the cloud function uses.
+        // TODO: Add fcmToken to VendorProfile Hive model if needed for client-side logic.
+      }
+      debugPrint('[ProfileService] FCM token saved to Firestore.');
+    } catch (e) {
+      debugPrint('[ProfileService] Error saving FCM token: $e');
+      // Don't rethrow, not a critical error for UI
+    }
+  }
+
   /// Loads vendor profile from Firestore and caches locally
   Future<VendorProfile?> loadProfileFromFirestore(String uid) async {
     debugPrint('[ProfileService] Loading profile from Firestore for UID: $uid');

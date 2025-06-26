@@ -338,110 +338,70 @@ export const fanOutBroadcast = onDocumentCreated(
 );
 
 /**
- * Cloud Function to send push notification when a new message is created.
- * Triggers on new documents in the 'messages' collection.
+ * Cloud Function to send a push notification when a new message is created.
  */
 export const sendMessageNotification = onDocumentCreated(
   "messages/{messageId}",
   async (event) => {
-    const {messageId} = event.params;
-    const message = event.data;
-    if (!message) {
+    const messageSnap = event.data;
+    if (!messageSnap) {
       logger.error(
         "[sendMessageNotification] No data associated with the event."
       );
       return;
     }
-    const messageData = message.data();
+    const message = messageSnap.data();
+    const {fromUid, toUid, text} = message;
 
     logger.log(
-      `[sendMessageNotification] Triggered for new message: ${messageId}`
+      `[sendMessageNotification] Triggered for new message from ${fromUid} to ${toUid}`
     );
-    logger.log("[sendMessageNotification] Message data:", messageData);
-
-    // Validate required fields
-    const {fromUid, toUid, text, conversationId} = messageData;
-    if (!fromUid || !toUid || !text || !conversationId) {
-      logger.error(
-        "[sendMessageNotification] Missing required fields in message data. " +
-        `fromUid: ${fromUid}, toUid: ${toUid}, text: ${text}, ` +
-        `conversationId: ${conversationId}`
-      );
-      return;
-    }
 
     try {
-      // 1. Get sender details for the notification
-      logger.log(
-        "[sendMessageNotification] Fetching sender details for " +
-        `fromUid: ${fromUid}`
-      );
-      const senderDoc = await db.collection("vendors").doc(fromUid).get();
-      if (!senderDoc.exists) {
-        logger.error(
-          `[sendMessageNotification] Sender document ${fromUid} not found.`
-        );
-        return;
-      }
-      const senderData = senderDoc.data();
-      const senderName = senderData?.stallName ||
-        senderData?.displayName || "Someone";
-      logger.log(`[sendMessageNotification] Sender name: ${senderName}`);
+      // 1. Get sender's name
+      const fromUserDoc = await db.collection("vendors").doc(fromUid).get();
+      const fromUserName = fromUserDoc.data()?.stallName || "Someone";
 
       // 2. Get recipient's FCM token
-      logger.log(
-        "[sendMessageNotification] Getting FCM token for " +
-        `recipient: ${toUid}`
-      );
-      const recipientToken = await getUserFCMToken(toUid);
-      if (!recipientToken) {
-        logger.log(
-          "[sendMessageNotification] No FCM token found for " +
-          `recipient ${toUid}. Notification will not be sent.`
+      const toUserToken = await getUserFCMToken(toUid);
+      if (!toUserToken) {
+        logger.warn(
+          `[sendMessageNotification] Recipient ${toUid} does not have an FCM token. Cannot send notification.`
         );
         return;
       }
 
-      // 3. Construct the notification payload
-      // Truncate message if too long for notification
-      const truncatedText = text.length > 100 ?
-        `${text.substring(0, 97)}...` : text;
+      // 3. Construct payload
       const payload = {
         notification: {
-          title: `Message from ${senderName}`,
-          body: truncatedText,
+          title: `New message from ${fromUserName}`,
+          body: text,
+          sound: "default",
         },
         data: {
-          messageId: messageId,
-          conversationId: conversationId,
-          fromUid: fromUid,
-          toUid: toUid,
-          // This will help the client app navigate to the correct conversation
           type: "new_message",
+          fromUid: fromUid,
+          fromName: fromUserName,
         },
       };
+
       logger.log(
-        "[sendMessageNotification] Constructed notification payload:",
+        "[sendMessageNotification] Sending notification payload:",
         payload
       );
 
-      // 4. Send notification to recipient
-      logger.log(
-        "[sendMessageNotification] Sending message notification to " +
-        `recipient ${toUid}`
-      );
-      const response = await messaging.send({
-        token: recipientToken,
+      // 4. Send notification
+      await messaging.send({
+        token: toUserToken,
         ...payload,
       });
 
       logger.log(
-        "[sendMessageNotification] Successfully sent message notification. " +
-        `Message ID: ${response}`
+        `[sendMessageNotification] Successfully sent notification to ${toUid}`
       );
     } catch (error) {
       logger.error(
-        `[sendMessageNotification] Unexpected error for message ${messageId}:`,
+        "[sendMessageNotification] Error sending message notification:",
         error
       );
     }
