@@ -65,6 +65,7 @@ dependencies:
   # Device storage information
   device_info_plus: ^10.1.2
   timeago: ^3.7.1
+  connectivity_plus: ^6.1.0
 
 dev_dependencies:
   flutter_test:
