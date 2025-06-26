@@ -8,6 +8,12 @@
 .dart_tool/
 build/
 
+# Node.js
+node_modules/
+# Allow functions/package-lock.json for Cloud Functions deployment
+package-lock.json
+!functions/package-lock.json
+
 # Exceptions to above rules.
 !/marketsnap/ios/Pods/
 !/marketsnap/ios/Pods/Manifest.lock

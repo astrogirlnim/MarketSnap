@@ -45,6 +45,26 @@ post_install do |installer|
         '$(inherited)',
         '${PODS_ROOT}/../Flutter'
       ]
+      
+      # Fix for gRPC-Core compilation issues
+      if target.name == 'gRPC-Core'
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'GRPC_BAZEL_BUILD=1'
+        config.build_settings['USER_HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+        config.build_settings['USER_HEADER_SEARCH_PATHS'] << '"${PODS_ROOT}/gRPC-Core"'
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['CLANG_WARN_STRICT_PROTOTYPES'] = 'NO'
+      end
+      
+      # Fix for Firebase dependencies
+      if target.name.start_with?('Firebase')
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['CLANG_WARN_STRICT_PROTOTYPES'] = 'NO'
+      end
+      
+      # General iOS 13+ compatibility fixes
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386'
     end
   end
 end

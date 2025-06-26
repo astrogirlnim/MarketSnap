@@ -42,7 +42,7 @@ describe("Cloud Functions: MarketSnap", () => {
     collectionStub = sinon.stub(admin.firestore(), "collection").returns({
       doc: docStub,
       get: getStub,
-    } as any);
+    } as unknown as FirebaseFirestore.CollectionReference);
 
     // Stub the messaging call
     sendEachForMulticastStub = sinon.stub(
@@ -79,12 +79,13 @@ describe("Cloud Functions: MarketSnap", () => {
         get: () => Promise.resolve({
           empty: false,
           docs: followersData,
-          forEach: (callback: (doc: any) => void) =>
+          forEach: (callback: (doc: unknown) => void) =>
             followersData.forEach(callback),
         }),
       };
       collectionStub.withArgs("vendors/vendor1/followers")
-        .returns(followersCollectionRef as any);
+        .returns(followersCollectionRef as unknown as
+          FirebaseFirestore.CollectionReference);
 
       sendEachForMulticastStub.resolves({
         successCount: 2,
@@ -130,7 +131,8 @@ describe("Cloud Functions: MarketSnap", () => {
         }),
       };
       collectionStub.withArgs("vendors/vendor1/followers")
-        .returns(followersCollectionRef as any);
+        .returns(followersCollectionRef as unknown as
+          FirebaseFirestore.CollectionReference);
 
       const wrapped = testEnv.wrap(sendFollowerPush);
       const snap = testEnv.firestore.makeDocumentSnapshot(
@@ -166,12 +168,13 @@ describe("Cloud Functions: MarketSnap", () => {
         get: () => Promise.resolve({
           empty: false,
           docs: followersData,
-          forEach: (callback: (doc: any) => void) =>
+          forEach: (callback: (doc: unknown) => void) =>
             followersData.forEach(callback),
         }),
       };
       collectionStub.withArgs("vendors/vendor1/followers")
-        .returns(followersCollectionRef as any);
+        .returns(followersCollectionRef as unknown as
+          FirebaseFirestore.CollectionReference);
 
       sendEachForMulticastStub.resolves({
         successCount: 1,

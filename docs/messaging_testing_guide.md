@@ -1,372 +1,322 @@
-# MarketSnap Messaging Implementation Testing Guide
+# MarketSnap Messaging Testing Guide
 
-This guide provides comprehensive testing approaches for the ephemeral messaging system implemented in Phase 2, Step 5.
+## Prerequisites
 
-## 🎯 What Was Implemented
-
-- **24-hour auto-expiring messages** via Firestore TTL
-- **Secure participant-only access** (fromUid/toUid only)
-- **Real-time FCM push notifications** on new messages
-- **Flutter service** for sending/receiving messages
-- **Cloud Function** for notification handling
-- **Complete unit test suite**
-
-## 🧪 Testing Approaches
-
-### 1. Unit Tests (Already Passing ✅)
-
-The implementation includes comprehensive unit tests that are already passing:
-
-```bash
-# Run the unit tests
-cd functions
-npm test
-```
-
-**What the tests verify:**
-- Cloud Function triggers correctly on new message documents
-- Proper handling of valid message data
-- Graceful error handling for invalid/missing data
-- Integration with Firebase Functions Test SDK
-
-### 2. Firebase Emulator Testing (Recommended)
-
-Since your emulators are already running, this is the best way to test the full flow:
-
-#### A. Test via Emulator UI (Visual Testing)
-
-1. **Open Emulator UI**: Navigate to http://127.0.0.1:4000/
-2. **Go to Firestore**: Click the "Firestore" tab
-3. **Create test users** (if not already exists):
-   ```
-   Collection: vendors
-   Document ID: test-sender-id
-   Data: {
-     "displayName": "Alice Farmer",
-     "stallName": "Alice's Organic Produce"
-   }
-   
-   Document ID: test-recipient-id  
-   Data: {
-     "displayName": "Bob Shopper",
-     "stallName": "Bob's Market Stand"
-   }
-   ```
-
-4. **Send a test message**:
-   ```
-   Collection: messages
-   Document ID: (auto-generate)
-   Data: {
-     "fromUid": "test-sender-id",
-     "toUid": "test-recipient-id", 
-     "text": "Hello! Are your apples organic?",
-     "conversationId": "test-recipient-id_test-sender-id",
-     "createdAt": (current timestamp),
-     "expiresAt": (24 hours from now),
-     "isRead": false
-   }
-   ```
-
-5. **Check Function Logs**: In your terminal where emulators are running, you should see:
-   ```
-   [sendMessageNotification] Triggered for new message: [message-id]
-   [sendMessageNotification] Message data: {...}
-   [sendMessageNotification] Successfully sent notification to test-recipient-id
-   ```
-
-#### B. Test via cURL Commands (API Testing)
-
-```bash
-# Test message creation via Firestore REST API
-curl -X POST \
-  "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents/messages" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fields": {
-      "fromUid": {"stringValue": "test-sender-id"},
-      "toUid": {"stringValue": "test-recipient-id"},
-      "text": {"stringValue": "Test message from cURL"},
-      "conversationId": {"stringValue": "test-recipient-id_test-sender-id"},
-      "createdAt": {"timestampValue": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
-      "expiresAt": {"timestampValue": "'$(date -u -d "+24 hours" +"%Y-%m-%dT%H:%M:%SZ")'"},
-      "isRead": {"booleanValue": false}
-    }
-  }'
-```
-
-#### C. Test Security Rules
-
-```bash
-# Test unauthorized access (should fail with 403)
-curl -X GET \
-  "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents/messages" \
-  -H "Content-Type: application/json"
-
-# Test authenticated access (requires auth token)
-# This will be properly tested when the Flutter app connects
-```
-
-### 3. Flutter Integration Testing
-
-#### A. Using the MessagingService Directly
-
-Create a test file to use the MessagingService:
-
-```dart
-// test/messaging_service_test.dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:marketsnap/core/services/messaging_service.dart';
-
-void main() {
-  group('MessagingService Integration Tests', () {
-    late MessagingService messagingService;
-    late FakeFirebaseFirestore fakeFirestore;
-
-    setUp(() {
-      fakeFirestore = FakeFirebaseFirestore();
-      messagingService = MessagingService(firestore: fakeFirestore);
-    });
-
-    test('should send message successfully', () async {
-      // Test sending a message
-      final messageId = await messagingService.sendMessage(
-        fromUid: 'test-sender',
-        toUid: 'test-recipient',
-        text: 'Hello from test!',
-      );
-
-      expect(messageId, isNotNull);
-      
-      // Verify message was stored
-      final messagesSnapshot = await fakeFirestore
-          .collection('messages')
-          .get();
-      
-      expect(messagesSnapshot.docs.length, 1);
-      
-      final messageData = messagesSnapshot.docs.first.data();
-      expect(messageData['fromUid'], 'test-sender');
-      expect(messageData['toUid'], 'test-recipient');
-      expect(messageData['text'], 'Hello from test!');
-    });
-
-    test('should get conversation messages', () async {
-      // Send a few messages
-      await messagingService.sendMessage(
-        fromUid: 'user1',
-        toUid: 'user2', 
-        text: 'Message 1',
-      );
-      
-      await messagingService.sendMessage(
-        fromUid: 'user2',
-        toUid: 'user1',
-        text: 'Message 2',
-      );
-
-      // Get conversation
-      final conversationStream = messagingService.getConversationMessages(
-        'user1',
-        'user2',
-      );
-
-      final messages = await conversationStream.first;
-      expect(messages.length, 2);
-    });
-  });
-}
-```
-
-#### B. Widget Testing with Messaging UI
-
-When the messaging UI is implemented in Phase 3, you can test it like this:
-
-```dart
-// test/messaging_widget_test.dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:marketsnap/features/messaging/presentation/screens/chat_screen.dart';
-
-void main() {
-  testWidgets('Chat screen should display messages', (WidgetTester tester) async {
-    // This will be implemented in Phase 3
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ChatScreen(
-          currentUserId: 'test-user',
-          otherUserId: 'other-user',
-        ),
-      ),
-    );
-
-    // Verify UI elements
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.byType(ListView), findsOneWidget);
-  });
-}
-```
-
-### 4. End-to-End Testing with Flutter App
-
-#### A. Using Flutter Inspector
-
-1. **Run the Flutter app** with emulators:
+1. **Firebase Emulators Running**
    ```bash
    ./scripts/dev_emulator.sh
    ```
+   Verify at: http://127.0.0.1:4000
 
-2. **In the app**, navigate to messaging functionality (when UI is implemented)
+2. **Authentication Required**
+   - **CRITICAL**: You must be authenticated before testing messaging
+   - The app requires a logged-in user to access messaging features
+   - Check authentication status in the app's profile section
 
-3. **Send test messages** and verify:
-   - Messages appear in real-time
-   - Push notifications are triggered  
-   - Messages expire after 24 hours
-   - Security rules prevent unauthorized access
+## Setup Test Data
 
-#### B. Using Flutter Driver (Future Implementation)
-
-```dart
-// test_driver/messaging_test.dart
-import 'package:flutter_driver/flutter_driver.dart';
-import 'package:test/test.dart';
-
-void main() {
-  group('Messaging E2E Tests', () {
-    late FlutterDriver driver;
-
-    setUpAll(() async {
-      driver = await FlutterDriver.connect();
-    });
-
-    tearDownAll(() async {
-      await driver.close();
-    });
-
-    test('should send and receive messages', () async {
-      // Login as first user
-      await driver.tap(find.byValueKey('login_button'));
-      
-      // Navigate to messaging
-      await driver.tap(find.byValueKey('messaging_tab'));
-      
-      // Send a message
-      await driver.tap(find.byValueKey('compose_message'));
-      await driver.enterText('Hello from E2E test!');
-      await driver.tap(find.byValueKey('send_button'));
-      
-      // Verify message appears
-      expect(
-        await driver.getText(find.byValueKey('message_text')),
-        'Hello from E2E test!'
-      );
-    });
-  });
-}
-```
-
-## 🔍 Monitoring & Debugging
-
-### Real-time Monitoring
-
-1. **Emulator Logs**: Watch the terminal where `firebase emulators:start` is running
-2. **Function Logs**: Look for `[sendMessageNotification]` entries
-3. **Firestore UI**: Monitor document creation in real-time at http://127.0.0.1:4000/firestore
-
-### Debug Commands
-
-```bash
-# Check if emulators are running
-curl http://127.0.0.1:4000/
-
-# List all messages in emulator
-curl "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents/messages"
-
-# Check function status
-curl http://127.0.0.1:5001/marketsnap-app/us-central1/sendMessageNotification
-
-# Monitor function logs in real-time
-tail -f ~/.config/firebase/emulators/functions/logs/firebase-debug.log
-```
-
-### Common Issues & Solutions
-
-1. **"Function not found" error**:
+1. **Populate Test Vendors and Messages**
    ```bash
-   cd functions
-   npm run build
-   # Restart emulators
+   node scripts/setup_messaging_test_data.js
    ```
 
-2. **"Permission denied" on message creation**:
-   - Verify security rules in firestore.rules
-   - Check that fromUid matches authenticated user
-   - Ensure all required fields are present
+2. **Verify Data Creation**
+   ```bash
+   ./scripts/debug_messaging.sh
+   ```
 
-3. **TTL not working**:
-   - Verify firestore.indexes.json has TTL field override
-   - Check expiresAt field is set correctly (24 hours from createdAt)
+## Authentication Troubleshooting
 
-4. **Push notifications not sending**:
-   - Check that recipient user has FCM token in vendors collection
-   - Verify Cloud Function logs for errors
-   - Ensure sendMessageNotification function is deployed
+### Problem: "Permission Denied" Error in Chat
+**Symptoms**: 
+- Android shows: `Error: [cloud_firestore/permission-denied] The caller does not have permission to execute the specified operation`
+- iOS shows no vendors in discovery screen
 
-## 🚀 Quick Test Commands
+**Root Cause**: User is not authenticated
 
-Here's a quick test script you can run:
+**Solution**:
+1. **Sign Out and Sign Back In**
+   - Go to Settings → Sign Out
+   - Return to welcome screen and sign in again
+   - Complete profile setup if prompted
 
+2. **Verify Authentication**
+   - Check that the profile screen shows your information
+   - Look for user UID in Flutter console logs
+   - Ensure Firebase Auth emulator shows registered users:
+     ```bash
+     curl -s "http://127.0.0.1:9099/emulator/v1/projects/marketsnap-app/accounts" | jq '.users | length'
+     ```
+
+3. **Check Console Logs**
+   Look for these authentication debug messages:
+   ```
+   [ChatScreen] Initialized for user: <UID>, chatting with: <vendor-UID>
+   [VendorDiscoveryScreen] Loading vendors for user: <UID>
+   [VendorDiscoveryScreen] Total vendors found: 5
+   ```
+
+### Problem: No Vendors Show on iOS
+**Symptoms**: Vendor discovery screen shows "No vendors found"
+
+**Solutions**:
+1. **Check Authentication First** (see above)
+2. **Restart iOS Simulator**
+   - Close and reopen the iOS simulator
+   - Rebuild the app: `flutter run`
+3. **Clear App Data**
+   - Uninstall and reinstall the app
+   - Sign in again and complete profile
+
+## Testing Workflow
+
+### Step 1: Authentication Setup
+1. Launch the app
+2. Complete phone/email authentication
+3. Fill out vendor profile completely
+4. Verify profile data saves correctly
+
+### Step 2: Vendor Discovery
+1. Navigate to Messages tab (bottom navigation)
+2. Tap "+" button to discover vendors
+3. **Expected**: See 4 test vendors:
+   - Alice's Farm Stand
+   - Bob's Artisan Bakery  
+   - Carol's Flower Garden
+   - Dave's Mountain Honey
+
+### Step 3: Start Conversation
+1. Tap on any vendor from discovery
+2. **Expected**: Chat screen opens with vendor name in header
+3. **Expected**: See "No messages yet" with friendly prompt
+
+### Step 4: Send Messages
+1. Type a message in the input field
+2. Tap send button
+3. **Expected**: Message appears as blue bubble on right
+4. **Expected**: Console shows: `[ChatScreen] Message sent successfully`
+
+### Step 5: Verify Real-time Updates
+1. Send multiple messages
+2. **Expected**: All messages appear immediately
+3. **Expected**: Messages persist when navigating away and back
+
+## Debug Commands
+
+### Check System Status
 ```bash
-#!/bin/bash
-echo "🧪 Testing MarketSnap Messaging Implementation"
-
-# 1. Test unit tests
-echo "1️⃣ Running unit tests..."
-cd functions && npm test && cd ..
-
-# 2. Test emulator connectivity  
-echo "2️⃣ Testing emulator connectivity..."
-curl -s http://127.0.0.1:4000/ > /dev/null && echo "✅ Emulator UI accessible" || echo "❌ Emulator UI not accessible"
-
-# 3. Test Firestore emulator
-echo "3️⃣ Testing Firestore emulator..."
-curl -s "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents" > /dev/null && echo "✅ Firestore emulator accessible" || echo "❌ Firestore emulator not accessible"
-
-# 4. Test Functions emulator
-echo "4️⃣ Testing Functions emulator..."
-curl -s http://127.0.0.1:5001/ > /dev/null && echo "✅ Functions emulator accessible" || echo "❌ Functions emulator not accessible"
-
-echo "🎉 Basic connectivity tests complete!"
-echo "📱 Next: Test messaging via Emulator UI at http://127.0.0.1:4000/"
+./scripts/debug_messaging.sh
 ```
 
-## 📋 Testing Checklist
+### Check Authentication State
+```bash
+curl -s "http://127.0.0.1:9099/emulator/v1/projects/marketsnap-app/accounts" | jq '.users'
+```
 
-- [x] **Unit tests pass** (Cloud Functions)
-- [ ] **Message creation via Emulator UI**
-- [ ] **Cloud Function triggers on new message**
-- [ ] **Security rules block unauthorized access**
-- [ ] **TTL expiration works (24-hour test)**
-- [ ] **FCM notifications send properly**
-- [ ] **Flutter MessagingService integration**
-- [ ] **Real-time message streams work**
-- [ ] **Conversation grouping functions**
-- [ ] **Read/unread status updates**
+### Check Vendor Data
+```bash
+curl -s "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents/vendors" | jq '.documents | length'
+```
 
-## 🎯 Expected Results
+### Check Messages Data
+```bash
+curl -s "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/documents/messages" | jq '.documents | length'
+```
 
-When testing is successful, you should see:
+## Expected Behavior
 
-1. **In Emulator Logs**:
-   ```
-   ✔ functions[us-central1-sendMessageNotification]: firestore function initialized.
-   [sendMessageNotification] Triggered for new message: abc123
-   [sendMessageNotification] Successfully sent notification to recipient-uid
-   ```
+### ✅ Working Correctly
+- User can authenticate and complete profile
+- Vendor discovery shows 4 test vendors (excluding current user)
+- Chat screen opens without errors
+- Messages send and appear immediately
+- Real-time updates work
+- Navigation between conversations works
 
-2. **In Firestore UI**: Messages appear with proper structure and expire after 24 hours
+### ❌ Known Issues
+- **Authentication Required**: Must be logged in to access messaging
+- **Profile Required**: Must complete vendor profile setup
+- **iOS Simulator**: May need restart if vendors don't appear
+- **Network**: Emulator network issues may require app restart
 
-3. **In Flutter App**: Real-time message updates, proper conversation grouping, and push notifications
+## Console Log Examples
 
-The implementation is production-ready and follows all MarketSnap design patterns for security, offline-first functionality, and cross-platform compatibility! 
+### Successful Authentication
+```
+[VendorDiscoveryScreen] Loading vendors for user: BROKZ9yuNa12mWO2yscIMROniJgV
+[VendorDiscoveryScreen] Total vendors found: 5
+[VendorDiscoveryScreen] Vendors after filtering: 4
+```
+
+### Successful Message Send
+```
+[ChatScreen] Sending message from BROKZ9yuNa12mWO2yscIMROniJgV to vendor-alice-farm: Hello!
+[ChatScreen] Message sent successfully
+[ChatScreen] Loaded 1 messages
+```
+
+### Authentication Error
+```
+[ChatScreen] StreamBuilder error: [cloud_firestore/permission-denied]
+```
+
+## Troubleshooting Checklist
+
+- [ ] Firebase emulators running (port 4000, 8080, 9099)
+- [ ] User authenticated and profile complete
+- [ ] Test data populated (5 vendors, sample messages)
+- [ ] App has network access to emulators
+- [ ] iOS simulator restarted if needed
+- [ ] Flutter console shows authentication logs
+- [ ] No permission denied errors in console
+
+## Support
+
+If issues persist:
+1. Check all console logs for error details
+2. Verify emulator accessibility via web UI
+3. Try authentication flow from scratch
+4. Clear all app data and restart testing
+
+## Testing the Messaging Features
+
+### 1. Conversation List Screen
+
+**Location**: Messages tab (bottom navigation)
+
+**Test Cases**:
+- ✅ View list of recent conversations
+- ✅ See last message preview and timestamp
+- ✅ Notice unread message indicators (blue dot)
+- ✅ Tap on conversation to open chat
+
+### 2. Vendor Discovery Screen
+
+**Location**: Tap the "+" floating action button on Messages screen
+
+**Test Cases**:
+- ✅ Browse list of all vendors
+- ✅ See vendor names and market cities
+- ✅ Tap "Message" to start a new conversation
+- ✅ Navigate to chat screen with selected vendor
+
+### 3. Chat Screen
+
+**Location**: Tap on any conversation or start new chat
+
+**Test Cases**:
+- ✅ Send text messages
+- ✅ See messages appear in real-time
+- ✅ Verify message bubbles (your messages on right, theirs on left)
+- ✅ Check timestamps are displayed
+- ✅ Test with emojis and longer text
+
+### 4. Cross-Platform Testing
+
+**Test with both iOS and Android emulators**:
+- ✅ Send message from iOS → receive on Android
+- ✅ Send message from Android → receive on iOS
+- ✅ Verify real-time sync works across platforms
+
+## Testing Push Notifications
+
+### Local Emulator Testing
+
+1. **Background the app** on one device/emulator
+2. **Send a message** from the other device
+3. **Check Firebase Console** (emulator UI) for notification logs
+
+**Note**: Push notifications in emulators have limitations. For full testing:
+- Use physical devices with Firebase project configured
+- Check Cloud Function logs in Firebase Console
+
+### Deep-Linking Testing
+
+1. **Send a message** to trigger notification
+2. **Tap the notification** (on physical device)
+3. **Verify** the app opens directly to the chat screen
+
+## Troubleshooting
+
+### No Conversations Showing
+
+1. Check that Firebase emulators are running
+2. Verify test data was created: `node scripts/setup_messaging_test_data.js`
+3. Check Firestore emulator UI at `http://localhost:4000`
+
+### Messages Not Sending
+
+1. Verify you're authenticated (check auth status in app)
+2. Check console logs for error messages
+3. Ensure Firestore rules allow your user to write messages
+
+### Real-time Updates Not Working
+
+1. Check internet connectivity (even for emulators)
+2. Verify Firestore listeners are properly set up
+3. Check console for WebSocket connection errors
+
+## Manual Testing Scenarios
+
+### Scenario 1: New User Journey
+1. Sign up with new account
+2. Complete vendor profile
+3. Discover other vendors
+4. Start first conversation
+5. Send and receive messages
+
+### Scenario 2: Existing User
+1. Sign in with existing account
+2. Check conversation list for previous chats
+3. Continue existing conversation
+4. Start new conversation with different vendor
+
+### Scenario 3: Multi-Device
+1. Sign in with same account on two devices
+2. Send messages from device A
+3. Verify they appear on device B
+4. Test real-time synchronization
+
+## Expected Behavior
+
+### ✅ Working Features
+- Real-time message sending/receiving
+- Conversation list with last message preview
+- Vendor discovery and new chat creation
+- Cross-platform messaging
+- Message timestamps and read indicators
+- Clean UI with MarketSnap design system
+
+### 🚧 Known Limitations
+- Push notifications require physical devices for full testing
+- Message history is limited (24h TTL in production)
+- No message editing or deletion (by design)
+- No media messages (text only for MVP)
+
+## Data Cleanup
+
+To reset test data:
+
+```bash
+# Clear Firestore data
+firebase emulators:exec --only firestore "echo 'Clearing data'"
+
+# Recreate test data
+node scripts/setup_messaging_test_data.js
+```
+
+## Production Testing
+
+When testing against production Firebase:
+
+1. Update Firebase project configuration
+2. Deploy Cloud Functions: `firebase deploy --only functions`
+3. Test with real FCM tokens on physical devices
+4. Verify TTL policies are working (24h message expiration)
+
+---
+
+**Need Help?**
+- Check Firebase emulator logs in terminal
+- View Firestore data at `http://localhost:4000`
+- Check app console logs for detailed error messages 

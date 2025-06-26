@@ -5,9 +5,8 @@ import '../models/vendor_profile.dart';
 import '../../features/auth/application/auth_service.dart';
 import '../../features/profile/application/profile_service.dart';
 
-/// Service for handling account linking and profile consolidation
-/// Prevents multiple vendor profiles per person by linking accounts
-/// based on shared phone numbers or email addresses
+/// Service for handling account linking and profile discovery
+/// Finds existing vendor profiles by phone/email to prevent duplicates
 class AccountLinkingService {
   final FirebaseFirestore _firestore;
   final AuthService _authService;
@@ -21,15 +20,15 @@ class AccountLinkingService {
        _profileService = profileService,
        _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Checks if the current user should be prompted to link accounts
-  /// Returns true if there's an existing profile with the same phone/email
-  Future<bool> shouldPromptAccountLinking() async {
-    debugPrint('[AccountLinkingService] Checking if account linking is needed');
+  /// Checks if an existing vendor profile exists for the current user's contact info
+  /// Returns the existing profile if found, null if no profile exists
+  Future<VendorProfile?> findExistingProfileForCurrentUser() async {
+    debugPrint('[AccountLinkingService] Checking for existing profile for current user');
 
     final currentUser = _authService.currentUser;
     if (currentUser == null) {
       debugPrint('[AccountLinkingService] No current user');
-      return false;
+      return null;
     }
 
     // Get current user's contact info
@@ -37,36 +36,52 @@ class AccountLinkingService {
     final email = _authService.getUserEmail();
 
     debugPrint(
-      '[AccountLinkingService] Current user - Phone: $phoneNumber, Email: $email',
+      '[AccountLinkingService] Current user - UID: ${currentUser.uid}, Phone: $phoneNumber, Email: $email',
     );
 
     if (phoneNumber == null && email == null) {
       debugPrint(
-        '[AccountLinkingService] No contact info available for linking',
+        '[AccountLinkingService] No contact info available for profile lookup',
       );
-      return false;
+      return null;
     }
 
     try {
+      // First check if profile already exists with current UID
+      final currentUidProfile = await _firestore
+          .collection('vendors')
+          .doc(currentUser.uid)
+          .get();
+
+      if (currentUidProfile.exists) {
+        debugPrint('[AccountLinkingService] Profile already exists for current UID: ${currentUser.uid}');
+        return VendorProfile.fromFirestore(currentUidProfile.data()!, currentUser.uid);
+      }
+
       // Check for existing profiles with same phone number or email
       final existingProfile = await _findExistingProfileByContact(
         phoneNumber,
         email,
       );
 
-      if (existingProfile != null && existingProfile.uid != currentUser.uid) {
+      if (existingProfile != null) {
         debugPrint(
-          '[AccountLinkingService] Found existing profile for different user: ${existingProfile.uid}',
+          '[AccountLinkingService] Found existing profile: ${existingProfile.stallName} (${existingProfile.uid})',
         );
-        return true;
+        
+        // Copy the existing profile to the current user's UID
+        await _copyProfileToCurrentUser(existingProfile);
+        
+        return existingProfile;
       }
 
-      return false;
+      debugPrint('[AccountLinkingService] No existing profile found');
+      return null;
     } catch (e) {
       debugPrint(
         '[AccountLinkingService] Error checking for existing profiles: $e',
       );
-      return false;
+      return null;
     }
   }
 
@@ -126,98 +141,75 @@ class AccountLinkingService {
     }
   }
 
-  /// Consolidates profiles by merging data from multiple accounts
-  Future<void> consolidateProfiles(
-    String primaryUid,
-    String secondaryUid,
-  ) async {
-    debugPrint(
-      '[AccountLinkingService] Consolidating profiles: $primaryUid <- $secondaryUid',
-    );
+  /// Copies an existing profile to the current user's UID and updates contact info
+  Future<void> _copyProfileToCurrentUser(VendorProfile existingProfile) async {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      debugPrint('[AccountLinkingService] No current user to copy profile to');
+      return;
+    }
+
+    debugPrint('[AccountLinkingService] Copying profile to current user UID: ${currentUser.uid}');
 
     try {
-      // Get both profiles
-      final primaryDoc = await _firestore
-          .collection('vendors')
-          .doc(primaryUid)
-          .get();
-      final secondaryDoc = await _firestore
-          .collection('vendors')
-          .doc(secondaryUid)
-          .get();
+      // Update profile with current user's contact info and UID
+      final phoneNumber = _authService.getUserPhoneNumber();
+      final email = _authService.getUserEmail();
 
-      if (!primaryDoc.exists) {
-        debugPrint('[AccountLinkingService] Primary profile not found');
-        return;
-      }
-
-      if (!secondaryDoc.exists) {
-        debugPrint('[AccountLinkingService] Secondary profile not found');
-        return;
-      }
-
-      final primaryProfile = VendorProfile.fromFirestore(
-        primaryDoc.data()!,
-        primaryUid,
-      );
-      final secondaryProfile = VendorProfile.fromFirestore(
-        secondaryDoc.data()!,
-        secondaryUid,
+      final updatedProfile = existingProfile.copyWith(
+        uid: currentUser.uid,
+        phoneNumber: phoneNumber ?? existingProfile.phoneNumber,
+        email: email ?? existingProfile.email,
+        lastUpdated: DateTime.now(),
+        needsSync: true,
       );
 
-      // Merge profile data (prefer primary, but fill in missing fields from secondary)
-      final consolidatedProfile = _mergeProfiles(
-        primaryProfile,
-        secondaryProfile,
-      );
-
-      // Update primary profile with consolidated data
+      // Save the profile to the current user's UID in Firestore
       await _firestore
           .collection('vendors')
-          .doc(primaryUid)
-          .set(consolidatedProfile.toFirestore());
+          .doc(currentUser.uid)
+          .set(updatedProfile.toFirestore());
+      
+      debugPrint('[AccountLinkingService] Profile copied to current user UID: ${currentUser.uid}');
 
-      // Delete secondary profile
-      await _firestore.collection('vendors').doc(secondaryUid).delete();
+      // Also save locally via ProfileService
+      await _profileService.saveProfile(
+        displayName: updatedProfile.displayName,
+        stallName: updatedProfile.stallName,
+        marketCity: updatedProfile.marketCity,
+        allowLocation: updatedProfile.allowLocation,
+        localAvatarPath: updatedProfile.localAvatarPath,
+      );
 
-      debugPrint('[AccountLinkingService] Profile consolidation completed');
+      debugPrint('[AccountLinkingService] Profile saved locally via ProfileService');
     } catch (e) {
-      debugPrint('[AccountLinkingService] Error consolidating profiles: $e');
-      throw Exception('Failed to consolidate profiles: $e');
+      debugPrint('[AccountLinkingService] Error copying profile to current user: $e');
+      throw Exception('Failed to link existing profile: $e');
     }
   }
 
-  /// Merges two vendor profiles, preferring primary but filling gaps with secondary
-  VendorProfile _mergeProfiles(VendorProfile primary, VendorProfile secondary) {
-    debugPrint('[AccountLinkingService] Merging profiles');
+  /// Handles the account linking flow when a user signs in
+  /// Returns true if an existing profile was found and linked
+  Future<bool> handleSignInAccountLinking() async {
+    debugPrint('[AccountLinkingService] Handling sign-in account linking');
 
-    return primary.copyWith(
-      // Use secondary data if primary is missing critical info
-      displayName: primary.displayName.isNotEmpty
-          ? primary.displayName
-          : secondary.displayName,
-      stallName: primary.stallName.isNotEmpty
-          ? primary.stallName
-          : secondary.stallName,
-      marketCity: primary.marketCity.isNotEmpty
-          ? primary.marketCity
-          : secondary.marketCity,
-
-      // Use primary avatar if available, otherwise secondary
-      avatarURL: primary.avatarURL ?? secondary.avatarURL,
-      localAvatarPath: primary.localAvatarPath ?? secondary.localAvatarPath,
-
-      // Merge contact info
-      phoneNumber: primary.phoneNumber ?? secondary.phoneNumber,
-      email: primary.email ?? secondary.email,
-
-      // Prefer primary settings
-      allowLocation: primary.allowLocation,
-
-      // Update timestamps
-      lastUpdated: DateTime.now(),
-      needsSync: true,
-    );
+    try {
+      final existingProfile = await findExistingProfileForCurrentUser();
+      
+      if (existingProfile != null) {
+        debugPrint('[AccountLinkingService] Successfully linked existing profile: ${existingProfile.stallName}');
+        return true;
+      } else {
+        debugPrint('[AccountLinkingService] No existing profile found - user needs to create profile');
+        return false;
+      }
+    } catch (e) {
+      debugPrint(
+        '[AccountLinkingService] Error in sign-in account linking: $e',
+      );
+      // Don't throw - this shouldn't block the sign-in flow
+      return false;
+    }
   }
 
   /// Updates vendor profile with current user's contact information
@@ -280,37 +272,6 @@ class AccountLinkingService {
         '[AccountLinkingService] Error updating profile with user info: $e',
       );
       // Don't throw - this is a background operation
-    }
-  }
-
-  /// Handles the account linking flow when a user signs in
-  Future<void> handleSignInAccountLinking() async {
-    debugPrint('[AccountLinkingService] Handling sign-in account linking');
-
-    try {
-      // Update current profile with user info
-      await updateProfileWithUserInfo();
-
-      // Check if linking is needed
-      final shouldLink = await shouldPromptAccountLinking();
-      if (!shouldLink) {
-        debugPrint('[AccountLinkingService] No account linking needed');
-        return;
-      }
-
-      // For now, just log that linking is available
-      // In a full implementation, you might show a dialog to the user
-      debugPrint(
-        '[AccountLinkingService] Account linking is available but not automatically performed',
-      );
-      debugPrint(
-        '[AccountLinkingService] User can manually link accounts in settings',
-      );
-    } catch (e) {
-      debugPrint(
-        '[AccountLinkingService] Error in sign-in account linking: $e',
-      );
-      // Don't throw - this shouldn't block the sign-in flow
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:marketsnap/features/capture/presentation/screens/camera_preview_screen.dart';
 import 'package:marketsnap/features/capture/application/camera_service.dart';
 import 'package:marketsnap/features/feed/presentation/screens/feed_screen.dart';
+import 'package:marketsnap/features/messaging/presentation/screens/conversation_list_screen.dart';
 import 'package:marketsnap/features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'package:marketsnap/features/profile/application/profile_service.dart';
 import 'package:marketsnap/core/services/hive_service.dart';
@@ -32,6 +33,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _widgetOptions = <Widget>[
       const FeedScreen(),
       CameraPreviewScreen(hiveService: widget.hiveService),
+      const ConversationListScreen(),
       VendorProfileScreen(
         profileService: widget.profileService,
         isInTabNavigation: true, // This prevents back button from showing
@@ -103,6 +105,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             icon: Icon(Icons.camera_alt),
             label: 'Capture',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
         currentIndex: _selectedIndex,

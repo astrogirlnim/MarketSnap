@@ -64,6 +64,7 @@ dependencies:
   url_launcher: ^6.2.5
   # Device storage information
   device_info_plus: ^10.1.2
+  timeago: ^3.7.1
 
 dev_dependencies:
   flutter_test:
