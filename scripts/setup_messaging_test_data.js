@@ -105,53 +105,53 @@ async function setupMessagingTestData() {
       {
         fromUid: 'vendor-alice-farm',
         toUid: 'vendor-bob-bakery',
-        text: 'Hi Bob! Do you need any fresh herbs for your bread?',
-        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
         conversationId: 'vendor-alice-farm_vendor-bob-bakery',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000)), // 22 hours from now
-        isRead: false
+        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
+        text: 'Hi Bob! Do you need any fresh herbs for your bread?',
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
       },
       {
-        fromUid: 'vendor-bob-bakery', 
+        fromUid: 'vendor-bob-bakery',
         toUid: 'vendor-alice-farm',
-        text: 'That would be amazing! I could use some rosemary and thyme.',
-        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
         conversationId: 'vendor-alice-farm_vendor-bob-bakery',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 1.5 * 60 * 60 * 1000)), // 1.5 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 1.5 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000)), // 22.5 hours from now
-        isRead: false
+        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
+        text: 'That would be amazing! I could use some rosemary and thyme.',
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 0 * 60 * 1000)), // Now
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
       },
       {
         fromUid: 'vendor-alice-farm',
-        toUid: 'vendor-bob-bakery', 
-        text: 'Perfect! I have both fresh. I\'ll bring some over later.',
-        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
+        toUid: 'vendor-bob-bakery',
         conversationId: 'vendor-alice-farm_vendor-bob-bakery',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 1 * 60 * 60 * 1000)), // 1 hour ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 1 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000)), // 23 hours from now
-        isRead: false
+        participants: ['vendor-alice-farm', 'vendor-bob-bakery'],
+        text: 'Perfect! I have both fresh. I\'ll bring some over later.',
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000)), // 30 minutes from now
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
       },
       {
         fromUid: 'vendor-carol-flowers',
         toUid: 'vendor-dave-honey',
-        text: 'Hey Dave! Would you be interested in trading honey for some sunflowers?',
-        participants: ['vendor-carol-flowers', 'vendor-dave-honey'],
         conversationId: 'vendor-carol-flowers_vendor-dave-honey',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 min ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000 + 24 * 60 * 60 * 1000)), // 23.5 hours from now
-        isRead: false
+        participants: ['vendor-carol-flowers', 'vendor-dave-honey'],
+        text: 'Hey Dave! Would you be interested in trading honey for some sunflowers?',
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 60 * 60 * 1000)), // 1 hour from now
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
       },
       {
         fromUid: 'vendor-dave-honey',
         toUid: 'vendor-carol-flowers',
-        text: 'Absolutely! I love sunflowers. How many jars of honey would you want?',
-        participants: ['vendor-carol-flowers', 'vendor-dave-honey'],
         conversationId: 'vendor-carol-flowers_vendor-dave-honey',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 15 * 60 * 1000)), // 15 min ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 15 * 60 * 1000 + 24 * 60 * 60 * 1000)), // 23.75 hours from now
-        isRead: false
-      }
+        participants: ['vendor-carol-flowers', 'vendor-dave-honey'],
+        text: 'Absolutely! I love sunflowers. How many jars of honey would you want?',
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 75 * 60 * 1000)), // 1.25 hours from now
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
+      },
     ];
 
     console.log('💬 Adding sample messages...');

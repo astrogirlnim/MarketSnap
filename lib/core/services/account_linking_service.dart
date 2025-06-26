@@ -288,29 +288,167 @@ class AccountLinkingService {
     debugPrint('[AccountLinkingService] Handling sign-in account linking');
 
     try {
-      // Update current profile with user info
-      await updateProfileWithUserInfo();
-
-      // Check if linking is needed
-      final shouldLink = await shouldPromptAccountLinking();
-      if (!shouldLink) {
-        debugPrint('[AccountLinkingService] No account linking needed');
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        debugPrint('[AccountLinkingService] No current user');
         return;
       }
 
-      // For now, just log that linking is available
-      // In a full implementation, you might show a dialog to the user
+      // Get current user's contact info
+      final phoneNumber = _authService.getUserPhoneNumber();
+      final email = _authService.getUserEmail();
+
       debugPrint(
-        '[AccountLinkingService] Account linking is available but not automatically performed',
+        '[AccountLinkingService] Current user - Phone: $phoneNumber, Email: $email',
       );
-      debugPrint(
-        '[AccountLinkingService] User can manually link accounts in settings',
+
+      if (phoneNumber == null && email == null) {
+        debugPrint('[AccountLinkingService] No contact info available for linking');
+        return;
+      }
+
+      // Check for existing profiles with same phone number or email
+      final existingProfile = await _findExistingProfileByContact(
+        phoneNumber,
+        email,
       );
+
+      if (existingProfile != null && existingProfile.uid != currentUser.uid) {
+        debugPrint(
+          '[AccountLinkingService] Found existing profile for different user: ${existingProfile.uid}',
+        );
+        debugPrint('[AccountLinkingService] Automatically consolidating profiles...');
+
+        // Automatically consolidate profiles
+        await _migrateProfileToNewUid(existingProfile.uid, currentUser.uid);
+        
+        debugPrint('[AccountLinkingService] Profile consolidation completed successfully');
+      } else {
+        debugPrint('[AccountLinkingService] No existing profile found or same user');
+        
+        // Update current profile with user info if no consolidation needed
+        await updateProfileWithUserInfo();
+      }
     } catch (e) {
       debugPrint(
         '[AccountLinkingService] Error in sign-in account linking: $e',
       );
       // Don't throw - this shouldn't block the sign-in flow
+    }
+  }
+
+  /// Migrates an existing profile to a new UID, including messages
+  Future<void> _migrateProfileToNewUid(String oldUid, String newUid) async {
+    debugPrint('[AccountLinkingService] Migrating profile from $oldUid to $newUid');
+
+    try {
+      // Get the existing profile
+      final oldProfileDoc = await _firestore.collection('vendors').doc(oldUid).get();
+      if (!oldProfileDoc.exists) {
+        debugPrint('[AccountLinkingService] Old profile not found: $oldUid');
+        return;
+      }
+
+      final oldProfile = VendorProfile.fromFirestore(oldProfileDoc.data()!, oldUid);
+      debugPrint('[AccountLinkingService] Found existing profile: ${oldProfile.stallName}');
+
+      // Update profile with current user's contact info
+      final phoneNumber = _authService.getUserPhoneNumber();
+      final email = _authService.getUserEmail();
+
+      final migratedProfile = oldProfile.copyWith(
+        uid: newUid,
+        phoneNumber: phoneNumber ?? oldProfile.phoneNumber,
+        email: email ?? oldProfile.email,
+        lastUpdated: DateTime.now(),
+        needsSync: true,
+      );
+
+      // Save the migrated profile to the new UID
+      await _firestore
+          .collection('vendors')
+          .doc(newUid)
+          .set(migratedProfile.toFirestore());
+      
+      debugPrint('[AccountLinkingService] Profile migrated to new UID: $newUid');
+
+      // Migrate messages that reference the old UID
+      await _migrateMessages(oldUid, newUid);
+
+      // Delete the old profile
+      await _firestore.collection('vendors').doc(oldUid).delete();
+      debugPrint('[AccountLinkingService] Old profile deleted: $oldUid');
+
+      // Update local profile service with the migrated profile
+      await _profileService.saveProfile(
+        displayName: migratedProfile.displayName,
+        stallName: migratedProfile.stallName,
+        marketCity: migratedProfile.marketCity,
+        allowLocation: migratedProfile.allowLocation,
+        localAvatarPath: migratedProfile.localAvatarPath,
+      );
+
+      debugPrint('[AccountLinkingService] Profile migration completed successfully');
+    } catch (e) {
+      debugPrint('[AccountLinkingService] Error migrating profile: $e');
+      throw Exception('Failed to migrate profile: $e');
+    }
+  }
+
+  /// Migrates messages from old UID to new UID
+  Future<void> _migrateMessages(String oldUid, String newUid) async {
+    debugPrint('[AccountLinkingService] Migrating messages from $oldUid to $newUid');
+
+    try {
+      // Find all messages where the old UID is a participant
+      final messagesQuery = await _firestore
+          .collection('messages')
+          .where('participants', arrayContains: oldUid)
+          .get();
+
+      debugPrint('[AccountLinkingService] Found ${messagesQuery.docs.length} messages to migrate');
+
+      // Batch update messages
+      final batch = _firestore.batch();
+      int updateCount = 0;
+
+      for (final doc in messagesQuery.docs) {
+        final messageData = doc.data();
+        final participants = List<String>.from(messageData['participants'] ?? []);
+        
+        // Replace old UID with new UID in participants
+        final updatedParticipants = participants.map((uid) => uid == oldUid ? newUid : uid).toList();
+        
+        // Update fromUid if it matches old UID
+        final updatedFromUid = messageData['fromUid'] == oldUid ? newUid : messageData['fromUid'];
+        
+        // Update toUid if it matches old UID
+        final updatedToUid = messageData['toUid'] == oldUid ? newUid : messageData['toUid'];
+
+        // Update conversationId to reflect the new UID
+        final sortedParticipants = List<String>.from(updatedParticipants)..sort();
+        final updatedConversationId = '${sortedParticipants[0]}_${sortedParticipants[1]}';
+
+        // Update the message document
+        batch.update(doc.reference, {
+          'participants': updatedParticipants,
+          'fromUid': updatedFromUid,
+          'toUid': updatedToUid,
+          'conversationId': updatedConversationId,
+        });
+
+        updateCount++;
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        debugPrint('[AccountLinkingService] Updated $updateCount messages with new UID');
+      } else {
+        debugPrint('[AccountLinkingService] No messages to migrate');
+      }
+    } catch (e) {
+      debugPrint('[AccountLinkingService] Error migrating messages: $e');
+      // Don't throw - message migration failure shouldn't block profile migration
     }
   }
 
