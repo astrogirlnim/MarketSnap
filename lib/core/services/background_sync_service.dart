@@ -107,20 +107,25 @@ Future<void> _processPendingUploads() async {
     debugPrint('[Background Isolate] Authenticated user: ${user.uid}');
 
     // Open Hive box for pending media
-    final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMedia');
-    debugPrint('[Background Isolate] Opened Hive box with ${pendingBox.length} pending items');
+    final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+    debugPrint('[Background Isolate] Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items');
 
     if (pendingBox.isEmpty) {
       debugPrint('[Background Isolate] No pending media to upload');
+      await pendingBox.close();
       return;
     }
 
+    debugPrint('[Background Isolate] Found ${pendingBox.length} items to process.');
     // Process each pending media item
     final List<String> keysToRemove = [];
     
     for (var key in pendingBox.keys) {
       final pendingItem = pendingBox.get(key);
-      if (pendingItem == null) continue;
+      if (pendingItem == null) {
+        debugPrint('[Background Isolate] Skipping null item for key: $key');
+        continue;
+      }
 
       debugPrint('[Background Isolate] Processing pending item: ${pendingItem.id}');
 
@@ -149,6 +154,12 @@ Future<void> _processPendingUploads() async {
   } catch (e, stackTrace) {
     debugPrint('[Background Isolate] Error processing pending uploads: $e');
     debugPrint('[Background Isolate] Stack trace: $stackTrace');
+  } finally {
+    // Ensure the box is always closed
+    if (Hive.isBoxOpen('pendingMediaQueue')) {
+      await Hive.box('pendingMediaQueue').close();
+      debugPrint('[Background Isolate] "pendingMediaQueue" box closed.');
+    }
   }
 }
 
@@ -365,15 +376,15 @@ class BackgroundSyncService {
 
       debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
 
-      // We need access to the global HiveService instance but this is tricky in background isolate
-      // For now, we'll access Hive directly since the service is already initialized
+      // Open the correct Hive box
       final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
       final pendingItems = pendingBox.values.toList();
       
-      debugPrint('[Main Isolate] Found ${pendingItems.length} pending items');
+      debugPrint('[Main Isolate] Opened "pendingMediaQueue" box with ${pendingItems.length} pending items.');
 
       if (pendingItems.isEmpty) {
         debugPrint('[Main Isolate] No pending media to upload');
+        await pendingBox.close();
         return;
       }
 
@@ -405,13 +416,16 @@ class BackgroundSyncService {
       
       // Close the box
       await pendingBox.close();
-
-      debugPrint('[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items');
+      debugPrint('[Main Isolate] "pendingMediaQueue" box closed.');
 
     } catch (e, stackTrace) {
-      debugPrint('[Main Isolate] Error processing pending uploads: $e');
+      debugPrint('[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e');
       debugPrint('[Main Isolate] Stack trace: $stackTrace');
-      rethrow;
+      // Ensure box is closed on error too
+      if (Hive.isBoxOpen('pendingMediaQueue')) {
+        await Hive.box('pendingMediaQueue').close();
+        debugPrint('[Main Isolate] "pendingMediaQueue" box closed after error.');
+      }
     }
   }
 
