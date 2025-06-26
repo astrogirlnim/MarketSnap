@@ -279,6 +279,7 @@ Future<void> _uploadPendingItem(
     'mediaUrl': downloadUrl,
     'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
     'caption': pendingItem.caption ?? '',
+    'filterType': pendingItem.filterType,
     'createdAt': Timestamp.fromDate(now),
     'expiresAt': Timestamp.fromDate(expiresAt),
     'location': pendingItem.location,

@@ -192,41 +192,61 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       );
     }
 
+    // Determine overlay color from the snap's filterType
+    Color overlayColor = Colors.transparent;
+    final filterType = widget.snap.filterType;
+
+    if (filterType != null) {
+      if (filterType == 'warm') {
+        overlayColor = Colors.orange.withOpacity(0.3);
+      } else if (filterType == 'cool') {
+        overlayColor = Colors.blue.withOpacity(0.3);
+      } else if (filterType == 'contrast') {
+        overlayColor = Colors.black.withOpacity(0.3);
+      }
+    }
+
     return AspectRatio(
       aspectRatio: _videoController!.value.aspectRatio,
       child: Stack(
+        alignment: Alignment.center,
         children: [
           VideoPlayer(_videoController!),
 
-          // Play/pause overlay
+          // Filter overlay
           Positioned.fill(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (_videoController!.value.isPlaying) {
-                    _videoController!.pause();
-                  } else {
-                    _videoController!.play();
-                  }
-                });
-              },
-              child: Container(
-                color: Colors.transparent,
-                child: Center(
-                  child: AnimatedOpacity(
-                    opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.soilCharcoal.withValues(alpha: 0.7),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+            child: Container(
+              color: overlayColor,
+            ),
+          ),
+
+          // Play/pause overlay
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (_videoController!.value.isPlaying) {
+                  _videoController!.pause();
+                } else {
+                  _videoController!.play();
+                }
+              });
+            },
+            child: Container(
+              color: Colors.transparent, // Makes the whole area tappable
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.soilCharcoal.withOpacity(0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
                     ),
                   ),
                 ),

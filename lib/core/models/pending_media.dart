@@ -48,12 +48,17 @@ class PendingMediaItem extends HiveObject {
   @HiveField(6)
   final String vendorId;
 
+  /// Optional: The filter applied to the media. Stored as a string (e.g., 'warm').
+  @HiveField(7)
+  final String? filterType;
+
   PendingMediaItem({
     required this.filePath,
     required this.mediaType,
     required this.vendorId,
     this.caption,
     this.location,
+    this.filterType,
     String? id,
     DateTime? createdAt,
   }) : id = id ?? _uuid.v4(),
@@ -61,6 +66,6 @@ class PendingMediaItem extends HiveObject {
 
   @override
   String toString() {
-    return 'PendingMediaItem(id: $id, vendorId: $vendorId, type: $mediaType, path: $filePath, queuedAt: $createdAt)';
+    return 'PendingMediaItem(id: $id, vendorId: $vendorId, type: $mediaType, filter: $filterType, path: $filePath, queuedAt: $createdAt)';
   }
 }

@@ -117,6 +117,15 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Apply selected filter to the image
   Future<void> _applyFilter(LutFilterType filterType) async {
+    // For videos, just update the state to show the color overlay
+    if (widget.mediaType == MediaType.video) {
+      setState(() {
+        _selectedFilter = filterType;
+      });
+      return;
+    }
+
+    // For photos, process the image file
     if (_isApplyingFilter) return;
 
     setState(() {
@@ -146,9 +155,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     } catch (e) {
       // Handle error
     } finally {
-      setState(() {
-        _isApplyingFilter = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isApplyingFilter = false;
+        });
+      }
     }
   }
 
@@ -175,7 +186,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         caption: caption,
         mediaType: mediaType,
         vendorId: currentUser.uid,
-        // Let constructor handle id and createdAt
+        filterType: _selectedFilter.name,
       );
 
       await widget.hiveService.addPendingMedia(pendingItem);
@@ -281,65 +292,46 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Build video preview with filter overlay
   Widget _buildVideoPreview() {
-    if (!_isVideoInitialized || _videoController == null) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.black,
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 16),
-              Text(
-                'Loading video...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
+    if (!_isVideoInitialized) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: _videoController!.value.aspectRatio,
-            child: VideoPlayer(_videoController!),
-          ),
-          // Filter overlay for video preview
-          if (_selectedFilter != LutFilterType.none)
-            AspectRatio(
-              aspectRatio: _videoController!.value.aspectRatio,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _getFilterOverlayColor(_selectedFilter),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Get filter overlay color for video preview
-  Color _getFilterOverlayColor(LutFilterType filterType) {
-    switch (filterType) {
+    // Define overlay colors for video filters
+    Color overlayColor = Colors.transparent;
+    switch (_selectedFilter) {
       case LutFilterType.warm:
-        return Colors.orange.withValues(alpha: 0.15);
+        overlayColor = Colors.orange.withOpacity(0.3);
+        break;
       case LutFilterType.cool:
-        return Colors.blue.withValues(alpha: 0.15);
+        overlayColor = Colors.blue.withOpacity(0.3);
+        break;
       case LutFilterType.contrast:
-        return Colors.grey.withValues(alpha: 0.1);
+        overlayColor = Colors.black.withOpacity(0.3);
+        break;
       case LutFilterType.none:
-        return Colors.transparent;
+        overlayColor = Colors.transparent;
+        break;
     }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Video player
+        AspectRatio(
+          aspectRatio: _videoController!.value.aspectRatio,
+          child: VideoPlayer(_videoController!),
+        ),
+        // Animated filter overlay
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: overlayColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Build filter selection row with optimized rendering
@@ -529,9 +521,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Filter selection (only for photos)
-                    if (widget.mediaType == MediaType.photo)
-                      _buildFilterSelection(),
+                    // Filter selection (now enabled for videos too)
+                    _buildFilterSelection(),
 
                     // Caption input
                     _buildCaptionInput(),
