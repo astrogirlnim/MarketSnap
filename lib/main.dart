@@ -249,13 +249,13 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   /// Handles post-authentication flow including account linking
-  Future<void> _handlePostAuthenticationFlow() async {
+  Future<bool> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
 
     try {
       // Handle account linking after sign-in
-      await accountLinkingService.handleSignInAccountLinking();
-      debugPrint('[AuthWrapper] Account linking flow completed');
+      final hasExistingProfile = await accountLinkingService.handleSignInAccountLinking();
+      debugPrint('[AuthWrapper] Account linking flow completed. Has existing profile: $hasExistingProfile');
 
       // Save FCM token
       final token = await pushNotificationService.getFCMToken();
@@ -263,9 +263,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         await profileService.saveFCMToken(token);
       }
 
+      return hasExistingProfile;
     } catch (e) {
       debugPrint('[AuthWrapper] Account linking failed: $e');
       // Don't block the flow if account linking fails
+      return false;
     }
   }
 
@@ -289,7 +291,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
 
-          return FutureBuilder<void>(
+          return FutureBuilder<bool>(
             future: _handlePostAuthenticationFlow(),
             builder: (context, authFuture) {
               if (authFuture.connectionState == ConnectionState.waiting) {
@@ -307,29 +309,41 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 );
               }
 
-              // Check if user has a complete profile
-              if (profileService.hasCompleteProfile()) {
-                debugPrint(
-                  '[AuthWrapper] Profile complete, navigating to MainShellScreen',
-                );
+              // Account linking completed - check if existing profile was found
+              final hasExistingProfile = authFuture.data ?? false;
+              
+              if (hasExistingProfile) {
+                // User has an existing profile - go directly to main app
+                debugPrint('[AuthWrapper] User has existing profile - going to main app');
                 return MainShellScreen(
                   profileService: profileService,
                   hiveService: hiveService,
                 );
               } else {
-                debugPrint(
-                  '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
-                );
-                return VendorProfileScreen(
-                  profileService: profileService,
-                  onProfileComplete: () {
-                    debugPrint(
-                      '[AuthWrapper] Profile completed, triggering rebuild',
-                    );
-                    // Trigger a rebuild of the AuthWrapper to check profile status again
-                    setState(() {});
-                  },
-                );
+                // No existing profile found - check if user needs to create one
+                if (profileService.hasCompleteProfile()) {
+                  debugPrint(
+                    '[AuthWrapper] Profile complete, navigating to MainShellScreen',
+                  );
+                  return MainShellScreen(
+                    profileService: profileService,
+                    hiveService: hiveService,
+                  );
+                } else {
+                  debugPrint(
+                    '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
+                  );
+                  return VendorProfileScreen(
+                    profileService: profileService,
+                    onProfileComplete: () {
+                      debugPrint(
+                        '[AuthWrapper] Profile completed, triggering rebuild',
+                      );
+                      // Trigger a rebuild of the AuthWrapper to check profile status again
+                      setState(() {});
+                    },
+                  );
+                }
               }
             },
           );
