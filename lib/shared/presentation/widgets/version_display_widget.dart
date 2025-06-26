@@ -16,10 +16,10 @@ class VersionDisplayWidget extends StatefulWidget {
 
   /// Whether to show the build number along with version
   final bool showBuildNumber;
-  
+
   /// Text alignment for the version display
   final Alignment alignment;
-  
+
   /// Custom text style (defaults to caption style)
   final TextStyle? style;
 
@@ -41,18 +41,18 @@ class _VersionDisplayWidgetState extends State<VersionDisplayWidget> {
   Future<void> _loadVersionInfo() async {
     try {
       debugPrint('[VersionDisplayWidget] Loading package info...');
-      
+
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      
+
       // Create version text based on configuration
       String versionText = 'v${packageInfo.version}';
-      
+
       if (widget.showBuildNumber && packageInfo.buildNumber.isNotEmpty) {
         versionText += ' (${packageInfo.buildNumber})';
       }
-      
+
       debugPrint('[VersionDisplayWidget] Version loaded: $versionText');
-      
+
       if (mounted) {
         setState(() {
           _versionText = versionText;
@@ -61,7 +61,7 @@ class _VersionDisplayWidgetState extends State<VersionDisplayWidget> {
       }
     } catch (e) {
       debugPrint('[VersionDisplayWidget] Error loading version info: $e');
-      
+
       if (mounted) {
         setState(() {
           _versionText = 'Version unavailable';
@@ -81,11 +81,12 @@ class _VersionDisplayWidgetState extends State<VersionDisplayWidget> {
       alignment: widget.alignment,
       child: Text(
         _versionText,
-        style: widget.style ?? 
-          AppTypography.caption.copyWith(
-            color: AppColors.soilTaupe.withValues(alpha: 0.7),
-            fontSize: 10,
-          ),
+        style:
+            widget.style ??
+            AppTypography.caption.copyWith(
+              color: AppColors.soilTaupe.withValues(alpha: 0.7),
+              fontSize: 10,
+            ),
         textAlign: _getTextAlign(),
       ),
     );
@@ -121,7 +122,7 @@ class CompactVersionDisplay extends StatelessWidget {
 
   /// Position of the version display on screen
   final Alignment position;
-  
+
   /// Custom padding (defaults to small padding)
   final EdgeInsets? padding;
 
@@ -161,7 +162,7 @@ class _DebugVersionDisplayState extends State<DebugVersionDisplay> {
   Future<void> _loadDebugInfo() async {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      
+
       if (mounted) {
         setState(() {
           _packageInfo = packageInfo;
@@ -170,7 +171,7 @@ class _DebugVersionDisplayState extends State<DebugVersionDisplay> {
       }
     } catch (e) {
       debugPrint('[DebugVersionDisplay] Error loading package info: $e');
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -227,4 +228,4 @@ class _DebugVersionDisplayState extends State<DebugVersionDisplay> {
       ),
     );
   }
-} 
+}

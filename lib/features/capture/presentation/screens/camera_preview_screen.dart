@@ -54,7 +54,7 @@ class ViewfinderGridPainter extends CustomPainter {
 /// Provides a full-screen camera interface with controls for taking photos
 class CameraPreviewScreen extends StatefulWidget {
   final HiveService hiveService;
-  
+
   const CameraPreviewScreen({super.key, required this.hiveService});
 
   @override
@@ -75,7 +75,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   bool _isRecordingVideo = false;
   int _recordingCountdown = 0;
   StreamSubscription<int>? _countdownSubscription;
-  
+
   // ✅ BUFFER OVERFLOW FIX: Track widget visibility for camera lifecycle management
   bool _isWidgetVisible = false;
 
@@ -90,25 +90,29 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
   @override
   void dispose() {
-    debugPrint('[CameraPreviewScreen] Disposing camera preview screen with enhanced cleanup');
-    
+    debugPrint(
+      '[CameraPreviewScreen] Disposing camera preview screen with enhanced cleanup',
+    );
+
     // ✅ BUFFER OVERFLOW FIX: Mark widget as not visible
     _isWidgetVisible = false;
-    
+
     // ✅ BUFFER OVERFLOW FIX: Enhanced disposal with proper cleanup order
     WidgetsBinding.instance.removeObserver(this);
-    
+
     // Cancel countdown subscription first
     _countdownSubscription?.cancel();
     _countdownSubscription = null;
-    
+
     // ✅ BUFFER OVERFLOW FIX: Ensure camera is properly disposed when widget is destroyed
     // This is critical for preventing buffer overflow when navigating away from camera
     _cameraService.disposeController().catchError((error) {
       debugPrint('[CameraPreviewScreen] Error during camera disposal: $error');
     });
-    
-    debugPrint('[CameraPreviewScreen] Camera preview screen disposal completed');
+
+    debugPrint(
+      '[CameraPreviewScreen] Camera preview screen disposal completed',
+    );
     super.dispose();
   }
 
@@ -120,31 +124,39 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     switch (state) {
       case AppLifecycleState.inactive:
         // App is becoming inactive (e.g., phone call, notification)
-        debugPrint('[CameraPreviewScreen] App inactive - pausing camera operations');
+        debugPrint(
+          '[CameraPreviewScreen] App inactive - pausing camera operations',
+        );
         _cameraService.pauseCamera();
         break;
-        
+
       case AppLifecycleState.paused:
         // App is going to background
-        debugPrint('[CameraPreviewScreen] App paused - handling background state');
+        debugPrint(
+          '[CameraPreviewScreen] App paused - handling background state',
+        );
         _cameraService.handleAppInBackground();
         break;
-        
+
       case AppLifecycleState.resumed:
         // App is resuming from background
-        debugPrint('[CameraPreviewScreen] App resumed - handling foreground state');
+        debugPrint(
+          '[CameraPreviewScreen] App resumed - handling foreground state',
+        );
         _handleAppResumed();
         break;
-        
+
       case AppLifecycleState.detached:
         // App is being detached
         debugPrint('[CameraPreviewScreen] App detached - disposing camera');
         _cameraService.disposeController();
         break;
-        
+
       case AppLifecycleState.hidden:
         // App is hidden (iOS specific)
-        debugPrint('[CameraPreviewScreen] App hidden - pausing camera operations');
+        debugPrint(
+          '[CameraPreviewScreen] App hidden - pausing camera operations',
+        );
         _cameraService.pauseCamera();
         break;
     }
@@ -154,15 +166,17 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   Future<void> _handleAppResumed() async {
     try {
       final success = await _cameraService.handleAppInForeground();
-      
+
       if (!success && mounted) {
         // If camera resume failed, try full reinitialization
-        debugPrint('[CameraPreviewScreen] Camera resume failed, attempting full reinitialization');
+        debugPrint(
+          '[CameraPreviewScreen] Camera resume failed, attempting full reinitialization',
+        );
         await _initializeCamera();
       }
     } catch (e) {
       debugPrint('[CameraPreviewScreen] Error handling app resume: $e');
-      
+
       if (mounted) {
         // Fallback to full reinitialization
         await _initializeCamera();
@@ -174,10 +188,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   Future<void> _initializeCamera() async {
     // ✅ BUFFER OVERFLOW FIX: Only initialize if widget is visible and mounted
     if (!_isWidgetVisible || !mounted) {
-      debugPrint('[CameraPreviewScreen] Skipping camera initialization - widget not visible or mounted');
+      debugPrint(
+        '[CameraPreviewScreen] Skipping camera initialization - widget not visible or mounted',
+      );
       return;
     }
-    
+
     debugPrint('[CameraPreviewScreen] Starting camera initialization...');
 
     setState(() {
@@ -687,15 +703,23 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     final size = MediaQuery.of(context).size;
     final deviceRatio = size.width / size.height;
     final cameraRatio = controller.value.aspectRatio;
-    
+
     // Enhanced debugging info for camera display
-    debugPrint('[CameraPreviewScreen] ========== CAMERA DISPLAY DEBUG ==========');
+    debugPrint(
+      '[CameraPreviewScreen] ========== CAMERA DISPLAY DEBUG ==========',
+    );
     debugPrint('[CameraPreviewScreen] Device ratio: $deviceRatio');
     debugPrint('[CameraPreviewScreen] Camera ratio: $cameraRatio');
-    debugPrint('[CameraPreviewScreen] Preview size: ${controller.value.previewSize}');
-    debugPrint('[CameraPreviewScreen] Using device ratio + BoxFit.cover for full-screen preview');
-    debugPrint('[CameraPreviewScreen] ==========================================');
-    
+    debugPrint(
+      '[CameraPreviewScreen] Preview size: ${controller.value.previewSize}',
+    );
+    debugPrint(
+      '[CameraPreviewScreen] Using device ratio + BoxFit.cover for full-screen preview',
+    );
+    debugPrint(
+      '[CameraPreviewScreen] ==========================================',
+    );
+
     // ✅ PROPER FULL-SCREEN CAMERA: Use device ratio, not camera ratio
     // This fills the entire screen by cropping camera output, just like default camera apps
     return ClipRect(

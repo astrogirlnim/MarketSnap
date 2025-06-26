@@ -268,7 +268,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       // Trigger immediate sync to upload the media right away
       bool uploadSuccessful = false;
       String? uploadError;
-      
+
       try {
         debugPrint('[MediaReviewScreen] Triggering immediate sync...');
         final backgroundSyncService = BackgroundSyncService();
@@ -480,7 +480,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         itemCount: LutFilterType.values.length,
         // ✅ BUFFER OVERFLOW FIX: Optimized caching and rendering
         cacheExtent: 200, // Reduced cache extent to save memory
-        addAutomaticKeepAlives: false, // Don't keep items alive when scrolled away
+        addAutomaticKeepAlives:
+            false, // Don't keep items alive when scrolled away
         addRepaintBoundaries: true, // Optimize repainting
         itemBuilder: (context, index) {
           final filterType = LutFilterType.values[index];
@@ -499,10 +500,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
   }
-
-
-
-
 
   /// Build caption input section
   Widget _buildCaptionInput() {
@@ -712,7 +709,6 @@ class _FilterThumbnailWidget extends StatefulWidget {
 
 class _FilterThumbnailWidgetState extends State<_FilterThumbnailWidget>
     with AutomaticKeepAliveClientMixin {
-  
   // ✅ BUFFER OVERFLOW FIX: Cache preview data to prevent regeneration
   Uint8List? _cachedPreviewData;
   bool _isLoading = false;
@@ -846,11 +842,7 @@ class _FilterThumbnailWidgetState extends State<_FilterThumbnailWidget>
     if (_isLoading) {
       return Container(
         color: _getFilterColor().withValues(alpha: 0.2),
-        child: Icon(
-          Icons.filter,
-          color: _getFilterColor(),
-          size: 16,
-        ),
+        child: Icon(Icons.filter, color: _getFilterColor(), size: 16),
       );
     }
 

@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 /// Service responsible for camera operations including initialization,
 /// photo capture, video recording, and camera management across iOS and Android platforms
 /// Includes simulator support with mock camera functionality
-/// 
+///
 /// ✅ BUFFER OVERFLOW FIX: Enhanced with proper disposal, lifecycle management,
 /// and buffer optimization to prevent ImageReader_JNI buffer overflow warnings
 class CameraService {
@@ -25,16 +25,16 @@ class CameraService {
   bool _isInitialized = false;
   bool _isSimulatorMode = false;
   String? _lastError;
-  
+
   // ✅ BUFFER OVERFLOW FIX: Add disposal tracking and timeout management
   bool _isDisposing = false;
   Timer? _disposalTimeoutTimer;
   static const Duration _disposalTimeout = Duration(seconds: 5);
-  
+
   // ✅ BUFFER OVERFLOW FIX: Add lifecycle state tracking
   bool _isPaused = false;
   bool _isInBackground = false;
-  
+
   // ✅ ZOOM LEVEL FIX: Track zoom levels manually since camera plugin doesn't provide getCurrentZoomLevel()
   double _minAvailableZoom = 1.0;
   double _maxAvailableZoom = 1.0;
@@ -78,10 +78,10 @@ class CameraService {
 
   /// Stream for countdown updates during video recording
   Stream<int>? get countdownStream => _countdownController?.stream;
-  
+
   /// ✅ BUFFER OVERFLOW FIX: Whether camera is currently paused
   bool get isPaused => _isPaused;
-  
+
   /// ✅ BUFFER OVERFLOW FIX: Whether app is in background
   bool get isInBackground => _isInBackground;
 
@@ -115,16 +115,17 @@ class CameraService {
       // In production builds, NEVER treat devices as emulators
       // This ensures production Android devices always get high quality
       if (!kDebugMode) {
-        debugPrint('[CameraService] Production build detected - using high quality');
+        debugPrint(
+          '[CameraService] Production build detected - using high quality',
+        );
         return false;
       }
-      
+
       // In debug mode, we still prefer high quality unless explicitly detected as emulator
       // In a full implementation, we would check Build.PRODUCT, Build.MODEL, etc.
       // For now, we'll be conservative and prefer high quality even in debug mode
       debugPrint('[CameraService] Debug build - defaulting to high quality');
       return false;
-      
     } catch (e) {
       debugPrint('[CameraService] Error in emulator detection: $e');
       // Always default to production quality on error
@@ -274,7 +275,7 @@ class CameraService {
       debugPrint(
         '[CameraService] Using resolution preset: $resolution (Android emulator: ${_isAndroidEmulator()})',
       );
-      
+
       // ✅ PRODUCTION FIX: Log detailed resolution info for debugging
       debugPrint('[CameraService] ========== CAMERA QUALITY DEBUG ==========');
       debugPrint('[CameraService] Platform: ${Platform.operatingSystem}');
@@ -282,7 +283,9 @@ class CameraService {
       debugPrint('[CameraService] Debug mode: $kDebugMode');
       debugPrint('[CameraService] Emulator detected: ${_isAndroidEmulator()}');
       debugPrint('[CameraService] Resolution preset: $resolution');
-      debugPrint('[CameraService] Expected quality: ${resolution == ResolutionPreset.high ? "HIGH" : "LOW"}');
+      debugPrint(
+        '[CameraService] Expected quality: ${resolution == ResolutionPreset.high ? "HIGH" : "LOW"}',
+      );
       debugPrint('[CameraService] ==========================================');
 
       // ✅ BUFFER OVERFLOW FIX: Create controller with optimized settings for buffer management
@@ -298,20 +301,20 @@ class CameraService {
         debugPrint(
           '[CameraService] Applying Android buffer optimization settings...',
         );
-        
+
         // Note: The actual buffer optimization happens in the camera plugin's native code
         // We're setting up the controller with conservative settings to reduce buffer pressure
       }
 
       debugPrint('[CameraService] Initializing camera controller...');
-      
+
       // ✅ NULL SAFETY FIX: Additional null check before initialization
       if (_controller == null) {
         _lastError = 'Camera controller is null after creation';
         debugPrint('[CameraService] ERROR: $_lastError');
         return false;
       }
-      
+
       await _controller!.initialize();
 
       // ✅ NULL SAFETY FIX: Verify controller is still valid after initialization
@@ -335,7 +338,9 @@ class CameraService {
           '[CameraService] Zoom levels initialized - min: $_minAvailableZoom, max: $_maxAvailableZoom, current: $_currentZoomLevel',
         );
       } catch (e) {
-        debugPrint('[CameraService] Warning: Failed to initialize zoom levels: $e');
+        debugPrint(
+          '[CameraService] Warning: Failed to initialize zoom levels: $e',
+        );
         // Use default values if zoom level initialization fails
         _minAvailableZoom = 1.0;
         _maxAvailableZoom = 1.0;
@@ -583,13 +588,21 @@ class CameraService {
       debugPrint('  Platform: [32m${Platform.operatingSystem}[0m');
       debugPrint('  Is Android: ${Platform.isAndroid}');
       debugPrint('  Is Emulator: ${_isAndroidEmulator()}');
-      debugPrint('  ResolutionPreset: ${_isAndroidEmulator() ? 'LOW' : 'HIGH'}');
-      debugPrint('  Controller Preview Size: [36m${_controller?.value.previewSize}[0m');
+      debugPrint(
+        '  ResolutionPreset: ${_isAndroidEmulator() ? 'LOW' : 'HIGH'}',
+      );
+      debugPrint(
+        '  Controller Preview Size: [36m${_controller?.value.previewSize}[0m',
+      );
 
       // Start recording with optimized settings for emulators
       if (_isAndroidEmulator()) {
-        debugPrint('[CameraService] Using emulator-optimized video recording settings. Video will be at lowest possible quality to avoid buffer overflow.');
-        debugPrint('[CameraService] If buffer overflow persists, video recording may be disabled on emulator.');
+        debugPrint(
+          '[CameraService] Using emulator-optimized video recording settings. Video will be at lowest possible quality to avoid buffer overflow.',
+        );
+        debugPrint(
+          '[CameraService] If buffer overflow persists, video recording may be disabled on emulator.',
+        );
       }
 
       // Start recording
@@ -748,9 +761,14 @@ class CameraService {
       // Emulator-specific: If buffer overflow persists, consider disabling video recording on emulator
       if (_isAndroidEmulator()) {
         final fileSize = await savedVideo.length();
-        debugPrint('[CameraService] Emulator video file size: ${(fileSize / 1024).toStringAsFixed(1)} KB');
-        if (fileSize > 2 * 1024 * 1024) { // 2MB threshold for emulator
-          debugPrint('[CameraService] WARNING: Emulator video file is too large, buffer overflow may occur.');
+        debugPrint(
+          '[CameraService] Emulator video file size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
+        );
+        if (fileSize > 2 * 1024 * 1024) {
+          // 2MB threshold for emulator
+          debugPrint(
+            '[CameraService] WARNING: Emulator video file is too large, buffer overflow may occur.',
+          );
           // Optionally, delete the file and return null to disable video on emulator
           // await savedVideo.delete();
           // _lastError = 'Emulator video recording disabled due to buffer overflow risk.';
@@ -766,7 +784,9 @@ class CameraService {
       debugPrint('[CameraService] Video recorded successfully');
       debugPrint('[CameraService] Video path: $videoPath');
       debugPrint('[CameraService] Video duration: $_recordingDuration seconds');
-      debugPrint('[CameraService] Video size: [32m${(fileSize / 1024).toStringAsFixed(1)} KB[0m');
+      debugPrint(
+        '[CameraService] Video size: [32m${(fileSize / 1024).toStringAsFixed(1)} KB[0m',
+      );
 
       return videoPath;
     } catch (e) {
@@ -935,12 +955,12 @@ In a real device, this would be an actual MP4 video file.
       final double clampedZoom = zoom.clamp(minZoom, maxZoom);
 
       await _controller!.setZoomLevel(clampedZoom);
-      
+
       // ✅ ZOOM LEVEL FIX: Track the current zoom level manually
       _currentZoomLevel = clampedZoom;
       _minAvailableZoom = minZoom;
       _maxAvailableZoom = maxZoom;
-      
+
       debugPrint(
         '[CameraService] Zoom set to: $clampedZoom (min: $minZoom, max: $maxZoom)',
       );
@@ -969,29 +989,35 @@ In a real device, this would be an actual MP4 video file.
   Future<void> disposeController() async {
     if (_controller != null && !_isDisposing) {
       _isDisposing = true;
-      debugPrint('[CameraService] Disposing camera controller with timeout protection...');
-      
+      debugPrint(
+        '[CameraService] Disposing camera controller with timeout protection...',
+      );
+
       try {
         // Cancel any ongoing video recording before disposing
         if (_isRecordingVideo) {
-          debugPrint('[CameraService] Cancelling video recording before disposal...');
+          debugPrint(
+            '[CameraService] Cancelling video recording before disposal...',
+          );
           await cancelVideoRecording();
         }
 
         // ✅ BUFFER OVERFLOW FIX: Use timeout to prevent hanging disposal
         _disposalTimeoutTimer = Timer(_disposalTimeout, () {
-          debugPrint('[CameraService] WARNING: Camera disposal timed out after ${_disposalTimeout.inSeconds}s');
+          debugPrint(
+            '[CameraService] WARNING: Camera disposal timed out after ${_disposalTimeout.inSeconds}s',
+          );
           _controller = null;
           _isDisposing = false;
         });
 
         // Dispose the controller
         await _controller!.dispose();
-        
+
         // Cancel timeout timer if disposal completed successfully
         _disposalTimeoutTimer?.cancel();
         _disposalTimeoutTimer = null;
-        
+
         debugPrint('[CameraService] Camera controller disposed successfully');
       } catch (e) {
         debugPrint('[CameraService] Error disposing camera controller: $e');
@@ -1001,16 +1027,16 @@ In a real device, this would be an actual MP4 video file.
         _isDisposing = false;
         _disposalTimeoutTimer?.cancel();
         _disposalTimeoutTimer = null;
-        
+
         // ✅ BUFFER OVERFLOW FIX: Reset lifecycle state on disposal
         _isPaused = false;
         _isInBackground = false;
-        
+
         // ✅ ZOOM LEVEL FIX: Reset zoom levels on disposal
         _minAvailableZoom = 1.0;
         _maxAvailableZoom = 1.0;
         _currentZoomLevel = 1.0;
-        
+
         debugPrint('[CameraService] Camera controller cleanup completed');
       }
     }
@@ -1035,7 +1061,7 @@ In a real device, this would be an actual MP4 video file.
 
       // Dispose controller to free up camera resources
       await disposeController();
-      
+
       debugPrint('[CameraService] Camera paused successfully');
     } catch (e) {
       debugPrint('[CameraService] Error pausing camera: $e');
@@ -1056,13 +1082,13 @@ In a real device, this would be an actual MP4 video file.
     try {
       // Reinitialize camera controller
       final success = await initializeCamera();
-      
+
       if (success) {
         debugPrint('[CameraService] Camera resumed successfully');
       } else {
         debugPrint('[CameraService] Failed to resume camera');
       }
-      
+
       return success;
     } catch (e) {
       debugPrint('[CameraService] Error resuming camera: $e');
@@ -1079,7 +1105,9 @@ In a real device, this would be an actual MP4 video file.
 
   /// ✅ BUFFER OVERFLOW FIX: Handle app returning to foreground
   Future<bool> handleAppInForeground() async {
-    debugPrint('[CameraService] App returning to foreground, resuming camera...');
+    debugPrint(
+      '[CameraService] App returning to foreground, resuming camera...',
+    );
     _isInBackground = false;
     return await resumeCamera();
   }

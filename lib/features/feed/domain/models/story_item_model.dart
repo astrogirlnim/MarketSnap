@@ -14,4 +14,4 @@ class StoryItem {
     required this.snaps,
     this.hasUnseenSnaps = true,
   });
-} 
+}

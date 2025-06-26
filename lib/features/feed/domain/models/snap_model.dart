@@ -33,10 +33,12 @@ class Snap {
       vendorName: data['vendorName'] ?? 'Unknown Vendor',
       vendorAvatarUrl: data['vendorAvatarUrl'] ?? '',
       mediaUrl: data['mediaUrl'] ?? '',
-      mediaType: (data['mediaType'] == 'video') ? MediaType.video : MediaType.photo,
+      mediaType: (data['mediaType'] == 'video')
+          ? MediaType.video
+          : MediaType.photo,
       caption: data['caption'],
       createdAt: (data['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
       expiresAt: (data['expiresAt'] as Timestamp? ?? Timestamp.now()).toDate(),
     );
   }
-} 
+}

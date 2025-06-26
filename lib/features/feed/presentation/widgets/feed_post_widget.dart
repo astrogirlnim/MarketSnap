@@ -41,7 +41,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Initialize video player if the snap contains video content
   void _initializeVideo() {
-    if (widget.snap.mediaType == MediaType.video && widget.snap.mediaUrl.isNotEmpty) {
+    if (widget.snap.mediaType == MediaType.video &&
+        widget.snap.mediaUrl.isNotEmpty) {
       _videoController = VideoPlayerController.file(File(widget.snap.mediaUrl))
         ..initialize().then((_) {
           if (mounted) {
@@ -79,13 +80,13 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         children: [
           // Header with vendor info
           _buildHeader(),
-          
+
           // Media content
           _buildMediaContent(),
-          
+
           // Caption and interactions
           _buildContent(),
-          
+
           // Action buttons
           _buildActionButtons(),
         ],
@@ -104,7 +105,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             radius: 20,
             backgroundColor: AppColors.marketBlue,
             child: Text(
-              widget.snap.vendorName.isNotEmpty 
+              widget.snap.vendorName.isNotEmpty
                   ? widget.snap.vendorName[0].toUpperCase()
                   : 'V',
               style: AppTypography.bodyLG.copyWith(
@@ -114,7 +115,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          
+
           // Vendor info
           Expanded(
             child: Column(
@@ -125,7 +126,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                   style: AppTypography.h2.copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: widget.isCurrentUserPost ? AppColors.marketBlue : AppColors.soilCharcoal,
+                    color: widget.isCurrentUserPost
+                        ? AppColors.marketBlue
+                        : AppColors.soilCharcoal,
                   ),
                 ),
                 if (widget.isCurrentUserPost) ...[
@@ -140,13 +143,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
               ],
             ),
           ),
-          
+
           // Timestamp
           Text(
             _formatTimestamp(widget.snap.createdAt),
-            style: AppTypography.caption.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
         ],
       ),
@@ -161,9 +162,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(
-        maxHeight: 400,
-      ),
+      constraints: const BoxConstraints(maxHeight: 400),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(8),
@@ -183,9 +182,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         height: 300,
         color: Colors.black,
         child: const Center(
-          child: CircularProgressIndicator(
-            color: AppColors.marketBlue,
-          ),
+          child: CircularProgressIndicator(color: AppColors.marketBlue),
         ),
       );
     }
@@ -195,7 +192,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       child: Stack(
         children: [
           VideoPlayer(_videoController!),
-          
+
           // Play/pause overlay
           Positioned.fill(
             child: GestureDetector(
@@ -270,10 +267,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      child: Text(
-        widget.snap.caption!,
-        style: AppTypography.body,
-      ),
+      child: Text(widget.snap.caption!, style: AppTypography.body),
     );
   }
 
@@ -319,17 +313,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: AppColors.soilTaupe,
-          ),
+          Icon(icon, size: 20, color: AppColors.soilTaupe),
           const SizedBox(width: 4),
           Text(
             label,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
         ],
       ),
@@ -353,4 +341,4 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
-} 
+}

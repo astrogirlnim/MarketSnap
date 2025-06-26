@@ -10,8 +10,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:marketsnap/core/models/pending_media.dart';
 
-
-
 // Unique name for the background task
 const syncTaskName = "syncPendingMediaTask";
 
@@ -107,8 +105,11 @@ Future<void> _processPendingUploads() async {
     debugPrint('[Background Isolate] Authenticated user: ${user.uid}');
 
     // Open Hive box for pending media
-    final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
-    debugPrint('[Background Isolate] Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items');
+    final Box<PendingMediaItem> pendingBox =
+        await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+    debugPrint(
+      '[Background Isolate] Opened Hive box "pendingMediaQueue" with ${pendingBox.length} pending items',
+    );
 
     if (pendingBox.isEmpty) {
       debugPrint('[Background Isolate] No pending media to upload');
@@ -116,10 +117,12 @@ Future<void> _processPendingUploads() async {
       return;
     }
 
-    debugPrint('[Background Isolate] Found ${pendingBox.length} items to process.');
+    debugPrint(
+      '[Background Isolate] Found ${pendingBox.length} items to process.',
+    );
     // Process each pending media item
     final List<String> keysToRemove = [];
-    
+
     for (var key in pendingBox.keys) {
       final pendingItem = pendingBox.get(key);
       if (pendingItem == null) {
@@ -127,18 +130,23 @@ Future<void> _processPendingUploads() async {
         continue;
       }
 
-      debugPrint('[Background Isolate] Processing pending item: ${pendingItem.id}');
+      debugPrint(
+        '[Background Isolate] Processing pending item: ${pendingItem.id}',
+      );
 
       try {
         // Upload the media item
         await _uploadPendingItem(pendingItem, user);
-        
+
         // Mark for removal from queue
         keysToRemove.add(key);
-        debugPrint('[Background Isolate] Successfully uploaded: ${pendingItem.id}');
-        
+        debugPrint(
+          '[Background Isolate] Successfully uploaded: ${pendingItem.id}',
+        );
       } catch (e) {
-        debugPrint('[Background Isolate] Failed to upload ${pendingItem.id}: $e');
+        debugPrint(
+          '[Background Isolate] Failed to upload ${pendingItem.id}: $e',
+        );
         // Keep item in queue for retry
       }
     }
@@ -149,8 +157,9 @@ Future<void> _processPendingUploads() async {
       debugPrint('[Background Isolate] Removed uploaded item from queue: $key');
     }
 
-    debugPrint('[Background Isolate] Upload processing complete. Uploaded ${keysToRemove.length} items');
-
+    debugPrint(
+      '[Background Isolate] Upload processing complete. Uploaded ${keysToRemove.length} items',
+    );
   } catch (e, stackTrace) {
     debugPrint('[Background Isolate] Error processing pending uploads: $e');
     debugPrint('[Background Isolate] Stack trace: $stackTrace');
@@ -175,13 +184,17 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
       .child('snaps')
       .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
-  debugPrint('[Background Isolate] Uploading to Storage: ${storageRef.fullPath}');
-  
+  debugPrint(
+    '[Background Isolate] Uploading to Storage: ${storageRef.fullPath}',
+  );
+
   final uploadTask = storageRef.putFile(file);
   final snapshot = await uploadTask;
   final downloadUrl = await snapshot.ref.getDownloadURL();
 
-  debugPrint('[Background Isolate] Upload complete. Download URL: $downloadUrl');
+  debugPrint(
+    '[Background Isolate] Upload complete. Download URL: $downloadUrl',
+  );
 
   // Get vendor profile for snap metadata
   final vendorDoc = await FirebaseFirestore.instance
@@ -191,10 +204,13 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
 
   String vendorName = 'Unknown Vendor';
   String vendorAvatarUrl = '';
-  
+
   if (vendorDoc.exists) {
     final vendorData = vendorDoc.data()!;
-    vendorName = vendorData['displayName'] ?? vendorData['stallName'] ?? 'Unknown Vendor';
+    vendorName =
+        vendorData['displayName'] ??
+        vendorData['stallName'] ??
+        'Unknown Vendor';
     vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
   }
 
@@ -214,11 +230,11 @@ Future<void> _uploadPendingItem(PendingMediaItem pendingItem, User user) async {
     'location': pendingItem.location,
   };
 
-  await FirebaseFirestore.instance
-      .collection('snaps')
-      .add(snapData);
+  await FirebaseFirestore.instance.collection('snaps').add(snapData);
 
-  debugPrint('[Background Isolate] Firestore document created for snap: ${pendingItem.id}');
+  debugPrint(
+    '[Background Isolate] Firestore document created for snap: ${pendingItem.id}',
+  );
 }
 
 /// Get file extension from file path
@@ -345,7 +361,7 @@ class BackgroundSyncService {
   /// Manually trigger an immediate sync (for development/testing)
   Future<void> triggerImmediateSync() async {
     debugPrint('Triggering immediate sync...');
-    
+
     try {
       // Process uploads immediately in the main isolate
       await _processPendingUploadsInMainIsolate();
@@ -371,10 +387,13 @@ class BackgroundSyncService {
       debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
 
       // Open the correct Hive box
-      final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final Box<PendingMediaItem> pendingBox =
+          await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
       final pendingItems = pendingBox.values.toList();
-      
-      debugPrint('[Main Isolate] Opened "pendingMediaQueue" box with ${pendingItems.length} pending items.');
+
+      debugPrint(
+        '[Main Isolate] Opened "pendingMediaQueue" box with ${pendingItems.length} pending items.',
+      );
 
       if (pendingItems.isEmpty) {
         debugPrint('[Main Isolate] No pending media to upload');
@@ -384,18 +403,17 @@ class BackgroundSyncService {
 
       // Process each pending media item
       final List<PendingMediaItem> itemsToRemove = [];
-      
+
       for (final pendingItem in pendingItems) {
         debugPrint('[Main Isolate] Processing pending item: ${pendingItem.id}');
 
         try {
           // Upload the media item
           await _uploadPendingItemInMainIsolate(pendingItem, user);
-          
+
           // Mark for removal from queue
           itemsToRemove.add(pendingItem);
           debugPrint('[Main Isolate] Successfully uploaded: ${pendingItem.id}');
-          
         } catch (e) {
           debugPrint('[Main Isolate] Failed to upload ${pendingItem.id}: $e');
           // Keep item in queue for retry
@@ -405,13 +423,18 @@ class BackgroundSyncService {
       // Remove successfully uploaded items from queue
       for (final item in itemsToRemove) {
         await pendingBox.delete(item.id);
-        debugPrint('[Main Isolate] Removed uploaded item from queue: ${item.id}');
+        debugPrint(
+          '[Main Isolate] Removed uploaded item from queue: ${item.id}',
+        );
       }
-      
-      debugPrint('[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items');
 
+      debugPrint(
+        '[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items',
+      );
     } catch (e, stackTrace) {
-      debugPrint('[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e');
+      debugPrint(
+        '[Main Isolate] Error in _processPendingUploadsInMainIsolate: $e',
+      );
       debugPrint('[Main Isolate] Stack trace: $stackTrace');
       // Re-throwing the error so the caller can handle it
       rethrow;
@@ -419,7 +442,10 @@ class BackgroundSyncService {
   }
 
   /// Upload a single pending media item in the main isolate
-  Future<void> _uploadPendingItemInMainIsolate(PendingMediaItem pendingItem, User user) async {
+  Future<void> _uploadPendingItemInMainIsolate(
+    PendingMediaItem pendingItem,
+    User user,
+  ) async {
     debugPrint('[Main Isolate] Uploading media item: ${pendingItem.id}');
 
     // Check if file still exists
@@ -437,7 +463,7 @@ class BackgroundSyncService {
         .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
     debugPrint('[Main Isolate] Uploading to Storage: ${storageRef.fullPath}');
-    
+
     final uploadTask = storageRef.putFile(file);
     final snapshot = await uploadTask;
     final downloadUrl = await snapshot.ref.getDownloadURL();
@@ -452,10 +478,13 @@ class BackgroundSyncService {
 
     String vendorName = 'Unknown Vendor';
     String vendorAvatarUrl = '';
-    
+
     if (vendorDoc.exists) {
       final vendorData = vendorDoc.data()!;
-      vendorName = vendorData['displayName'] ?? vendorData['stallName'] ?? 'Unknown Vendor';
+      vendorName =
+          vendorData['displayName'] ??
+          vendorData['stallName'] ??
+          'Unknown Vendor';
       vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
     }
 
@@ -475,11 +504,11 @@ class BackgroundSyncService {
       'location': pendingItem.location,
     };
 
-    await FirebaseFirestore.instance
-        .collection('snaps')
-        .add(snapData);
+    await FirebaseFirestore.instance.collection('snaps').add(snapData);
 
-    debugPrint('[Main Isolate] Firestore document created for snap: ${pendingItem.id}');
+    debugPrint(
+      '[Main Isolate] Firestore document created for snap: ${pendingItem.id}',
+    );
   }
 
   /// Get the last background execution time (for debugging)

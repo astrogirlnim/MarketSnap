@@ -37,7 +37,7 @@ class LutFilterService {
 
   // Debounce mechanism for preview generation
   final Map<String, Timer> _previewDebounceTimers = {};
-  
+
   // ✅ BUFFER OVERFLOW FIX: Rate limiting for concurrent image processing
   static const int _maxConcurrentProcessing = 2; // Limit concurrent operations
   int _currentProcessingCount = 0;
@@ -198,7 +198,7 @@ class LutFilterService {
     // ✅ BUFFER OVERFLOW FIX: Use more efficient image processing
     // Create a copy of the input image to modify
     final img.Image outputImage = img.Image.from(inputImage);
-    
+
     // ✅ OPTIMIZATION: Process in chunks to reduce memory pressure
     const int chunkSize = 1000; // Process 1000 pixels at a time
     int pixelCount = 0;
@@ -217,7 +217,7 @@ class LutFilterService {
 
         // Set the new color
         outputImage.setPixel(x, y, newColor);
-        
+
         // ✅ BUFFER OVERFLOW FIX: Yield control periodically to prevent blocking
         pixelCount++;
         if (pixelCount % chunkSize == 0) {
@@ -344,19 +344,21 @@ class LutFilterService {
       debugPrint(
         '[LutFilterService] Rate limiting: queuing preview for ${filterType.displayName}',
       );
-      
+
       final Completer<Uint8List?> queuedCompleter = Completer<Uint8List?>();
       _processingQueue.add(queuedCompleter);
-      
+
       // Wait for our turn
       await queuedCompleter.future.timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          debugPrint('[LutFilterService] Preview generation timed out for ${filterType.displayName}');
+          debugPrint(
+            '[LutFilterService] Preview generation timed out for ${filterType.displayName}',
+          );
           return null;
         },
       );
-      
+
       // Try again now that we have capacity
       return getFilterPreview(
         inputImagePath: inputImagePath,
@@ -373,7 +375,9 @@ class LutFilterService {
 
     // Set up debounced preview generation (100ms delay to reduce concurrent operations)
     _previewDebounceTimers[cacheKey] = Timer(
-      const Duration(milliseconds: 100), // Increased delay to reduce concurrency
+      const Duration(
+        milliseconds: 100,
+      ), // Increased delay to reduce concurrency
       () async {
         debugPrint(
           '[LutFilterService] Generating debounced filter preview for: ${filterType.displayName}',
@@ -396,7 +400,7 @@ class LutFilterService {
           }
         } finally {
           _currentProcessingCount--;
-          
+
           // ✅ BUFFER OVERFLOW FIX: Process next item in queue
           if (_processingQueue.isNotEmpty) {
             final nextCompleter = _processingQueue.removeAt(0);
@@ -420,8 +424,11 @@ class LutFilterService {
   ) async {
     try {
       // ✅ BUFFER OVERFLOW FIX: Use smaller preview size to reduce memory usage
-      final int optimizedPreviewSize = previewSize.clamp(32, 64); // Smaller previews
-      
+      final int optimizedPreviewSize = previewSize.clamp(
+        32,
+        64,
+      ); // Smaller previews
+
       // Load and resize the input image for preview
       final File inputFile = File(inputImagePath);
       if (!await inputFile.exists()) {
@@ -457,7 +464,10 @@ class LutFilterService {
 
       // ✅ BUFFER OVERFLOW FIX: Encode with very low quality for previews to reduce memory
       final Uint8List previewBytes = Uint8List.fromList(
-        img.encodeJpg(filteredPreview, quality: 30), // Lower quality for previews
+        img.encodeJpg(
+          filteredPreview,
+          quality: 30,
+        ), // Lower quality for previews
       );
 
       // Cache the result
@@ -474,14 +484,18 @@ class LutFilterService {
   }
 
   /// Apply simplified filter for previews (faster than full LUT processing)
-  img.Image _applySimplifiedFilter(img.Image inputImage, LutFilterType filterType) {
+  img.Image _applySimplifiedFilter(
+    img.Image inputImage,
+    LutFilterType filterType,
+  ) {
     final img.Image outputImage = img.Image.from(inputImage);
-    
+
     // ✅ OPTIMIZATION: Use bulk color operations instead of pixel-by-pixel
     switch (filterType) {
       case LutFilterType.warm:
         // Apply warm filter using bulk operations
-        img.adjustColor(outputImage, 
+        img.adjustColor(
+          outputImage,
           saturation: 1.1,
           brightness: 1.05,
           hue: 10, // Slight warm hue shift
@@ -489,7 +503,8 @@ class LutFilterService {
         break;
       case LutFilterType.cool:
         // Apply cool filter using bulk operations
-        img.adjustColor(outputImage,
+        img.adjustColor(
+          outputImage,
           saturation: 1.05,
           brightness: 0.98,
           hue: -10, // Slight cool hue shift
@@ -497,16 +512,13 @@ class LutFilterService {
         break;
       case LutFilterType.contrast:
         // Apply contrast filter using bulk operations
-        img.adjustColor(outputImage,
-          contrast: 1.3,
-          brightness: 1.02,
-        );
+        img.adjustColor(outputImage, contrast: 1.3, brightness: 1.02);
         break;
       case LutFilterType.none:
         // No processing needed
         break;
     }
-    
+
     return outputImage;
   }
 
@@ -573,7 +585,7 @@ class LutFilterService {
 
     _loadedLuts.clear();
     _previewCache.clear();
-    
+
     debugPrint('[LutFilterService] LUT filter service disposed successfully');
   }
 }

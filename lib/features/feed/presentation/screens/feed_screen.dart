@@ -20,7 +20,10 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
-    developer.log('[FeedScreen] Initializing feed screen with real-time streams', name: 'FeedScreen');
+    developer.log(
+      '[FeedScreen] Initializing feed screen with real-time streams',
+      name: 'FeedScreen',
+    );
   }
 
   @override
@@ -36,9 +39,7 @@ class _FeedScreenState extends State<FeedScreen> {
         onRefresh: _refreshFeed,
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: _buildStoriesSection(),
-            ),
+            SliverToBoxAdapter(child: _buildStoriesSection()),
             _buildSnapsList(),
           ],
         ),
@@ -58,20 +59,38 @@ class _FeedScreenState extends State<FeedScreen> {
       stream: _feedService.getStoriesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          developer.log('[FeedScreen] Stories stream: waiting for data', name: 'FeedScreen');
-          return const SizedBox(height: 110, child: Center(child: CircularProgressIndicator()));
+          developer.log(
+            '[FeedScreen] Stories stream: waiting for data',
+            name: 'FeedScreen',
+          );
+          return const SizedBox(
+            height: 110,
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         if (snapshot.hasError) {
-          developer.log('[FeedScreen] Stories stream error: ${snapshot.error}', name: 'FeedScreen');
-          return const SizedBox(height: 110, child: Center(child: Text('Error loading stories')));
+          developer.log(
+            '[FeedScreen] Stories stream error: ${snapshot.error}',
+            name: 'FeedScreen',
+          );
+          return const SizedBox(
+            height: 110,
+            child: Center(child: Text('Error loading stories')),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          developer.log('[FeedScreen] Stories stream: no data available', name: 'FeedScreen');
+          developer.log(
+            '[FeedScreen] Stories stream: no data available',
+            name: 'FeedScreen',
+          );
           return const SizedBox.shrink();
         }
-        
+
         final stories = snapshot.data!;
-        developer.log('[FeedScreen] Stories stream: displaying ${stories.length} stories', name: 'FeedScreen');
+        developer.log(
+          '[FeedScreen] Stories stream: displaying ${stories.length} stories',
+          name: 'FeedScreen',
+        );
         return StoryCarouselWidget(stories: stories);
       },
     );
@@ -82,34 +101,49 @@ class _FeedScreenState extends State<FeedScreen> {
       stream: _feedService.getFeedSnapsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          developer.log('[FeedScreen] Snaps stream: waiting for data', name: 'FeedScreen');
-          return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+          developer.log(
+            '[FeedScreen] Snaps stream: waiting for data',
+            name: 'FeedScreen',
+          );
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         if (snapshot.hasError) {
-          developer.log('[FeedScreen] Snaps stream error: ${snapshot.error}', name: 'FeedScreen');
-          return const SliverFillRemaining(child: Center(child: Text('Error loading snaps')));
+          developer.log(
+            '[FeedScreen] Snaps stream error: ${snapshot.error}',
+            name: 'FeedScreen',
+          );
+          return const SliverFillRemaining(
+            child: Center(child: Text('Error loading snaps')),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          developer.log('[FeedScreen] Snaps stream: no data available', name: 'FeedScreen');
-          return const SliverFillRemaining(child: Center(child: Text('No snaps yet!')));
+          developer.log(
+            '[FeedScreen] Snaps stream: no data available',
+            name: 'FeedScreen',
+          );
+          return const SliverFillRemaining(
+            child: Center(child: Text('No snaps yet!')),
+          );
         }
-        
+
         final snaps = snapshot.data!;
-        developer.log('[FeedScreen] Snaps stream: displaying ${snaps.length} snaps', name: 'FeedScreen');
-        
+        developer.log(
+          '[FeedScreen] Snaps stream: displaying ${snaps.length} snaps',
+          name: 'FeedScreen',
+        );
+
         return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final snap = snaps[index];
-              return FeedPostWidget(
-                snap: snap,
-                isCurrentUserPost: snap.vendorId == _feedService.currentUserId,
-              );
-            },
-            childCount: snaps.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final snap = snaps[index];
+            return FeedPostWidget(
+              snap: snap,
+              isCurrentUserPost: snap.vendorId == _feedService.currentUserId,
+            );
+          }, childCount: snaps.length),
         );
       },
     );
   }
-} 
+}

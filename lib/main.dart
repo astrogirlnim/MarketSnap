@@ -301,7 +301,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 return VendorProfileScreen(
                   profileService: profileService,
                   onProfileComplete: () {
-                    debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                    debugPrint(
+                      '[AuthWrapper] Profile completed, triggering rebuild',
+                    );
                     // Trigger a rebuild of the AuthWrapper to check profile status again
                     setState(() {});
                   },
@@ -312,7 +314,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
-        debugPrint('[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen');
+        debugPrint(
+          '[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen',
+        );
         return const AuthWelcomeScreen();
       },
     );
@@ -477,11 +481,7 @@ class DevelopmentCameraWrapper extends StatelessWidget {
           ),
 
           // Debug version info in bottom left corner
-          const Positioned(
-            bottom: 20,
-            left: 20,
-            child: DebugVersionDisplay(),
-          ),
+          const Positioned(bottom: 20, left: 20, child: DebugVersionDisplay()),
         ],
       ),
     );
@@ -509,15 +509,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _checkBackgroundExecution() async {
-                      final lastExecution = await backgroundSyncService.getLastExecutionTime();
-      setState(() {
-        _lastExecutionInfo = {
-          'platform': Platform.operatingSystem,
-          'executed': lastExecution != null ? 'Yes' : 'Never',
-          'executionTime': lastExecution?.toString(),
-          'note': null,
-        };
-      });
+    final lastExecution = await backgroundSyncService.getLastExecutionTime();
+    setState(() {
+      _lastExecutionInfo = {
+        'platform': Platform.operatingSystem,
+        'executed': lastExecution != null ? 'Yes' : 'Never',
+        'executionTime': lastExecution?.toString(),
+        'note': null,
+      };
+    });
   }
 
   Future<void> _scheduleOneTimeTask() async {
