@@ -506,10 +506,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _checkBackgroundExecution() async {
-    final info = await backgroundSyncService.getLastExecutionInfo();
-    setState(() {
-      _lastExecutionInfo = info;
-    });
+                      final lastExecution = await backgroundSyncService.getLastExecutionTime();
+      setState(() {
+        _lastExecutionInfo = {
+          'platform': Platform.operatingSystem,
+          'executed': lastExecution != null ? 'Yes' : 'Never',
+          'executionTime': lastExecution?.toString(),
+          'note': null,
+        };
+      });
   }
 
   Future<void> _scheduleOneTimeTask() async {

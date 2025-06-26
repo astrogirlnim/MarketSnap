@@ -264,31 +264,65 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       );
 
       // Trigger immediate sync to upload the media right away
+      bool uploadSuccessful = false;
+      String? uploadError;
+      
       try {
         debugPrint('[MediaReviewScreen] Triggering immediate sync...');
         final backgroundSyncService = BackgroundSyncService();
         await backgroundSyncService.triggerImmediateSync();
-        debugPrint('[MediaReviewScreen] Immediate sync completed');
+        debugPrint('[MediaReviewScreen] Immediate sync completed successfully');
+        uploadSuccessful = true;
       } catch (e) {
-        debugPrint('[MediaReviewScreen] Immediate sync failed (will retry in background): $e');
-        // Don't show error to user - background sync will retry later
+        debugPrint('[MediaReviewScreen] Immediate sync failed: $e');
+        uploadError = e.toString();
+        // Note: Media is still in queue for background retry
       }
 
-      // Show success message
+      // Show appropriate message based on upload result
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Media posted successfully!')),
-              ],
+        if (uploadSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Media posted successfully!')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
             ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Upload failed - queued for retry'),
+                        if (uploadError != null)
+                          Text(
+                            'Error: $uploadError',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
 
         // Navigate back to camera (or main screen)
         Navigator.of(context).popUntil((route) => route.isFirst);

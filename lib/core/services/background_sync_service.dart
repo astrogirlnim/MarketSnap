@@ -9,8 +9,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:marketsnap/core/models/pending_media.dart';
-import 'package:marketsnap/core/services/hive_service.dart';
-import 'package:uuid/uuid.dart';
+
+
 
 // Unique name for the background task
 const syncTaskName = "syncPendingMediaTask";
@@ -228,7 +228,6 @@ class BackgroundSyncService {
 
   // Track iOS executions in memory (since SharedPreferences doesn't work in background isolate)
   static DateTime? _lastIOSExecution;
-  static String? _lastIOSTaskName;
 
   /// Initialize the WorkManager plugin
   Future<void> initialize() async {
@@ -313,7 +312,6 @@ class BackgroundSyncService {
 
         // Track when we schedule the task for iOS
         _lastIOSExecution = DateTime.now();
-        _lastIOSTaskName = uniqueId;
 
         await Workmanager().registerOneOffTask(
           uniqueId,
@@ -367,9 +365,10 @@ class BackgroundSyncService {
 
       debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
 
-      // Get Hive service instance
-      final hiveService = HiveService();
-      final pendingItems = await hiveService.getPendingMedia();
+      // We need access to the global HiveService instance but this is tricky in background isolate
+      // For now, we'll access Hive directly since the service is already initialized
+      final Box<PendingMediaItem> pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final pendingItems = pendingBox.values.toList();
       
       debugPrint('[Main Isolate] Found ${pendingItems.length} pending items');
 
@@ -400,9 +399,12 @@ class BackgroundSyncService {
 
       // Remove successfully uploaded items from queue
       for (final item in itemsToRemove) {
-        await hiveService.removePendingMedia(item);
+        await pendingBox.delete(item.id);
         debugPrint('[Main Isolate] Removed uploaded item from queue: ${item.id}');
       }
+      
+      // Close the box
+      await pendingBox.close();
 
       debugPrint('[Main Isolate] Upload processing complete. Uploaded ${itemsToRemove.length} items');
 
