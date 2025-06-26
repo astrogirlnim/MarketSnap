@@ -31,7 +31,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _widgetOptions = <Widget>[
-      const FeedScreen(),
+      FeedScreen(hiveService: widget.hiveService),
       CameraPreviewScreen(hiveService: widget.hiveService),
       const ConversationListScreen(),
       VendorProfileScreen(

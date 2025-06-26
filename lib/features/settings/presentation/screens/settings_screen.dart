@@ -8,6 +8,10 @@ import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../../../shared/presentation/widgets/version_display_widget.dart';
+import '../../../../core/services/account_deletion_service.dart';
+import '../../../../core/services/hive_service.dart';
+import '../../../../features/auth/application/auth_service.dart';
+import '../../../../main.dart' as main;
 
 /// Settings & Help Screen for MarketSnap
 /// Implements Phase 3.4 MVP requirements:
@@ -315,6 +319,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildHelpCard(),
 
                     const SizedBox(height: AppSpacing.xl),
+
+                    // Account Management Section
+                    Text(
+                      'Account Management',
+                      style: AppTypography.h2.copyWith(
+                        color: AppColors.soilCharcoal,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Manage your account and data',
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.soilTaupe,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildAccountManagementCard(),
+
+                    const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
@@ -595,5 +618,352 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  /// Build account management card with delete account option
+  Widget _buildAccountManagementCard() {
+    return MarketSnapCard(
+      child: Column(
+        children: [
+          // Delete Account option
+          InkWell(
+            onTap: _showDeleteAccountDialog,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: AppColors.appleRed.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete_forever_outlined,
+                      color: AppColors.appleRed,
+                      size: 20,
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSpacing.md),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Delete Account',
+                          style: AppTypography.body.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.appleRed,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Permanently delete your account and all data',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.soilTaupe,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: AppColors.soilTaupe,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show initial delete account confirmation dialog
+  Future<void> _showDeleteAccountDialog() async {
+    final accountDeletionService = AccountDeletionService(
+      hiveService: main.hiveService,
+    );
+
+    // Check if user can delete account
+    if (!accountDeletionService.canDeleteAccount()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to delete account. Please ensure you are signed in.'),
+            backgroundColor: AppColors.appleRed,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Get account data summary
+    final dataSummary = await accountDeletionService.getAccountDataSummary();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.eggshell,
+          title: Row(
+            children: [
+              const Icon(Icons.warning, color: AppColors.appleRed),
+              const SizedBox(width: 8),
+              Text(
+                'Delete Account',
+                style: AppTypography.h2.copyWith(color: AppColors.appleRed),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'This action cannot be undone. The following data will be permanently deleted:',
+                  style: AppTypography.body,
+                ),
+                const SizedBox(height: 16),
+                
+                // Data summary
+                if (dataSummary.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.cornsilk,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.seedBrown.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        if (dataSummary['snaps'] != null)
+                          _buildDataRow('Snaps', dataSummary['snaps']!),
+                        if (dataSummary['messages'] != null)
+                          _buildDataRow('Messages', dataSummary['messages']!),
+                        if (dataSummary['pendingMedia'] != null)
+                          _buildDataRow('Pending uploads', dataSummary['pendingMedia']!),
+                        _buildDataRow('Profile data', 1),
+                        _buildDataRow('Settings', 1),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                Text(
+                  'Type "DELETE" to confirm:',
+                  style: AppTypography.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  onChanged: (value) {
+                    // This will be handled in the stateful dialog
+                  },
+                  decoration: const InputDecoration(
+                    hintText: 'Type DELETE here',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showDeleteAccountConfirmationDialog();
+              },
+              child: Text(
+                'Continue',
+                style: AppTypography.body.copyWith(
+                  color: AppColors.appleRed,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Build data row for account deletion summary
+  Widget _buildDataRow(String label, int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: AppTypography.caption),
+          Text(
+            count.toString(),
+            style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show final confirmation dialog with typing verification
+  Future<void> _showDeleteAccountConfirmationDialog() async {
+    String confirmationText = '';
+    bool isDeleting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.eggshell,
+              title: Text(
+                'Final Confirmation',
+                style: AppTypography.h2.copyWith(color: AppColors.appleRed),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Type "DELETE" to permanently delete your account:',
+                    style: AppTypography.body,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    enabled: !isDeleting,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        confirmationText = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'DELETE',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (isDeleting) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+                  ),
+                ),
+                TextButton(
+                  onPressed: confirmationText == 'DELETE' && !isDeleting
+                      ? () => _executeAccountDeletion(setDialogState)
+                      : null,
+                  child: Text(
+                    isDeleting ? 'Deleting...' : 'Delete Account',
+                    style: AppTypography.body.copyWith(
+                      color: confirmationText == 'DELETE' && !isDeleting
+                          ? AppColors.appleRed
+                          : AppColors.soilTaupe,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Execute the account deletion process
+  Future<void> _executeAccountDeletion(StateSetter setDialogState) async {
+    setDialogState(() {
+      // This will be used to update the dialog state
+    });
+
+    final accountDeletionService = AccountDeletionService(
+      hiveService: main.hiveService,
+    );
+
+    try {
+      String currentProgress = 'Starting deletion process...';
+      
+      setDialogState(() {
+        currentProgress = 'Starting deletion process...';
+      });
+
+      await accountDeletionService.deleteAccountCompletely(
+        onProgress: (progress) {
+          if (mounted) {
+            setDialogState(() {
+              currentProgress = progress;
+            });
+          }
+          developer.log(
+            '[SettingsScreen] Account deletion progress: $progress',
+            name: 'SettingsScreen',
+          );
+        },
+      );
+
+      // Account deletion successful - close dialog and navigate to auth
+      if (mounted) {
+        Navigator.of(context).pop(); // Close dialog
+        
+        // Navigate to auth screen
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/',
+          (route) => false,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: AppColors.leafGreen,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      developer.log(
+        '[SettingsScreen] Account deletion failed: $e',
+        name: 'SettingsScreen',
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close dialog
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: $e'),
+            backgroundColor: AppColors.appleRed,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 }

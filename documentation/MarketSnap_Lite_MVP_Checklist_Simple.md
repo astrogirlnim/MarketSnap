@@ -142,6 +142,19 @@ Legend:
   - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
   - [ ] Unit test: conversation auto-deletes after 24 h.
 
+- [X] **8. Individual Snap Deletion**
+  - [X] Add delete button UI to user's own snaps in feed.
+  - [X] Implement snap deletion service with Firestore + Storage cleanup.
+  - [X] Add confirmation dialog for snap deletion.
+  - [X] Remove snap from local pending queue if not yet uploaded.
+
+- [X] **9. Complete Account Deletion**
+  - [X] Add "Delete Account" option in Settings screen.
+  - [X] Implement comprehensive account cleanup service.
+  - [X] Delete user data: profile, snaps, messages, pending queue.
+  - [X] Show deletion progress and confirmation flow.
+  - [X] Handle Firebase auth account deletion with re-authentication.
+
 
 ---
 

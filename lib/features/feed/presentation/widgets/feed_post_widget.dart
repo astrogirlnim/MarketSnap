@@ -13,6 +13,7 @@ class FeedPostWidget extends StatefulWidget {
   final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onShare;
+  final VoidCallback? onDelete;
   final bool isCurrentUserPost;
 
   const FeedPostWidget({
@@ -21,6 +22,7 @@ class FeedPostWidget extends StatefulWidget {
     this.onLike,
     this.onComment,
     this.onShare,
+    this.onDelete,
     this.isCurrentUserPost = false,
   });
 
@@ -154,6 +156,29 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             _formatTimestamp(widget.snap.createdAt),
             style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
+
+          // Delete button for user's own posts
+          if (widget.isCurrentUserPost) ...[
+            const SizedBox(width: AppSpacing.sm),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _showDeleteConfirmationDialog();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.appleRed.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AppColors.appleRed,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -361,5 +386,47 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     } else {
       return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
+  }
+
+  /// Show confirmation dialog before deleting snap
+  void _showDeleteConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.eggshell,
+          title: Text(
+            'Delete Snap',
+            style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+          ),
+          content: Text(
+            'Are you sure you want to delete this snap? This action cannot be undone.',
+            style: AppTypography.body,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onDelete?.call();
+              },
+              child: Text(
+                'Delete',
+                style: AppTypography.body.copyWith(
+                  color: AppColors.appleRed,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
