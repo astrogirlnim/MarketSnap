@@ -36,6 +36,7 @@
     -   **✅ Camera Preview & Photo Capture:** Full camera interface with photo capture, flash controls, camera switching, and modern UI.
     -   **✅ 5-Second Video Recording:** Complete video recording with auto-stop, live countdown, cross-platform support, and emulator optimizations.
     -   **✅ Critical Hive Database Fix:** Resolved LateInitializationError and unknown typeId conflicts that were causing app crashes.
+    -   **✅ Camera Resume & Re-Initialization:** Camera preview is always restored after posting and returning to the camera screen; no more 'Camera not available' errors.
 
 ## What's Left to Build
 
@@ -657,6 +658,28 @@ NEW_VERSION="${NEW_SEMANTIC_VERSION}+${GITHUB_RUN_NUM}"
 - ✅ **Expected Outcome:** New posts will now be correctly read from the queue and uploaded to Firebase Storage and Firestore.
 
 **Status:** ✅ **RESOLVED** - This was the final blocker for the Phase 3.3 feed functionality. The entire media posting pipeline, from local queuing to cloud upload, is now functional.
+
+### **✅ Camera Resume & Re-Initialization Fix (January 25, 2025)**
+
+**Problem:**
+- After posting media and returning to the camera screen, the camera preview displayed 'Camera not available'.
+- This was due to the camera controller not being properly re-initialized after being paused/disposed when navigating to the review screen.
+
+**Root Cause:**
+- The camera was paused/disposed to prevent buffer overflow during LUT processing, but the UI did not always trigger a full re-initialization of the camera controller when returning.
+
+**Solution Implemented:**
+- After resuming the camera when returning from the review screen, the code now always calls `_initializeCamera()` to ensure the camera controller is properly re-initialized and the preview is available.
+- This guarantees the camera preview is restored and available every time the user returns to the camera screen after posting or reviewing media.
+
+**Files Modified:**
+- `lib/features/capture/presentation/screens/camera_preview_screen.dart`: Added logic to re-initialize the camera after resume.
+
+**Validation Results:**
+- ✅ Camera preview is always available after posting and returning to the camera screen
+- ✅ No more 'Camera not available' errors
+
+**Status:** ✅ **RESOLVED** - Camera reliably resumes and re-initializes after posting media
 
 ---
 

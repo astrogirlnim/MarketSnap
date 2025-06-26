@@ -312,4 +312,28 @@ This comprehensive buffer overflow fix addresses the root causes of ImageReader 
 
 The implementation follows Flutter best practices and provides a solid foundation for future camera feature development while eliminating the buffer overflow warnings that were impacting the development experience.
 
-**Status: ✅ COMPLETE** - Ready for production deployment with comprehensive buffer overflow prevention. 
+**Status: ✅ COMPLETE** - Ready for production deployment with comprehensive buffer overflow prevention.
+
+---
+
+## ✅ Camera Resume & Re-Initialization After Posting Media (January 25, 2025)
+
+**Problem:**
+- After posting media and returning to the camera screen, the camera preview displayed 'Camera not available'.
+- This was due to the camera controller not being properly re-initialized after being paused/disposed when navigating to the review screen.
+
+**Root Cause:**
+- The camera was paused/disposed to prevent buffer overflow during LUT processing, but the UI did not always trigger a full re-initialization of the camera controller when returning.
+
+**Solution Implemented:**
+- After resuming the camera when returning from the review screen, the code now always calls `_initializeCamera()` to ensure the camera controller is properly re-initialized and the preview is available.
+- This guarantees the camera preview is restored and available every time the user returns to the camera screen after posting or reviewing media.
+
+**Files Modified:**
+- `lib/features/capture/presentation/screens/camera_preview_screen.dart`: Added logic to re-initialize the camera after resume.
+
+**Validation Results:**
+- ✅ Camera preview is always available after posting and returning to the camera screen
+- ✅ No more 'Camera not available' errors
+
+**Status:** ✅ **COMPLETE** - Camera reliably resumes and re-initializes after posting media 

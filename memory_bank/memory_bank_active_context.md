@@ -423,6 +423,28 @@ developer.log('[FeedService] Setting up real-time stories stream', name: 'FeedSe
 - Added database corruption recovery mechanisms
 - Complete code quality validation (analysis, formatting, linting, testing)
 
+### **✅ Camera Resume & Re-Initialization Fix (January 25, 2025):**
+
+**Problem:**
+- After posting media and returning to the camera screen, the camera preview displayed 'Camera not available'.
+- This was due to the camera controller not being properly re-initialized after being paused/disposed when navigating to the review screen.
+
+**Root Cause:**
+- The camera was paused/disposed to prevent buffer overflow during LUT processing, but the UI did not always trigger a full re-initialization of the camera controller when returning.
+
+**Solution Implemented:**
+- After resuming the camera when returning from the review screen, the code now always calls `_initializeCamera()` to ensure the camera controller is properly re-initialized and the preview is available.
+- This guarantees the camera preview is restored and available every time the user returns to the camera screen after posting or reviewing media.
+
+**Files Modified:**
+- `lib/features/capture/presentation/screens/camera_preview_screen.dart`: Added logic to re-initialize the camera after resume.
+
+**Validation Results:**
+- ✅ Camera preview is always available after posting and returning to the camera screen
+- ✅ No more 'Camera not available' errors
+
+**Status:** ✅ **COMPLETE** - Camera reliably resumes and re-initializes after posting media
+
 ## Current Status
 
 **Authentication System:** ✅ **PRODUCTION READY**
