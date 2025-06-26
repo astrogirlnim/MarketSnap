@@ -95,6 +95,12 @@ Future<void> main() async {
 
   // Initialize Firebase App Check with proper configuration
   try {
+    // IMPORTANT for Android builds:
+    // Ensure your debug and release SHA-1 certificate fingerprints are registered
+    // in the Firebase console for your Android app settings.
+    // Without the correct SHA-1, App Check (and Google Sign-In) will fail.
+    // To get your debug SHA-1, run this in your project's `android` directory:
+    // ./gradlew signingReport
     if (kDebugMode) {
       // Use debug provider for development
       await FirebaseAppCheck.instance.activate(
@@ -105,31 +111,16 @@ Future<void> main() async {
     } else {
       // Use production providers for release builds
       debugPrint('[main] Initializing Firebase App Check for production...');
-
-      try {
-        await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.playIntegrity,
-          appleProvider: AppleProvider.deviceCheck,
-        );
-        debugPrint(
-          '[main] Firebase App Check initialized with production providers.',
-        );
-      } catch (appCheckError) {
-        debugPrint('[main] Production App Check failed: $appCheckError');
-
-        // Fallback to debug provider if production fails
-        debugPrint('[main] Falling back to debug App Check provider...');
-        await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.debug,
-          appleProvider: AppleProvider.debug,
-        );
-        debugPrint(
-          '[main] Firebase App Check initialized with debug fallback.',
-        );
-      }
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.deviceCheck,
+      );
+      debugPrint(
+        '[main] Firebase App Check initialized with production providers.',
+      );
     }
 
-    // Verify App Check is working
+    // Verify App Check is working by trying to get a token
     try {
       final token = await FirebaseAppCheck.instance.getToken(true);
       if (token != null) {
