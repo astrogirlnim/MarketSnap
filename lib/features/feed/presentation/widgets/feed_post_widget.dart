@@ -1,128 +1,151 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:marketsnap/features/feed/domain/models/snap_model.dart';
-import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
+import '../../domain/models/snap_model.dart';
+import '../../../../shared/presentation/theme/app_colors.dart';
+import '../../../../shared/presentation/theme/app_typography.dart';
+import '../../../../shared/presentation/theme/app_spacing.dart';
 
-class FeedPostWidget extends StatelessWidget {
+/// Individual feed post widget displaying a snap with media and interactions
+/// Handles both photo and video content with proper aspect ratios
+class FeedPostWidget extends StatefulWidget {
   final Snap snap;
+  final VoidCallback? onLike;
+  final VoidCallback? onComment;
+  final VoidCallback? onShare;
   final bool isCurrentUserPost;
 
   const FeedPostWidget({
-    super.key, 
+    super.key,
     required this.snap,
+    this.onLike,
+    this.onComment,
+    this.onShare,
     this.isCurrentUserPost = false,
   });
 
   @override
+  State<FeedPostWidget> createState() => _FeedPostWidgetState();
+}
+
+class _FeedPostWidgetState extends State<FeedPostWidget> {
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  /// Initialize video player if the snap contains video content
+  void _initializeVideo() {
+    if (widget.snap.mediaType == MediaType.video && widget.snap.mediaUrl.isNotEmpty) {
+      _videoController = VideoPlayerController.file(File(widget.snap.mediaUrl))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _isVideoInitialized = true;
+            });
+          }
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      elevation: isCurrentUserPost ? 6 : 4, // Slightly more elevation for user's posts
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isCurrentUserPost 
-          ? const BorderSide(color: AppColors.marketBlue, width: 2) // Blue border for user's posts
-          : BorderSide.none,
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.eggshell,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Container(
-        decoration: isCurrentUserPost
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.marketBlue.withOpacity(0.05),
-                  Colors.transparent,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            )
-          : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildMedia(),
-            _buildFooter(),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with vendor info
+          _buildHeader(),
+          
+          // Media content
+          _buildMediaContent(),
+          
+          // Caption and interactions
+          _buildContent(),
+          
+          // Action buttons
+          _buildActionButtons(),
+        ],
       ),
     );
   }
 
+  /// Build the header section with vendor information
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: _getImageProvider(snap.vendorAvatarUrl),
-                backgroundColor: AppColors.eggshell,
+          // Vendor avatar
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.marketBlue,
+            child: Text(
+              widget.snap.vendorName.isNotEmpty 
+                  ? widget.snap.vendorName[0].toUpperCase()
+                  : 'V',
+              style: AppTypography.bodyLG.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
-              // Add a blue ring around user's own avatar
-              if (isCurrentUserPost)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.marketBlue,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
+          
+          // Vendor info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      snap.vendorName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isCurrentUserPost ? AppColors.marketBlue : null,
-                      ),
-                    ),
-                    if (isCurrentUserPost) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.marketBlue,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'You',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  widget.snap.vendorName,
+                  style: AppTypography.h2.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: widget.isCurrentUserPost ? AppColors.marketBlue : AppColors.soilCharcoal,
+                  ),
                 ),
-                if (isCurrentUserPost)
-                  const Text(
+                if (widget.isCurrentUserPost) ...[
+                  const SizedBox(height: 2),
+                  Text(
                     'Your post',
-                    style: TextStyle(
+                    style: AppTypography.caption.copyWith(
                       color: AppColors.marketBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
+                ],
               ],
+            ),
+          ),
+          
+          // Timestamp
+          Text(
+            _formatTimestamp(widget.snap.createdAt),
+            style: AppTypography.caption.copyWith(
+              color: AppColors.soilTaupe,
             ),
           ),
         ],
@@ -130,97 +153,183 @@ class FeedPostWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMedia() {
-    // Handle data URLs differently from regular URLs
-    if (snap.mediaUrl.startsWith('data:image/')) {
-      return Container(
-        height: 300,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: _getImageProvider(snap.mediaUrl),
-            fit: BoxFit.cover,
-          ),
-          border: isCurrentUserPost 
-            ? const Border(
-                left: BorderSide(color: AppColors.marketBlue, width: 2),
-                right: BorderSide(color: AppColors.marketBlue, width: 2),
-              )
-            : null,
-        ),
-      );
+  /// Build the media content section
+  Widget _buildMediaContent() {
+    if (widget.snap.mediaUrl.isEmpty) {
+      return const SizedBox.shrink();
     }
 
-    // Use CachedNetworkImage for regular URLs
     return Container(
-      decoration: isCurrentUserPost 
-        ? const BoxDecoration(
-            border: Border(
-              left: BorderSide(color: AppColors.marketBlue, width: 2),
-              right: BorderSide(color: AppColors.marketBlue, width: 2),
-            ),
-          )
-        : null,
-      child: CachedNetworkImage(
-        imageUrl: snap.mediaUrl,
-        placeholder: (context, url) => Container(
-          height: 300,
-          color: AppColors.eggshell,
-          child: const Center(child: CircularProgressIndicator()),
+      width: double.infinity,
+      constraints: const BoxConstraints(
+        maxHeight: 400,
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(8),
+          bottom: Radius.circular(8),
         ),
-        errorWidget: (context, url, error) => Container(
-          height: 300,
-          color: AppColors.eggshell,
-          child: const Icon(Icons.error, color: AppColors.appleRed),
-        ),
-        fit: BoxFit.cover,
+        child: widget.snap.mediaType == MediaType.video
+            ? _buildVideoPlayer()
+            : _buildImageDisplay(),
       ),
     );
   }
 
-  Widget _buildFooter() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  /// Build video player widget
+  Widget _buildVideoPlayer() {
+    if (_videoController == null || !_isVideoInitialized) {
+      return Container(
+        height: 300,
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.marketBlue,
+          ),
+        ),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: _videoController!.value.aspectRatio,
+      child: Stack(
         children: [
-          if (snap.caption != null && snap.caption!.isNotEmpty) ...[
-            Text(
-              snap.caption!,
-              style: TextStyle(
-                color: isCurrentUserPost ? AppColors.marketBlue : null,
-                fontWeight: isCurrentUserPost ? FontWeight.w500 : FontWeight.normal,
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Row(
-            children: [
-              Text(
-                'Posted: ${_formatTimestamp(snap.createdAt)}',
-                style: TextStyle(
-                  color: isCurrentUserPost ? AppColors.marketBlue.withOpacity(0.8) : Colors.grey, 
-                  fontSize: 12,
-                ),
-              ),
-              if (isCurrentUserPost) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.check_circle,
-                  size: 16,
-                  color: AppColors.leafGreen,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Posted',
-                  style: TextStyle(
-                    color: AppColors.leafGreen,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+          VideoPlayer(_videoController!),
+          
+          // Play/pause overlay
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_videoController!.value.isPlaying) {
+                    _videoController!.pause();
+                  } else {
+                    _videoController!.play();
+                  }
+                });
+              },
+              child: Container(
+                color: Colors.transparent,
+                child: Center(
+                  child: AnimatedOpacity(
+                    opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.soilCharcoal.withValues(alpha: 0.7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build image display widget
+  Widget _buildImageDisplay() {
+    return Image.file(
+      File(widget.snap.mediaUrl),
+      fit: BoxFit.cover,
+      width: double.infinity,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('[FeedPostWidget] Error loading image: $error');
+        return Container(
+          height: 200,
+          color: AppColors.seedBrown,
+          child: const Center(
+            child: Icon(
+              Icons.image_not_supported,
+              size: 48,
+              color: AppColors.soilTaupe,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build the content section with caption
+  Widget _buildContent() {
+    if (widget.snap.caption == null || widget.snap.caption!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Text(
+        widget.snap.caption!,
+        style: AppTypography.body,
+      ),
+    );
+  }
+
+  /// Build action buttons (like, comment, share)
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          _buildActionButton(
+            icon: Icons.favorite_border,
+            label: 'Like',
+            onTap: widget.onLike,
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          _buildActionButton(
+            icon: Icons.chat_bubble_outline,
+            label: 'Comment',
+            onTap: widget.onComment,
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          _buildActionButton(
+            icon: Icons.share_outlined,
+            label: 'Share',
+            onTap: widget.onShare,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build individual action button
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap?.call();
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: AppColors.soilTaupe,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.soilTaupe,
+            ),
           ),
         ],
       ),
@@ -231,34 +340,17 @@ class FeedPostWidget extends StatelessWidget {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
-  }
 
-  /// Helper method to get the appropriate ImageProvider for URLs or data URLs
-  ImageProvider _getImageProvider(String imageUrl) {
-    if (imageUrl.startsWith('data:image/')) {
-      // Handle data URLs
-      try {
-        final base64String = imageUrl.split(',')[1];
-        final bytes = base64Decode(base64String);
-        return MemoryImage(bytes);
-      } catch (e) {
-        print('[FeedPostWidget] Error decoding data URL: $e');
-        // Fallback to a simple colored container
-        return const AssetImage('assets/images/icon.png'); // Fallback
-      }
+    if (difference.inMinutes < 1) {
+      return 'now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d';
     } else {
-      // Handle regular URLs
-      return NetworkImage(imageUrl);
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
 } 

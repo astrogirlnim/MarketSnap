@@ -1,72 +1,106 @@
 import 'package:flutter/material.dart';
-import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
-import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
-import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import '../../domain/models/story_item_model.dart';
+import '../../../../shared/presentation/theme/app_colors.dart';
+import '../../../../shared/presentation/theme/app_typography.dart';
+import '../../../../shared/presentation/theme/app_spacing.dart';
 
+/// Horizontal carousel widget for displaying vendor stories
+/// Shows story rings with progress indicators and vendor names
 class StoryCarouselWidget extends StatelessWidget {
   final List<StoryItem> stories;
+  final Function(StoryItem)? onStoryTap;
 
-  const StoryCarouselWidget({super.key, required this.stories});
+  const StoryCarouselWidget({
+    super.key,
+    required this.stories,
+    this.onStoryTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 110,
+    if (stories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      height: 100,
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         itemCount: stories.length,
         itemBuilder: (context, index) {
           final story = stories[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Column(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: story.hasUnseenSnaps ? AppColors.harvestOrange : Colors.grey,
-                      width: 3,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundImage: _getImageProvider(story.vendorAvatarUrl),
-                    backgroundColor: AppColors.eggshell,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  story.vendorName,
-                  style: const TextStyle(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          );
+          return _buildStoryItem(story);
         },
       ),
     );
   }
 
-  /// Helper method to get the appropriate ImageProvider for URLs or data URLs
-  ImageProvider _getImageProvider(String imageUrl) {
-    if (imageUrl.startsWith('data:image/')) {
-      // Handle data URL
-      try {
-        final base64String = imageUrl.split(',')[1];
-        final bytes = base64Decode(base64String);
-        return MemoryImage(bytes);
-      } catch (e) {
-        // Fallback to a placeholder if data URL parsing fails
-        return const AssetImage('assets/images/icon.png');
-      }
-    } else {
-      // Handle regular URL
-      return NetworkImage(imageUrl);
-    }
+  /// Build individual story item with ring and vendor name
+  Widget _buildStoryItem(StoryItem story) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onStoryTap?.call(story);
+      },
+      child: Container(
+        width: 70,
+        margin: const EdgeInsets.only(right: AppSpacing.sm),
+        child: Column(
+          children: [
+            // Story ring with progress indicator
+            Stack(
+              children: [
+                // Progress ring background
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: story.hasUnseenSnaps 
+                          ? AppColors.harvestOrange 
+                          : AppColors.seedBrown,
+                      width: 2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: CircleAvatar(
+                      backgroundColor: AppColors.marketBlue,
+                      child: Text(
+                        story.vendorName.isNotEmpty 
+                            ? story.vendorName[0].toUpperCase()
+                            : 'V',
+                        style: AppTypography.bodyLG.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: AppSpacing.xs),
+            
+            // Vendor name
+            Text(
+              story.vendorName,
+              style: AppTypography.caption.copyWith(
+                color: AppColors.soilCharcoal,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 } 

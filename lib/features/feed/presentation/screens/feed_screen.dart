@@ -100,11 +100,9 @@ class _FeedScreenState extends State<FeedScreen> {
           delegate: SliverChildBuilderDelegate(
             (context, index) {
               final snap = snaps[index];
-              final isCurrentUserSnap = _feedService.isCurrentUserSnap(snap);
-              
               return FeedPostWidget(
                 snap: snap,
-                isCurrentUserPost: isCurrentUserSnap,
+                isCurrentUserPost: snap.vendorId == _feedService.currentUserId,
               );
             },
             childCount: snaps.length,
