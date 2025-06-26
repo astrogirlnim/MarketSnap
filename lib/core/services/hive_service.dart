@@ -58,12 +58,12 @@ class HiveService {
     }
   }
 
-  Future<HiveCipher> _getEncryptionCipher() async {
+  Future<HiveAesCipher> _getEncryptionCipher() async {
     final encryptionKey = await _secureStorageService.getHiveEncryptionKey();
     return HiveAesCipher(encryptionKey);
   }
 
-  Future<void> _openBoxes(HiveCipher cipher) async {
+  Future<void> _openBoxes(HiveAesCipher cipher) async {
     try {
       await _openBoxWithRecovery<PendingMediaItem>(
         pendingMediaQueueBoxName,
@@ -158,13 +158,13 @@ class HiveService {
 
       // Create a new item with the updated path
       final quarantinedItem = PendingMediaItem(
-        id: item.id,
         filePath: newFile.path,
-        caption: item.caption,
         mediaType: item.mediaType,
+        caption: item.caption,
         location: item.location,
-        createdAt: item.createdAt,
         vendorId: item.vendorId,
+        id: item.id,
+        createdAt: item.createdAt,
       );
 
       // Use the ID from the new quarantined item as the key

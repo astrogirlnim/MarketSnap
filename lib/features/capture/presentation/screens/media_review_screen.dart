@@ -42,6 +42,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   bool _isPosting = false;
 
   // Video player (if media is video)
+  late bool _isPhoto;
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
 
@@ -117,17 +118,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   }
 
   /// Apply selected filter to the image
-  Future<void> _applyFilter(String filterName) async {
+  Future<void> _applyFilter(LutFilterType filterType) async {
     if (_isApplyingFilter) return;
 
     setState(() {
       _isApplyingFilter = true;
-      _selectedFilter = filterName;
+      _selectedFilter = filterType;
     });
 
     try {
-      final newPath =
-          await _lutFilterService.applyFilterToImage(widget.mediaPath, filterName);
+      final newPath = await _lutFilterService.applyFilterToImage(
+        inputImagePath: widget.mediaPath,
+        filterType: filterType,
+      );
 
       if (newPath != null) {
         // Clean up the previously filtered image if it exists
@@ -167,21 +170,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final mediaPath = _filteredImagePath ?? widget.mediaPath;
       final caption = _captionController.text;
       final mediaType = widget.mediaType;
-      // Note: location is not implemented in this screen yet
 
       final pendingItem = PendingMediaItem(
-        id: Uuid().v4(),
         filePath: mediaPath,
         caption: caption,
         mediaType: mediaType,
-        createdAt: DateTime.now(),
         vendorId: currentUser.uid,
+        // Let constructor handle id and createdAt
       );
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
       // Trigger immediate sync
-      await widget.backgroundSyncService.triggerImmediateSync();
+      await backgroundSyncService.triggerImmediateSync();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +344,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             filterType: filterType,
             isSelected: isSelected,
             mediaPath: widget.mediaPath,
-            onTap: () => _applyFilter(filterType.name),
+            onTap: () => _applyFilter(filterType),
             lutFilterService: _lutFilterService,
           );
         },

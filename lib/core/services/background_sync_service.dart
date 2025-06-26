@@ -232,9 +232,8 @@ Future<void> _uploadPendingItem(
   if (hiveService != null) {
     final profile = await hiveService.getVendorProfile(user.uid);
     if (profile != null) {
-      vendorName =
-          profile.displayName ?? profile.stallName ?? 'Unknown Vendor';
-      vendorAvatarUrl = profile.avatarUrl ?? '';
+      vendorName = profile.displayName;
+      vendorAvatarUrl = profile.avatarURL ?? '';
       debugPrint('$logPrefix Fetched vendor profile from Hive: $vendorName');
     }
   } else {
@@ -248,7 +247,7 @@ Future<void> _uploadPendingItem(
       vendorName = vendorData['displayName'] ??
           vendorData['stallName'] ??
           'Unknown Vendor';
-      vendorAvatarUrl = vendorData['avatarUrl'] ?? '';
+      vendorAvatarUrl = vendorData['avatarURL'] ?? '';
       debugPrint('$logPrefix Fetched vendor profile from Firestore: $vendorName');
     }
   }
@@ -291,6 +290,9 @@ String _getFileExtension(String filePath) {
 class BackgroundSyncService {
   static const String _uniqueTaskName = syncTaskName;
   static const String _oneOffTaskName = "${syncTaskName}_oneoff";
+
+  // Track whether a sync is currently in progress
+  bool _isSyncing = false;
 
   // Track iOS executions in memory (since SharedPreferences doesn't work in background isolate)
   static DateTime? _lastIOSExecution;
