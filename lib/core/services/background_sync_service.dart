@@ -199,6 +199,13 @@ Future<void> _uploadPendingItem(
 }) async {
   final logPrefix = isInBackground ? '[Background Isolate]' : '[Main Isolate]';
 
+  debugPrint('$logPrefix Processing pending item:');
+  debugPrint('$logPrefix - ID: ${pendingItem.id}');
+  debugPrint('$logPrefix - MediaType: ${pendingItem.mediaType}');
+  debugPrint('$logPrefix - FilterType: "${pendingItem.filterType}"');
+  debugPrint('$logPrefix - FilePath: ${pendingItem.filePath}');
+  debugPrint('$logPrefix - Caption: ${pendingItem.caption}');
+  
   debugPrint('$logPrefix Uploading media item: ${pendingItem.id}');
 
   final file = File(pendingItem.filePath);
