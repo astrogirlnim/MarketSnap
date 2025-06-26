@@ -18,6 +18,7 @@ import 'features/capture/presentation/screens/camera_preview_screen.dart';
 import 'features/capture/application/lut_filter_service.dart';
 import 'features/profile/application/profile_service.dart';
 import 'features/profile/presentation/screens/vendor_profile_screen.dart';
+import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
@@ -282,36 +283,22 @@ class AuthWrapper extends StatelessWidget {
               // Check if user has a complete profile
               if (profileService.hasCompleteProfile()) {
                 debugPrint(
-                  '[AuthWrapper] Profile complete - redirecting to camera',
+                  '[AuthWrapper] Profile complete, navigating to MainShellScreen',
                 );
-                return const CameraPreviewScreen();
+                return const MainShellScreen();
               } else {
                 debugPrint(
-                  '[AuthWrapper] Profile incomplete - redirecting to profile setup',
+                  '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
                 );
-                return VendorProfileScreen(
-                  profileService: profileService,
-                  onProfileComplete: () {
-                    debugPrint(
-                      '[AuthWrapper] Profile completed - refreshing auth wrapper',
-                    );
-                    // Trigger a rebuild by navigating back to main screen
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const MyApp()),
-                      (route) => false,
-                    );
-                  },
-                );
+                return const VendorProfileScreen();
               }
             },
           );
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
-        debugPrint('[AuthWrapper] User not authenticated, showing auth screen');
-        return kDebugMode
-            ? const DevelopmentAuthScreen()
-            : const AuthWelcomeScreen();
+        debugPrint('[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen');
+        return const AuthWelcomeScreen();
       },
     );
   }

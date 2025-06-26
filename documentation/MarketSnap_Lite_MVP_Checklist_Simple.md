@@ -86,10 +86,10 @@ Legend:
   - [X] 5‑sec video record button with live countdown. ✅ **COMPLETED** - Full video recording with 5-second auto-stop, live countdown display, cross-platform support, and simulator mode compatibility.
   - [X] Review screen → apply LUT filter → "Post" button. ✅ **COMPLETED** - Full media review screen with LUT filter application (warm, cool, contrast), caption input, and post functionality. Integrates with Hive queue for background upload.
 
-- [ ] **3. Story Reel & Feed**
-  - [ ] Horizontal story carousel per vendor with 24 h TTL badge.
-  - [ ] Vertical feed showing latest three snaps per followed vendor.
-  - [ ] Thumbnail placeholder until media downloads completes.
+- [X] **3. Story Reel & Feed**
+  - [X] Horizontal story carousel per vendor with 24 h TTL badge.
+  - [X] Vertical feed showing latest three snaps per followed vendor.
+  - [X] Thumbnail placeholder until media downloads completes.
 
 - [ ] **4. Settings & Help**
   - [ ] Toggles: coarse location, auto‑compress video, save‑to‑device default.
