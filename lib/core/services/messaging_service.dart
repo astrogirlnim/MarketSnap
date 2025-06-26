@@ -70,33 +70,32 @@ class MessagingService {
     int limit = 50,
   }) {
     debugPrint(
-      '[MessagingService] Getting conversation messages between $userId1 and $userId2',
+      '[MessagingService] Getting conversation messages between $userId1 and $userId2 using participants field',
     );
 
-    // Create conversation ID by sorting UIDs for consistency
+    // Create a sorted list of participants to match the stored array
     final participants = [userId1, userId2]..sort();
-    final conversationId = '${participants[0]}_${participants[1]}';
 
-    debugPrint('[MessagingService] Using conversation ID: $conversationId');
+    debugPrint('[MessagingService] Using participants for query: $participants');
 
     return _firestore
         .collection('messages')
-        .where('conversationId', isEqualTo: conversationId)
+        .where('participants', isEqualTo: participants)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-          debugPrint(
-            '[MessagingService] Received ${snapshot.docs.length} messages for conversation $conversationId',
-          );
+      debugPrint(
+        '[MessagingService] Received ${snapshot.docs.length} messages for participants $participants',
+      );
 
-          return snapshot.docs
-              .map((doc) => Message.fromFirestore(doc))
-              .where(
-                (message) => !message.hasExpired,
-              ) // Filter out expired messages
-              .toList();
-        });
+      return snapshot.docs
+          .map((doc) => Message.fromFirestore(doc))
+          .where(
+            (message) => !message.hasExpired,
+          ) // Filter out expired messages
+          .toList();
+    });
   }
 
   /// Gets all conversations for a user
@@ -188,14 +187,13 @@ class MessagingService {
     );
 
     try {
-      // Create conversation ID
+      // Create a sorted list of participants to match the stored array
       final participants = [userId1, userId2]..sort();
-      final conversationId = '${participants[0]}_${participants[1]}';
 
       // Get unread messages where current user is the recipient
       final unreadMessages = await _firestore
           .collection('messages')
-          .where('conversationId', isEqualTo: conversationId)
+          .where('participants', isEqualTo: participants)
           .where('toUid', isEqualTo: currentUserId)
           .where('isRead', isEqualTo: false)
           .get();
@@ -209,7 +207,7 @@ class MessagingService {
       await batch.commit();
 
       debugPrint(
-        '[MessagingService] Marked ${unreadMessages.docs.length} messages as read in conversation $conversationId',
+        '[MessagingService] Marked ${unreadMessages.docs.length} messages as read in conversation between $userId1 and $userId2',
       );
     } catch (e) {
       debugPrint('[MessagingService] Error marking conversation as read: $e');

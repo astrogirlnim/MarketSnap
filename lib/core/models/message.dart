@@ -18,6 +18,9 @@ class Message {
   /// Conversation identifier (typically "fromUid_toUid" sorted)
   final String conversationId;
 
+  /// List of participant UIDs for secure querying
+  final List<String> participants;
+
   /// When the message was created
   final DateTime createdAt;
 
@@ -33,6 +36,7 @@ class Message {
     required this.toUid,
     required this.text,
     required this.conversationId,
+    required this.participants,
     required this.createdAt,
     required this.expiresAt,
     this.isRead = false,
@@ -57,6 +61,7 @@ class Message {
       toUid: toUid,
       text: text,
       conversationId: conversationId,
+      participants: participants,
       createdAt: now,
       expiresAt: expiresAt,
       isRead: false,
@@ -67,12 +72,18 @@ class Message {
   factory Message.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
+    // Backwards compatibility for old messages without participants field
+    final participants = data['participants'] != null
+        ? List<String>.from(data['participants'])
+        : ([data['fromUid'] as String, data['toUid'] as String]..sort());
+
     return Message(
       messageId: doc.id,
       fromUid: data['fromUid'] as String,
       toUid: data['toUid'] as String,
       text: data['text'] as String,
       conversationId: data['conversationId'] as String,
+      participants: participants,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       expiresAt: (data['expiresAt'] as Timestamp).toDate(),
       isRead: data['isRead'] as bool? ?? false,
@@ -86,6 +97,7 @@ class Message {
       'toUid': toUid,
       'text': text,
       'conversationId': conversationId,
+      'participants': participants,
       'createdAt': Timestamp.fromDate(createdAt),
       'expiresAt': Timestamp.fromDate(expiresAt),
       'isRead': isRead,
@@ -99,6 +111,7 @@ class Message {
     String? toUid,
     String? text,
     String? conversationId,
+    List<String>? participants,
     DateTime? createdAt,
     DateTime? expiresAt,
     bool? isRead,
@@ -109,6 +122,7 @@ class Message {
       toUid: toUid ?? this.toUid,
       text: text ?? this.text,
       conversationId: conversationId ?? this.conversationId,
+      participants: participants ?? this.participants,
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
       isRead: isRead ?? this.isRead,
@@ -150,6 +164,7 @@ class Message {
         other.toUid == toUid &&
         other.text == text &&
         other.conversationId == conversationId &&
+        other.participants.toString() == participants.toString() &&
         other.createdAt == createdAt &&
         other.expiresAt == expiresAt &&
         other.isRead == isRead;
@@ -162,6 +177,7 @@ class Message {
         toUid.hashCode ^
         text.hashCode ^
         conversationId.hashCode ^
+        participants.hashCode ^
         createdAt.hashCode ^
         expiresAt.hashCode ^
         isRead.hashCode;

@@ -35,25 +35,22 @@ service cloud.firestore {
     // Only the sender (fromUid) and recipient (toUid) can read/write messages.
     // Messages auto-expire after 24h via TTL field.
     match /messages/{messageId} {
-      // Allow read if user is authenticated AND is either the sender or recipient
-      // Note: We don't require the OTHER party to be authenticated - just that the
-      // current user is authenticated and is involved in the conversation
+      // Allow read if user is authenticated AND is a participant in the conversation
       allow read: if request.auth != null && 
-                     (request.auth.uid == resource.data.fromUid || 
-                      request.auth.uid == resource.data.toUid);
+                     request.auth.uid in resource.data.participants;
       
-      // Allow create if user is authenticated and is the sender
-      // The recipient (toUid) doesn't need to be currently authenticated
+      // Allow create if user is authenticated, is the sender, and is a participant
       allow create: if request.auth != null && 
                        request.auth.uid == request.resource.data.fromUid &&
-                       request.resource.data.toUid != null &&
+                       request.auth.uid in request.resource.data.participants &&
+                       request.resource.data.toUid in request.resource.data.participants &&
+                       request.resource.data.participants.size() == 2 &&
                        request.resource.data.text != null &&
                        request.resource.data.createdAt != null &&
                        request.resource.data.expiresAt != null &&
                        request.resource.data.conversationId != null;
       
       // Allow update only for marking messages as read, and only by the recipient
-      // The sender doesn't need to be currently authenticated for this
       allow update: if request.auth != null && 
                        request.auth.uid == resource.data.toUid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
