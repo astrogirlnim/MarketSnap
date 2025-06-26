@@ -302,13 +302,13 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     Color overlayColor = Colors.transparent;
     switch (_selectedFilter) {
       case LutFilterType.warm:
-        overlayColor = Colors.orange.withOpacity(0.3);
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
         break;
       case LutFilterType.cool:
-        overlayColor = Colors.blue.withOpacity(0.3);
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
         break;
       case LutFilterType.contrast:
-        overlayColor = Colors.black.withOpacity(0.3);
+        overlayColor = Colors.black.withValues(alpha: 0.3);
         break;
       case LutFilterType.none:
         overlayColor = Colors.transparent;

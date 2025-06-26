@@ -205,11 +205,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
-        overlayColor = Colors.orange.withOpacity(0.3);
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
       } else if (filterType == 'cool') {
-        overlayColor = Colors.blue.withOpacity(0.3);
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
       } else if (filterType == 'contrast') {
-        overlayColor = Colors.black.withOpacity(0.3);
+        overlayColor = Colors.black.withValues(alpha: 0.3);
       }
     }
 
@@ -251,7 +251,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.soilCharcoal.withOpacity(0.7),
+                      color: AppColors.soilCharcoal.withValues(alpha: 0.7),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -281,11 +281,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
-        overlayColor = Colors.orange.withOpacity(0.3);
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
       } else if (filterType == 'cool') {
-        overlayColor = Colors.blue.withOpacity(0.3);
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
       } else if (filterType == 'contrast') {
-        overlayColor = Colors.black.withOpacity(0.3);
+        overlayColor = Colors.black.withValues(alpha: 0.3);
       }
     }
 

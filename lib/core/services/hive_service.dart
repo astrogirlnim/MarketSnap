@@ -174,6 +174,7 @@ class HiveService {
         caption: item.caption,
         location: item.location,
         vendorId: item.vendorId,
+        filterType: item.filterType, // ✅ FIX: Include filterType in quarantined item
         id: item.id,
         createdAt: item.createdAt,
       );
@@ -183,7 +184,17 @@ class HiveService {
 
       // Verify the item was stored correctly
       final storedItem = pendingMediaQueueBox.get(quarantinedItem.id);
-      debugPrint('[HiveService] Verification - stored item filterType: "${storedItem?.filterType}"');
+      debugPrint('[HiveService] ✅ FIX VERIFICATION:');
+      debugPrint('[HiveService] - Original filterType: "${item.filterType}"');
+      debugPrint('[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"');
+      debugPrint('[HiveService] - Stored filterType: "${storedItem?.filterType}"');
+      
+      // Additional validation
+      if (item.filterType != storedItem?.filterType) {
+        debugPrint('[HiveService] ❌ ERROR: FilterType mismatch detected!');
+      } else {
+        debugPrint('[HiveService] ✅ SUCCESS: FilterType preserved correctly');
+      }
       
       debugPrint('[HiveService] Added pending media item: ${quarantinedItem.id}');
     } catch (e) {
