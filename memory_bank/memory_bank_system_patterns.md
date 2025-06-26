@@ -67,6 +67,82 @@ graph TD
 - **LUTs**: Look-Up Table (LUT) filter images are stored in `assets/images/luts/`. This keeps them organized and separate from other UI-related images.
 - **Configuration**: All asset directories must be declared in `pubspec.yaml` under the `flutter.assets` section.
 
+## Camera Implementation Patterns
+
+### Full-Screen Camera Preview Best Practices
+Based on research and successful implementation, the correct approach for full-screen camera preview that matches user expectations from default camera apps:
+
+**✅ CORRECT APPROACH - Device Ratio + BoxFit.cover:**
+```dart
+Widget _buildCameraPreview() {
+  final controller = _cameraService.controller!;
+  final size = MediaQuery.of(context).size;
+  final deviceRatio = size.width / size.height;
+  
+  return ClipRect(
+    child: OverflowBox(
+      alignment: Alignment.center,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: size.width,
+          height: size.width / deviceRatio, // Force device aspect ratio
+          child: CameraPreview(controller),
+        ),
+      ),
+    ),
+  );
+}
+```
+
+**❌ WRONG APPROACHES to Avoid:**
+```dart
+// ❌ Causes black bars/negative space:
+return AspectRatio(
+  aspectRatio: cameraRatio, // Using camera ratio instead of device ratio
+  child: CameraPreview(controller),
+);
+
+// ❌ Causes zoom-in/stretched appearance:
+return Transform.scale(
+  scale: cameraRatio / deviceRatio, // Complex scaling calculations
+  child: CameraPreview(controller),
+);
+
+// ❌ Causes small camera with lots of negative space:
+return FittedBox(
+  fit: BoxFit.fitWidth, // fitWidth instead of cover
+  child: SizedBox(
+    width: size.width,
+    height: size.width / cameraRatio, // Camera ratio instead of device ratio
+    child: CameraPreview(controller),
+  ),
+);
+```
+
+### Key Camera Implementation Principles
+1. **Fill the Entire Screen**: Default camera apps NEVER show black bars - they always fill the full screen
+2. **Use Device Aspect Ratio**: Always use `deviceRatio` for calculations, not `cameraRatio` 
+3. **Crop, Don't Preserve**: Camera preview should be cropped to match device screen, not preserved at camera's native aspect ratio
+4. **BoxFit.cover is Key**: Use `BoxFit.cover` to fill the screen and crop appropriately
+5. **Clean Widget Tree**: Use simple hierarchy: `ClipRect > OverflowBox > FittedBox > SizedBox > CameraPreview`
+
+### Camera UI Patterns
+- **Version Display**: Never overlay version numbers or UI elements on camera preview - keep interface clean
+- **Controls Positioning**: Place camera controls (capture, flash, switch) outside the preview area
+- **Debug Logging**: Include comprehensive debug logging for camera ratios and sizes during development:
+  ```dart
+  debugPrint('[CameraPreview] Device ratio: $deviceRatio');
+  debugPrint('[CameraPreview] Camera ratio: $cameraRatio'); 
+  debugPrint('[CameraPreview] Using BoxFit.cover for full-screen display');
+  ```
+
+### Research Sources Referenced
+- Android Developer Documentation: Camera2 API best practices
+- Flutter camera plugin documentation and GitHub issues
+- Lightsnap Flutter camera implementation examples
+- Default camera app behavior analysis (iOS Camera, Android Camera)
+
 ## Background Processing
 - Background tasks are handled by the `workmanager` package.
 - A single `SyncPendingMediaTask` is registered to handle offline media uploads.
