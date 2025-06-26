@@ -54,6 +54,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     debugPrint(
       '[MediaReviewScreen] Initializing review screen for: ${widget.mediaPath}',
     );
+    debugPrint('[MediaReviewScreen] Received mediaPath: ${widget.mediaPath}');
+    debugPrint('[MediaReviewScreen] Received mediaType: ${widget.mediaType}');
+    debugPrint('[MediaReviewScreen] Received hiveService: ${widget.hiveService}');
 
     // Initialize caption with provided text
     if (widget.caption != null) {
@@ -255,8 +258,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final String finalMediaPath = _filteredImagePath ?? widget.mediaPath;
       final String caption = _captionController.text.trim();
 
-      debugPrint('[MediaReviewScreen] Final media path: $finalMediaPath');
-      debugPrint('[MediaReviewScreen] Caption: $caption');
+      debugPrint('[MediaReviewScreen] Preparing to queue media. Final Path: $finalMediaPath, Caption: "$caption"');
 
       // Create pending media item for upload queue
       final PendingMediaItem pendingItem = PendingMediaItem(

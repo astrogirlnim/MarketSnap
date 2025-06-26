@@ -279,6 +279,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
         // Navigate to review screen
         if (mounted) {
+          debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with path: $photoPath');
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MediaReviewScreen(
@@ -343,6 +344,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       final success = await _cameraService.startVideoRecording();
 
       if (success) {
+        // Log that recording has started, but wait for stop to get the path
+        debugPrint('[CameraPreviewScreen] Video recording started...');
         setState(() {
           _isRecordingVideo = true;
           _recordingCountdown = _cameraService.maxRecordingDuration;
@@ -429,11 +432,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
       if (videoPath != null) {
         debugPrint(
-          '[CameraPreviewScreen] Video recorded successfully: $videoPath',
+          '[CameraReviewScreen] Video recorded successfully: $videoPath',
         );
 
         // Navigate to review screen
         if (mounted) {
+          debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with path: $videoPath');
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MediaReviewScreen(

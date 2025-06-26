@@ -170,8 +170,8 @@ class HiveService {
   /// Add a pending media item to the upload queue.
   /// This now MOVES the file to a dedicated 'pending' directory to prevent duplicates.
   Future<void> addPendingMedia(PendingMediaItem item) async {
-    debugPrint('[HiveService] Adding pending media item to queue: ${item.id}');
-    debugPrint('[HiveService] Original file path: ${item.filePath}');
+    debugPrint('[HiveService] Attempting to add pending media item to queue...');
+    debugPrint('[HiveService] Received item for filePath: ${item.filePath}, caption: "${item.caption}"');
 
     try {
       final File originalFile = File(item.filePath);
@@ -197,7 +197,11 @@ class HiveService {
 
       // Use the ID from the new quarantined item as the key
       await pendingMediaQueueBox.put(quarantinedItem.id, quarantinedItem);
-      debugPrint('[HiveService] Quarantined media item added to queue successfully with id: ${quarantinedItem.id}');
+      debugPrint('[HiveService] Quarantined media item added successfully.');
+      debugPrint('[HiveService]   - ID: ${quarantinedItem.id}');
+      debugPrint('[HiveService]   - Path: ${quarantinedItem.filePath}');
+      debugPrint('[HiveService]   - Caption: "${quarantinedItem.caption}"');
+      debugPrint('[HiveService]   - Queue size: ${pendingMediaQueueBox.length}');
 
     } catch (e) {
       debugPrint('[HiveService] Error adding pending media: $e');
