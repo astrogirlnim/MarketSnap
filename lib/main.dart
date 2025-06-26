@@ -83,17 +83,6 @@ Future<void> main() async {
 
       try {
         await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
-        debugPrint('[main] Storage emulator configured.');
-        
-        // Verify Storage emulator connection with test request
-        try {
-          final testRef = FirebaseStorage.instance.ref().child('test');
-          debugPrint('[main] Testing Storage emulator connection...');
-          // Just create a reference - don't upload anything yet
-          debugPrint('[main] ✅ Storage emulator reference created: ${testRef.fullPath}');
-        } catch (testError) {
-          debugPrint('[main] ⚠️  Storage emulator test failed: $testError');
-        }
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
