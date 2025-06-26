@@ -3,23 +3,138 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
+/// Enhanced with offline authentication persistence for better UX
 class AuthService {
   final FirebaseAuth _firebaseAuth;
+  
+  // Offline authentication state management
+  StreamController<User?>? _offlineAuthController;
+  User? _cachedUser;
+  bool _isOfflineMode = false;
 
   AuthService({FirebaseAuth? firebaseAuth})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance {
+    _initializeOfflineAuth();
+  }
 
-  /// Current authenticated user
-  User? get currentUser => _firebaseAuth.currentUser;
+  /// Initialize offline authentication monitoring
+  void _initializeOfflineAuth() async {
+    debugPrint('[AuthService] 🔧 Initializing offline authentication system');
+    
+    _offlineAuthController = StreamController<User?>.broadcast();
+    
+    // Monitor connectivity changes
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final isOffline = results.contains(ConnectivityResult.none);
+      _handleConnectivityChange(isOffline);
+    });
+    
+    // Check initial connectivity
+    final connectivityResult = await Connectivity().checkConnectivity();
+    _isOfflineMode = connectivityResult.contains(ConnectivityResult.none);
+    
+    debugPrint('[AuthService] 📡 Initial connectivity: ${_isOfflineMode ? 'OFFLINE' : 'ONLINE'}');
+    
+    // Monitor Firebase auth state changes when online
+    _firebaseAuth.authStateChanges().listen((User? user) {
+      debugPrint('[AuthService] 🔥 Firebase auth state changed: ${user?.uid ?? 'null'}');
+      
+      if (!_isOfflineMode) {
+        // Online: Cache the user and forward the state
+        _cachedUser = user;
+        _offlineAuthController?.add(user);
+        debugPrint('[AuthService] ✅ Cached user state updated (online)');
+      }
+    });
+    
+    // Initialize with current Firebase user if available
+    _cachedUser = _firebaseAuth.currentUser;
+    if (_cachedUser != null) {
+      debugPrint('[AuthService] 💾 Restored cached user: ${_cachedUser!.uid}');
+    }
+  }
 
-  /// Stream of authentication state changes
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  /// Handle connectivity changes
+  void _handleConnectivityChange(bool isOffline) {
+    debugPrint('[AuthService] 📡 Connectivity changed: ${isOffline ? 'OFFLINE' : 'ONLINE'}');
+    
+    if (_isOfflineMode != isOffline) {
+      _isOfflineMode = isOffline;
+      
+      if (isOffline) {
+        // Going offline: Use cached user state
+        debugPrint('[AuthService] 📱 Switching to offline mode with cached user: ${_cachedUser?.uid ?? 'none'}');
+        _offlineAuthController?.add(_cachedUser);
+      } else {
+        // Going online: Sync with Firebase
+        debugPrint('[AuthService] 🌐 Switching to online mode, syncing with Firebase');
+        final firebaseUser = _firebaseAuth.currentUser;
+        _cachedUser = firebaseUser;
+        _offlineAuthController?.add(firebaseUser);
+      }
+    }
+  }
 
-  /// Authentication state - true if user is signed in
-  bool get isAuthenticated => currentUser != null;
+  /// Current authenticated user (works offline with cached state)
+  User? get currentUser {
+    if (_isOfflineMode && _cachedUser != null) {
+      debugPrint('[AuthService] 📱 Returning cached user (offline): ${_cachedUser!.uid}');
+      return _cachedUser;
+    }
+    return _firebaseAuth.currentUser;
+  }
+
+  /// Stream of authentication state changes (works offline)
+  Stream<User?> get authStateChanges {
+    if (_offlineAuthController != null) {
+      return _offlineAuthController!.stream;
+    }
+    return _firebaseAuth.authStateChanges();
+  }
+
+  /// Authentication state - true if user is signed in (works offline)
+  bool get isAuthenticated {
+    if (_isOfflineMode && _cachedUser != null) {
+      debugPrint('[AuthService] 📱 User authenticated (offline cached): ${_cachedUser!.uid}');
+      return true;
+    }
+    return currentUser != null;
+  }
+
+  /// Check if currently in offline mode
+  bool get isOfflineMode => _isOfflineMode;
+
+  /// Sign out (clears both Firebase and cached state)
+  Future<void> signOut() async {
+    debugPrint('[AuthService] 🚪 Signing out user');
+    
+    try {
+      // Clear cached state immediately
+      _cachedUser = null;
+      _offlineAuthController?.add(null);
+      
+      // Sign out from Firebase if online
+      if (!_isOfflineMode) {
+        await _firebaseAuth.signOut();
+        debugPrint('[AuthService] ✅ Firebase sign out completed');
+      } else {
+        debugPrint('[AuthService] 📱 Offline sign out completed (cached state cleared)');
+      }
+    } catch (e) {
+      debugPrint('[AuthService] ❌ Sign out error: $e');
+      // Even if Firebase sign out fails, we've cleared the cached state
+    }
+  }
+
+  /// Dispose resources
+  void dispose() {
+    _offlineAuthController?.close();
+  }
 
   // ================================
   // PHONE NUMBER AUTHENTICATION
@@ -35,6 +150,13 @@ class AuthService {
     Function(String verificationId)? onCodeAutoRetrievalTimeout,
   }) async {
     debugPrint('[AuthService] Starting phone verification for: $phoneNumber');
+    
+    // Check if offline
+    if (_isOfflineMode) {
+      debugPrint('[AuthService] ❌ Cannot verify phone number while offline');
+      onVerificationFailed('Cannot verify phone number while offline. Please connect to the internet and try again.');
+      return '';
+    }
 
     // iOS-specific handling to prevent crashes
     if (Platform.isIOS) {
@@ -131,7 +253,12 @@ class AuthService {
     debugPrint('[AuthService] Signing in with phone credential');
 
     try {
-      return await _signInWithCredentialWrapper(credential);
+      final result = await _signInWithCredentialWrapper(credential);
+      // Update cached user after successful sign-in
+      _cachedUser = result.user;
+      _offlineAuthController?.add(result.user);
+      debugPrint('[AuthService] ✅ Phone sign-in successful, cached user updated');
+      return result;
     } catch (e) {
       debugPrint('[AuthService] Phone sign-in failed: $e');
       rethrow;
@@ -303,24 +430,6 @@ class AuthService {
   // ================================
   // GENERAL AUTHENTICATION
   // ================================
-
-  /// Signs out the current user
-  Future<void> signOut() async {
-    debugPrint('[AuthService] Signing out user...');
-    try {
-      // Also sign out from Google if that was the last sign-in method
-      if (await GoogleSignIn().isSignedIn()) {
-        await GoogleSignIn().signOut();
-        debugPrint('[AuthService] Signed out from Google');
-      }
-      await _firebaseAuth.signOut();
-      debugPrint('[AuthService] Signed out from Firebase');
-    } catch (e) {
-      debugPrint('[AuthService] Error during sign out: $e');
-      // Even if there's an error, we should probably assume sign-out happened
-      // or at least not block the user.
-    }
-  }
 
   /// Deletes the current user account
   Future<void> deleteAccount() async {
@@ -743,6 +852,13 @@ class AuthService {
   /// Signs in with Google account
   Future<UserCredential> signInWithGoogle() async {
     debugPrint('[AuthService] Initiating Google Sign-In');
+    
+    // Check if offline
+    if (_isOfflineMode) {
+      debugPrint('[AuthService] ❌ Cannot sign in with Google while offline');
+      throw Exception('Cannot sign in with Google while offline. Please connect to the internet and try again.');
+    }
+    
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
@@ -758,7 +874,14 @@ class AuthService {
       );
 
       debugPrint('[AuthService] Google credential obtained, signing in...');
-      return await _signInWithCredentialWrapper(credential);
+      final result = await _signInWithCredentialWrapper(credential);
+      
+      // Update cached user after successful sign-in
+      _cachedUser = result.user;
+      _offlineAuthController?.add(result.user);
+      debugPrint('[AuthService] ✅ Google sign-in successful, cached user updated');
+      
+      return result;
     } on PlatformException catch (e) {
       debugPrint('[AuthService] Google Sign-In PlatformException: ${e.code}');
       if (e.code == 'network_error') {

@@ -269,6 +269,13 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void dispose() {
+    // Dispose auth service resources
+    authService.dispose();
+    super.dispose();
+  }
+
   /// Handles post-authentication flow including account linking
   Future<bool> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
