@@ -376,6 +376,7 @@ class BackgroundSyncService {
   Future<void> _processPendingUploadsInMainIsolate() async {
     debugPrint('[Main Isolate] Processing pending media uploads...');
 
+    Box<PendingMediaItem>? pendingBox;
     try {
       // Check if user is authenticated
       final user = FirebaseAuth.instance.currentUser;
@@ -387,8 +388,7 @@ class BackgroundSyncService {
       debugPrint('[Main Isolate] Authenticated user: ${user.uid}');
 
       // Open the correct Hive box
-      final Box<PendingMediaItem> pendingBox =
-          await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
       final pendingItems = pendingBox.values.toList();
 
       debugPrint(
@@ -397,7 +397,6 @@ class BackgroundSyncService {
 
       if (pendingItems.isEmpty) {
         debugPrint('[Main Isolate] No pending media to upload');
-        await pendingBox.close();
         return;
       }
 
@@ -438,6 +437,16 @@ class BackgroundSyncService {
       debugPrint('[Main Isolate] Stack trace: $stackTrace');
       // Re-throwing the error so the caller can handle it
       rethrow;
+    } finally {
+      // Always close the box to prevent resource leaks
+      if (pendingBox != null) {
+        try {
+          await pendingBox.close();
+          debugPrint('[Main Isolate] Hive box closed successfully');
+        } catch (e) {
+          debugPrint('[Main Isolate] Error closing Hive box: $e');
+        }
+      }
     }
   }
 
