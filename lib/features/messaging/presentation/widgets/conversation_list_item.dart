@@ -11,17 +11,25 @@ class ConversationListItem extends StatelessWidget {
   final Message lastMessage;
   final VoidCallback onTap;
   final bool isUnread;
+  final String currentUserId;
 
   const ConversationListItem({
     super.key,
     required this.otherParticipant,
     required this.lastMessage,
     required this.onTap,
+    required this.currentUserId,
     this.isUnread = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool sentByMe = lastMessage.fromUid == currentUserId;
+    
+    final String messagePreview = sentByMe 
+        ? 'You: ${lastMessage.text}'
+        : lastMessage.text;
+
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: otherParticipant.avatarURL?.isNotEmpty == true
@@ -73,10 +81,11 @@ class ConversationListItem extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            lastMessage.text,
+            messagePreview,
             style: AppTypography.body.copyWith(
               fontWeight: isUnread ? FontWeight.w500 : FontWeight.w400,
               color: isUnread ? AppColors.textPrimary : AppColors.textSecondary,
+              fontStyle: sentByMe ? FontStyle.normal : FontStyle.normal,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

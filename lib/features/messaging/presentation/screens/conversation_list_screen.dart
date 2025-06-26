@@ -171,6 +171,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                       return ConversationListItem(
                         otherParticipant: otherUser,
                         lastMessage: lastMessage,
+                        currentUserId: currentUserId,
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(

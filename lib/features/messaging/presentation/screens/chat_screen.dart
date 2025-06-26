@@ -212,6 +212,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final bool isMe = message.fromUid == _currentUserId;
+                    
+                    // Debug logging to help diagnose bubble alignment
+                    debugPrint('[ChatScreen] Message ${index}: fromUid=${message.fromUid}, currentUserId=$_currentUserId, isMe=$isMe, text="${message.text}"');
+                    
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ChatBubble(message: message, isMe: isMe),
