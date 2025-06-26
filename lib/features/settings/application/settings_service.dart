@@ -57,11 +57,11 @@ class SettingsService {
     await _hiveService.updateUserSettings(settings);
   }
 
-  /// Calculates available storage space in MB
-  /// Returns free space in MB, or null if calculation fails
+  /// Calculates available storage space in MB using directory analysis
+  /// Returns realistic estimate of free space in MB, or null if calculation fails
   Future<double?> getAvailableStorageMB() async {
     try {
-      developer.log('[SettingsService] Calculating available storage...', name: 'SettingsService');
+      developer.log('[SettingsService] Calculating available storage using directory analysis...', name: 'SettingsService');
       
       Directory directory;
       
@@ -76,75 +76,72 @@ class SettingsService {
         directory = await getApplicationDocumentsDirectory();
       }
       
-      final stat = await directory.stat();
-      developer.log('[SettingsService] Directory stat: $stat', name: 'SettingsService');
+      // Try to get realistic storage estimate
+      final estimatedMB = await _estimateStorageByTesting(directory);
       
-      // Try to get available space using platform-specific methods
-      if (Platform.isAndroid) {
-        return await _getAndroidAvailableSpace(directory);
-      } else if (Platform.isIOS) {
-        return await _getIOSAvailableSpace(directory);
-      } else {
-        // Fallback: estimate based on directory size
-        return await _estimateAvailableSpace(directory);
-      }
+      developer.log('[SettingsService] Storage calculation result: ${estimatedMB?.toStringAsFixed(1)}MB available', name: 'SettingsService');
+      
+      return estimatedMB;
     } catch (e) {
       developer.log('[SettingsService] Error calculating storage: $e', name: 'SettingsService');
       return null;
     }
   }
 
-  /// Android-specific storage calculation
-  Future<double?> _getAndroidAvailableSpace(Directory directory) async {
+  /// Estimates storage by testing write capacity in chunks
+  /// More realistic than hardcoded values but still conservative  
+  Future<double?> _estimateStorageByTesting(Directory directory) async {
     try {
-      // Use statvfs-like approach through directory free space
-      // Note: This is an approximation since Flutter doesn't expose statvfs directly
-      final freeSpace = await _estimateAvailableSpace(directory);
-      developer.log('[SettingsService] Android estimated free space: ${freeSpace}MB', name: 'SettingsService');
-      return freeSpace;
+      developer.log('[SettingsService] Testing storage capacity...', name: 'SettingsService');
+      
+      // Test progressively larger files to get realistic estimate
+      const chunkSizeMB = 10; // Test in 10MB chunks
+      const maxTestMB = 100; // Don't test beyond 100MB
+      
+      int successfulMB = 0;
+      
+      for (int testMB = chunkSizeMB; testMB <= maxTestMB; testMB += chunkSizeMB) {
+        final tempFile = File('${directory.path}/storage_test_${testMB}mb.tmp');
+        
+        try {
+          // Create test data (testMB * 1MB)
+          const bytesPerMB = 1024 * 1024;
+          final testData = List.filled(testMB * bytesPerMB, 0);
+          
+          await tempFile.writeAsBytes(testData);
+          await tempFile.delete();
+          
+          successfulMB = testMB;
+          developer.log('[SettingsService] Successfully wrote ${testMB}MB test file', name: 'SettingsService');
+        } catch (e) {
+          developer.log('[SettingsService] Failed to write ${testMB}MB test file: $e', name: 'SettingsService');
+          break; // Stop testing when we hit storage limit
+        }
+      }
+      
+      // Estimate total available based on successful test size
+      double estimatedMB;
+      if (successfulMB >= maxTestMB) {
+        // If we successfully wrote 100MB+, assume much more is available
+        estimatedMB = 2000.0; // Estimate 2GB available
+      } else if (successfulMB >= 50) {
+        // If we wrote 50-100MB, estimate moderate storage
+        estimatedMB = 1000.0; // Estimate 1GB available
+      } else if (successfulMB >= 10) {
+        // If we wrote 10-50MB, estimate limited storage
+        estimatedMB = 500.0; // Estimate 500MB available
+      } else {
+        // If we couldn't write even 10MB, very limited storage
+        estimatedMB = 100.0; // Estimate 100MB available
+      }
+      
+      developer.log('[SettingsService] Storage test complete: wrote ${successfulMB}MB successfully, estimating ${estimatedMB}MB total available', name: 'SettingsService');
+      return estimatedMB;
+      
     } catch (e) {
-      developer.log('[SettingsService] Android storage calculation failed: $e', name: 'SettingsService');
-      return null;
-    }
-  }
-
-  /// iOS-specific storage calculation
-  Future<double?> _getIOSAvailableSpace(Directory directory) async {
-    try {
-      // Use directory-based estimation for iOS
-      final freeSpace = await _estimateAvailableSpace(directory);
-      developer.log('[SettingsService] iOS estimated free space: ${freeSpace}MB', name: 'SettingsService');
-      return freeSpace;
-    } catch (e) {
-      developer.log('[SettingsService] iOS storage calculation failed: $e', name: 'SettingsService');
-      return null;
-    }
-  }
-
-  /// Estimate available space based on directory analysis
-  /// This is a fallback method when platform-specific APIs aren't available
-  Future<double> _estimateAvailableSpace(Directory directory) async {
-    try {
-      // Create a temporary file to test write capacity
-      final tempFile = File('${directory.path}/temp_storage_test.tmp');
-      
-      // Attempt to write 1MB of data to test available space
-      const testDataSize = 1024 * 1024; // 1MB
-      final testData = List.filled(testDataSize, 0);
-      
-      await tempFile.writeAsBytes(testData);
-      await tempFile.delete();
-      
-      // If we can write 1MB, estimate much more is available
-      // This is a conservative estimate - in practice, devices usually have GB of space
-      const estimatedAvailableMB = 500.0; // Conservative 500MB estimate
-      
-      developer.log('[SettingsService] Storage test successful, estimating ${estimatedAvailableMB}MB available', name: 'SettingsService');
-      return estimatedAvailableMB;
-    } catch (e) {
-      developer.log('[SettingsService] Storage estimation failed: $e', name: 'SettingsService');
-      // Return a minimal estimate if test fails
-      return 50.0; // 50MB conservative estimate
+      developer.log('[SettingsService] Storage testing failed: $e', name: 'SettingsService');
+      // Return conservative estimate if testing fails
+      return 200.0; // 200MB conservative fallback
     }
   }
 

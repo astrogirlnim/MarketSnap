@@ -138,6 +138,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             duration: Duration(seconds: 4),
           ),
         );
+      } else if (success && mounted) {
+        // Optional: Show success feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Opening email app...'),
+            backgroundColor: AppColors.leafGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       developer.log('[SettingsScreen] Error opening support email: $e', name: 'SettingsScreen');
