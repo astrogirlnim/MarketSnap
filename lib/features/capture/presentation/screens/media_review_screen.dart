@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
+import '../../../../core/services/background_sync_service.dart';
 import '../../../../main.dart';
 
 /// Review screen for captured media with filter application and post functionality
@@ -262,6 +263,17 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
       );
 
+      // Trigger immediate sync to upload the media right away
+      try {
+        debugPrint('[MediaReviewScreen] Triggering immediate sync...');
+        final backgroundSyncService = BackgroundSyncService();
+        await backgroundSyncService.triggerImmediateSync();
+        debugPrint('[MediaReviewScreen] Immediate sync completed');
+      } catch (e) {
+        debugPrint('[MediaReviewScreen] Immediate sync failed (will retry in background): $e');
+        // Don't show error to user - background sync will retry later
+      }
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +282,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Expanded(child: Text('Media posted successfully! Uploading in background...')),
+                Expanded(child: Text('Media posted successfully!')),
               ],
             ),
             backgroundColor: Colors.green,
