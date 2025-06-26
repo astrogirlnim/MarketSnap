@@ -34,6 +34,11 @@ class CameraService {
   // ✅ BUFFER OVERFLOW FIX: Add lifecycle state tracking
   bool _isPaused = false;
   bool _isInBackground = false;
+  
+  // ✅ ZOOM LEVEL FIX: Track zoom levels manually since camera plugin doesn't provide getCurrentZoomLevel()
+  double _minAvailableZoom = 1.0;
+  double _maxAvailableZoom = 1.0;
+  double _currentZoomLevel = 1.0;
 
   // Video recording state management
   bool _isRecordingVideo = false;
@@ -204,6 +209,18 @@ class CameraService {
       debugPrint('[CameraService] Initializing camera controller...');
       _lastError = null;
 
+      // ✅ RACE CONDITION FIX: Check if already disposing to prevent conflicts
+      if (_isDisposing) {
+        debugPrint('[CameraService] Controller is being disposed, waiting...');
+        // Wait a bit for disposal to complete
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (_isDisposing) {
+          _lastError = 'Camera controller is being disposed';
+          debugPrint('[CameraService] ERROR: $_lastError');
+          return false;
+        }
+      }
+
       if (!_isInitialized) {
         debugPrint(
           '[CameraService] Service not initialized, initializing first...',
@@ -211,6 +228,13 @@ class CameraService {
         if (!await initialize()) {
           return false;
         }
+      }
+
+      // ✅ NULL SAFETY FIX: Additional null check for cameras
+      if (_cameras == null || _cameras!.isEmpty) {
+        _lastError = 'No cameras available';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
       }
 
       // In simulator mode, we don't create a real camera controller
@@ -280,12 +304,43 @@ class CameraService {
       }
 
       debugPrint('[CameraService] Initializing camera controller...');
+      
+      // ✅ NULL SAFETY FIX: Additional null check before initialization
+      if (_controller == null) {
+        _lastError = 'Camera controller is null after creation';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
+      }
+      
       await _controller!.initialize();
+
+      // ✅ NULL SAFETY FIX: Verify controller is still valid after initialization
+      if (_controller == null || !_controller!.value.isInitialized) {
+        _lastError = 'Camera controller failed to initialize properly';
+        debugPrint('[CameraService] ERROR: $_lastError');
+        return false;
+      }
 
       debugPrint('[CameraService] Camera controller initialized successfully');
       debugPrint(
         '[CameraService] Camera resolution: ${_controller!.value.previewSize}',
       );
+
+      // ✅ ZOOM LEVEL FIX: Initialize zoom levels when camera is ready
+      try {
+        _minAvailableZoom = await _controller!.getMinZoomLevel();
+        _maxAvailableZoom = await _controller!.getMaxZoomLevel();
+        _currentZoomLevel = _minAvailableZoom; // Start at minimum zoom
+        debugPrint(
+          '[CameraService] Zoom levels initialized - min: $_minAvailableZoom, max: $_maxAvailableZoom, current: $_currentZoomLevel',
+        );
+      } catch (e) {
+        debugPrint('[CameraService] Warning: Failed to initialize zoom levels: $e');
+        // Use default values if zoom level initialization fails
+        _minAvailableZoom = 1.0;
+        _maxAvailableZoom = 1.0;
+        _currentZoomLevel = 1.0;
+      }
 
       return true;
     } catch (e) {
@@ -862,6 +917,12 @@ In a real device, this would be an actual MP4 video file.
       final double clampedZoom = zoom.clamp(minZoom, maxZoom);
 
       await _controller!.setZoomLevel(clampedZoom);
+      
+      // ✅ ZOOM LEVEL FIX: Track the current zoom level manually
+      _currentZoomLevel = clampedZoom;
+      _minAvailableZoom = minZoom;
+      _maxAvailableZoom = maxZoom;
+      
       debugPrint(
         '[CameraService] Zoom set to: $clampedZoom (min: $minZoom, max: $maxZoom)',
       );
@@ -878,7 +939,8 @@ In a real device, this would be an actual MP4 video file.
       if (_controller == null || !_controller!.value.isInitialized) {
         return 1.0;
       }
-      return await _controller!.getMinZoomLevel();
+      // ✅ BUG FIX: Camera plugin doesn't have getZoomLevel(), return tracked value
+      return _currentZoomLevel;
     } catch (e) {
       debugPrint('[CameraService] Failed to get zoom level: $e');
       return 1.0;
@@ -925,6 +987,11 @@ In a real device, this would be an actual MP4 video file.
         // ✅ BUFFER OVERFLOW FIX: Reset lifecycle state on disposal
         _isPaused = false;
         _isInBackground = false;
+        
+        // ✅ ZOOM LEVEL FIX: Reset zoom levels on disposal
+        _minAvailableZoom = 1.0;
+        _maxAvailableZoom = 1.0;
+        _currentZoomLevel = 1.0;
         
         debugPrint('[CameraService] Camera controller cleanup completed');
       }
