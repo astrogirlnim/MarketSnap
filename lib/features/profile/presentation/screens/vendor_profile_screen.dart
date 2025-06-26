@@ -319,14 +319,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   /// Navigate to settings screen
   void _navigateToSettings(BuildContext context) {
-    developer.log('[VendorProfileScreen] Navigating to settings screen', name: 'VendorProfileScreen');
-    
+    developer.log(
+      '[VendorProfileScreen] Navigating to settings screen',
+      name: 'VendorProfileScreen',
+    );
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsScreen(
-          settingsService: SettingsService(
-            hiveService: main.hiveService,
-          ),
+          settingsService: SettingsService(hiveService: main.hiveService),
         ),
       ),
     );
@@ -358,10 +359,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         actions: [
           // Settings button for navigation to settings screen
           IconButton(
-            icon: const Icon(
-              Icons.settings,
-              color: AppColors.soilCharcoal,
-            ),
+            icon: const Icon(Icons.settings, color: AppColors.soilCharcoal),
             onPressed: () => _navigateToSettings(context),
             tooltip: 'Settings & Help',
           ),

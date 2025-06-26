@@ -17,10 +17,7 @@ import '../../../../shared/presentation/widgets/version_display_widget.dart';
 class SettingsScreen extends StatefulWidget {
   final SettingsService settingsService;
 
-  const SettingsScreen({
-    super.key,
-    required this.settingsService,
-  });
+  const SettingsScreen({super.key, required this.settingsService});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -35,7 +32,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    developer.log('[SettingsScreen] Initializing settings screen', name: 'SettingsScreen');
+    developer.log(
+      '[SettingsScreen] Initializing settings screen',
+      name: 'SettingsScreen',
+    );
     _loadSettings();
   }
 
@@ -47,24 +47,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _errorMessage = null;
       });
 
-      developer.log('[SettingsScreen] Loading current settings...', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Loading current settings...',
+        name: 'SettingsScreen',
+      );
+
       // Load current settings
       final settings = widget.settingsService.getCurrentSettings();
-      
+
       // Load storage status
-      final storageStatus = await widget.settingsService.getStorageStatusMessage();
-      
+      final storageStatus = await widget.settingsService
+          .getStorageStatusMessage();
+
       setState(() {
         _currentSettings = settings;
         _storageStatus = storageStatus;
         _isLoading = false;
       });
 
-      developer.log('[SettingsScreen] Settings loaded successfully: $settings', name: 'SettingsScreen');
-      developer.log('[SettingsScreen] Storage status: $storageStatus', name: 'SettingsScreen');
+      developer.log(
+        '[SettingsScreen] Settings loaded successfully: $settings',
+        name: 'SettingsScreen',
+      );
+      developer.log(
+        '[SettingsScreen] Storage status: $storageStatus',
+        name: 'SettingsScreen',
+      );
     } catch (e) {
-      developer.log('[SettingsScreen] Error loading settings: $e', name: 'SettingsScreen');
+      developer.log(
+        '[SettingsScreen] Error loading settings: $e',
+        name: 'SettingsScreen',
+      );
       setState(() {
         _errorMessage = 'Failed to load settings: $e';
         _isLoading = false;
@@ -81,8 +94,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_currentSettings == null) return;
 
     try {
-      developer.log('[SettingsScreen] Updating setting...', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Updating setting...',
+        name: 'SettingsScreen',
+      );
+
       await widget.settingsService.updateSettings(
         enableCoarseLocation: enableCoarseLocation,
         autoCompressVideo: autoCompressVideo,
@@ -91,13 +107,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Reload settings to get updated values
       final updatedSettings = widget.settingsService.getCurrentSettings();
-      
+
       setState(() {
         _currentSettings = updatedSettings;
       });
 
-      developer.log('[SettingsScreen] Setting updated successfully', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Setting updated successfully',
+        name: 'SettingsScreen',
+      );
+
       // Show success feedback
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,8 +128,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      developer.log('[SettingsScreen] Error updating setting: $e', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Error updating setting: $e',
+        name: 'SettingsScreen',
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -126,14 +148,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Open support email
   Future<void> _openSupportEmail() async {
     try {
-      developer.log('[SettingsScreen] Opening support email...', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Opening support email...',
+        name: 'SettingsScreen',
+      );
+
       final success = await widget.settingsService.openSupportEmail();
-      
+
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not open email app. Please email support@marketsnap.app directly.'),
+            content: Text(
+              'Could not open email app. Please email support@marketsnap.app directly.',
+            ),
             backgroundColor: AppColors.sunsetAmber,
             duration: Duration(seconds: 4),
           ),
@@ -149,8 +176,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      developer.log('[SettingsScreen] Error opening support email: $e', name: 'SettingsScreen');
-      
+      developer.log(
+        '[SettingsScreen] Error opening support email: $e',
+        name: 'SettingsScreen',
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -166,17 +196,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Refresh storage information
   Future<void> _refreshStorage() async {
     try {
-      developer.log('[SettingsScreen] Refreshing storage information...', name: 'SettingsScreen');
-      
-      final storageStatus = await widget.settingsService.getStorageStatusMessage();
-      
+      developer.log(
+        '[SettingsScreen] Refreshing storage information...',
+        name: 'SettingsScreen',
+      );
+
+      final storageStatus = await widget.settingsService
+          .getStorageStatusMessage();
+
       setState(() {
         _storageStatus = storageStatus;
       });
 
-      developer.log('[SettingsScreen] Storage refreshed: $storageStatus', name: 'SettingsScreen');
+      developer.log(
+        '[SettingsScreen] Storage refreshed: $storageStatus',
+        name: 'SettingsScreen',
+      );
     } catch (e) {
-      developer.log('[SettingsScreen] Error refreshing storage: $e', name: 'SettingsScreen');
+      developer.log(
+        '[SettingsScreen] Error refreshing storage: $e',
+        name: 'SettingsScreen',
+      );
     }
   }
 
@@ -187,17 +227,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: Text(
           'Settings & Help',
-          style: AppTypography.h1.copyWith(
-            color: AppColors.soilCharcoal,
-          ),
+          style: AppTypography.h1.copyWith(color: AppColors.soilCharcoal),
         ),
         backgroundColor: AppColors.cornsilk,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: AppColors.soilCharcoal,
-          ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.soilCharcoal),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -239,10 +274,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    
-                    if (_currentSettings != null)
-                      _buildSettingsCard(),
-                    
+
+                    if (_currentSettings != null) _buildSettingsCard(),
+
                     const SizedBox(height: AppSpacing.xl),
 
                     // Storage Information Section
@@ -279,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     _buildHelpCard(),
-                    
+
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
@@ -287,8 +321,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
     );
   }
-
-
 
   /// Build settings toggles card
   Widget _buildSettingsCard() {
@@ -303,9 +335,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateSetting(enableCoarseLocation: value),
             icon: Icons.location_on_outlined,
           ),
-          
+
           const Divider(color: AppColors.seedBrown, height: AppSpacing.lg),
-          
+
           // Auto Compress Video Toggle
           _buildSettingToggle(
             title: 'Auto-Compress Videos',
@@ -314,9 +346,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateSetting(autoCompressVideo: value),
             icon: Icons.video_settings_outlined,
           ),
-          
+
           const Divider(color: AppColors.seedBrown, height: AppSpacing.lg),
-          
+
           // Save to Device Toggle
           _buildSettingToggle(
             title: 'Save to Device',
@@ -347,15 +379,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: AppColors.marketBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: AppColors.marketBlue,
-            size: 20,
-          ),
+          child: Icon(icon, color: AppColors.marketBlue, size: 20),
         ),
-        
+
         const SizedBox(width: AppSpacing.md),
-        
+
         // Text content
         Expanded(
           child: Column(
@@ -378,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        
+
         // Toggle switch
         Switch.adaptive(
           value: value,
@@ -411,9 +439,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   size: 20,
                 ),
               ),
-              
+
               const SizedBox(width: AppSpacing.md),
-              
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,28 +463,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-              
+
               // Refresh button
               IconButton(
                 onPressed: _refreshStorage,
-                icon: const Icon(
-                  Icons.refresh,
-                  color: AppColors.marketBlue,
-                ),
+                icon: const Icon(Icons.refresh, color: AppColors.marketBlue),
                 tooltip: 'Refresh storage info',
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppSpacing.md),
-          
+
           // Storage warning if needed
           FutureBuilder<bool>(
             future: widget.settingsService.hasSufficientStorage(),
             builder: (context, snapshot) {
               if (snapshot.hasData && !snapshot.data!) {
                 return MarketSnapStatusMessage(
-                  message: 'Low storage: Consider freeing up space for optimal performance',
+                  message:
+                      'Low storage: Consider freeing up space for optimal performance',
                   type: StatusType.warning,
                   showIcon: true,
                 );
@@ -494,9 +520,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       size: 20,
                     ),
                   ),
-                  
+
                   const SizedBox(width: AppSpacing.md),
-                  
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,7 +544,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  
+
                   const Icon(
                     Icons.arrow_forward_ios,
                     color: AppColors.soilTaupe,
@@ -528,9 +554,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: AppSpacing.md),
-          
+
           // App version info
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -570,6 +596,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
-
-} 
+}
