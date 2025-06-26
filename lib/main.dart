@@ -225,9 +225,14 @@ class MyApp extends StatelessWidget {
 }
 
 /// Authentication wrapper that handles routing based on auth state and profile completion
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
   /// Handles post-authentication flow including account linking
   Future<void> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
