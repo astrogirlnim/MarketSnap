@@ -354,7 +354,8 @@ export const sendMessageNotification = onDocumentCreated(
     const {fromUid, toUid, text} = message;
 
     logger.log(
-      `[sendMessageNotification] Triggered for new message from ${fromUid} to ${toUid}`
+      "[sendMessageNotification] Triggered for new message from " +
+      `${fromUid} to ${toUid}`
     );
 
     try {
@@ -366,7 +367,8 @@ export const sendMessageNotification = onDocumentCreated(
       const toUserToken = await getUserFCMToken(toUid);
       if (!toUserToken) {
         logger.warn(
-          `[sendMessageNotification] Recipient ${toUid} does not have an FCM token. Cannot send notification.`
+          `[sendMessageNotification] Recipient ${toUid} does not have ` +
+          "an FCM token. Cannot send notification."
         );
         return;
       }
@@ -448,7 +450,7 @@ const createAIHelper = (
       );
     }
     logger.log(
-      `[${functionName}] Found OpenAI Key: `+
+      `[${functionName}] Found OpenAI Key: ` +
       `sk-...${OPENAI_API_KEY.slice(-4)}`
     );
 
