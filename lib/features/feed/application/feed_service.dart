@@ -13,61 +13,60 @@ class FeedService {
   /// Get current user's ID for distinguishing own posts
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Real-time stream of stories from all vendors
-  /// In a real app, this would be filtered by followed vendors
+  /// Real-time stream of stories from the current user
   Stream<List<StoryItem>> getStoriesStream() {
+    final userId = currentUserId;
+    if (userId == null) {
+      developer.log(
+        '[FeedService] No user logged in, returning empty stories stream',
+        name: 'FeedService',
+      );
+      return Stream.value([]);
+    }
+
     developer.log(
-      '[FeedService] Setting up real-time stories stream',
+      '[FeedService] Setting up real-time stories stream for user: $userId',
       name: 'FeedService',
     );
 
     return _firestore
         .collection('snaps')
+        // ✅ FIX: Query for the current user's stories specifically
+        .where('storyVendorId', isEqualTo: userId)
+        .where('isStory', isEqualTo: true)
         .orderBy('createdAt', descending: true)
-        .limit(50) // Get more snaps to group by vendor
+        .limit(20) // A user's own stories are limited
         .snapshots()
         .map((snapshot) {
-          developer.log(
-            '[FeedService] Received ${snapshot.docs.length} snaps for stories',
-            name: 'FeedService',
-          );
+      developer.log(
+        '[FeedService] Received ${snapshot.docs.length} snaps for stories for user $userId',
+        name: 'FeedService',
+      );
 
-          final snaps = snapshot.docs
-              .map((doc) => Snap.fromFirestore(doc))
-              .toList();
+      final snaps =
+          snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
 
-          // Group snaps by vendor
-          final Map<String, List<Snap>> snapsByVendor = {};
-          for (var snap in snaps) {
-            if (!snapsByVendor.containsKey(snap.vendorId)) {
-              snapsByVendor[snap.vendorId] = [];
-            }
-            snapsByVendor[snap.vendorId]!.add(snap);
-          }
+      // Since we are only getting one user's stories, we can simplify the grouping
+      if (snaps.isEmpty) {
+        return [];
+      }
 
-          // Create StoryItems
-          final List<StoryItem> stories = [];
-          snapsByVendor.forEach((vendorId, vendorSnaps) {
-            if (vendorSnaps.isNotEmpty) {
-              stories.add(
-                StoryItem(
-                  vendorId: vendorId,
-                  vendorName: vendorSnaps.first.vendorName,
-                  vendorAvatarUrl: vendorSnaps.first.vendorAvatarUrl,
-                  snaps: vendorSnaps,
-                  hasUnseenSnaps:
-                      true, // In a real app, this would track viewed status
-                ),
-              );
-            }
-          });
+      final storyItem = StoryItem(
+        vendorId: userId,
+        vendorName: snaps.first.vendorName,
+        vendorAvatarUrl: snaps.first.vendorAvatarUrl,
+        snaps: snaps,
+        hasUnseenSnaps: true, // Placeholder logic
+      );
 
-          developer.log(
-            '[FeedService] Created ${stories.length} story items',
-            name: 'FeedService',
-          );
-          return stories;
-        });
+      developer.log(
+        '[FeedService] Created 1 story item for user $userId with ${snaps.length} snaps',
+        name: 'FeedService',
+      );
+
+      // Return a list containing the single story item for the current user
+      return [storyItem];
+    });
   }
 
   /// Real-time stream of feed snaps

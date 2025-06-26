@@ -264,6 +264,8 @@ Future<void> _uploadPendingItem(
     'createdAt': Timestamp.fromDate(now),
     'expiresAt': Timestamp.fromDate(expiresAt),
     'location': pendingItem.location,
+    'isStory': true,
+    'storyVendorId': user.uid,
   };
 
   await FirebaseFirestore.instance.collection('snaps').add(snapData);
