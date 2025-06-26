@@ -346,25 +346,17 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       return;
     }
 
+    String? videoPath;
+
     try {
       // Stop video recording
-      final videoPath = await _cameraService.stopVideoRecording();
+      videoPath = await _cameraService.stopVideoRecording();
 
       if (videoPath != null) {
         // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
         await _cameraService.pauseCamera();
 
-        if (mounted) {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => MediaReviewScreen(
-                mediaPath: videoPath,
-                mediaType: MediaType.video,
-                hiveService: widget.hiveService,
-              ),
-            ),
-          );
-        }
+        // Navigation is now handled by _handleVideoRecordingComplete
       } else {
         throw Exception(_cameraService.lastError ?? 'Failed to save video');
       }
@@ -387,11 +379,15 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     }
 
-    _handleVideoRecordingComplete();
+    _handleVideoRecordingComplete(videoPath: videoPath);
   }
 
   /// Handle video recording completion (auto or manual stop)
-  void _handleVideoRecordingComplete() {
+  void _handleVideoRecordingComplete({String? videoPath}) {
+    debugPrint('[CameraPreviewScreen] _handleVideoRecordingComplete called');
+    debugPrint('[CameraPreviewScreen] Passed videoPath: $videoPath');
+    debugPrint('[CameraPreviewScreen] Service lastVideoPath: ${_cameraService.lastVideoPath}');
+    
     // Cancel countdown subscription
     _countdownSubscription?.cancel();
     _countdownSubscription = null;
@@ -402,6 +398,44 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         _isRecordingVideo = false;
         _recordingCountdown = 0;
       });
+    }
+
+    // ✅ FIX: Navigate to review screen if a path is available.
+    // This handles both manual stops (path passed directly) and automatic stops (path from service).
+    final finalVideoPath = videoPath ?? _cameraService.lastVideoPath;
+    
+    debugPrint('[CameraPreviewScreen] Final video path to use: $finalVideoPath');
+
+    if (finalVideoPath != null) {
+      debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath');
+      // Use a post-frame callback to avoid navigation during build
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return; // Early return if widget is not mounted
+        
+        // Capture context before async operations
+        final navigator = Navigator.of(context);
+        
+        // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
+        await _cameraService.pauseCamera();
+
+        // Check mounted again after async operation
+        if (!mounted) return;
+
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (context) => MediaReviewScreen(
+              mediaPath: finalVideoPath,
+              mediaType: MediaType.video,
+              hiveService: widget.hiveService,
+            ),
+          ),
+        );
+
+        // ✅ BUFFER OVERFLOW FIX: Resume camera when returning from review screen
+        await _cameraService.resumeCamera();
+      });
+    } else {
+      debugPrint('[CameraPreviewScreen] ERROR: No video path available for navigation');
     }
   }
 

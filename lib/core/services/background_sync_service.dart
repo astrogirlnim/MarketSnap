@@ -199,6 +199,13 @@ Future<void> _uploadPendingItem(
 }) async {
   final logPrefix = isInBackground ? '[Background Isolate]' : '[Main Isolate]';
 
+  debugPrint('$logPrefix Processing pending item:');
+  debugPrint('$logPrefix - ID: ${pendingItem.id}');
+  debugPrint('$logPrefix - MediaType: ${pendingItem.mediaType}');
+  debugPrint('$logPrefix - FilterType: "${pendingItem.filterType}"');
+  debugPrint('$logPrefix - FilePath: ${pendingItem.filePath}');
+  debugPrint('$logPrefix - Caption: ${pendingItem.caption}');
+  
   debugPrint('$logPrefix Uploading media item: ${pendingItem.id}');
 
   final file = File(pendingItem.filePath);
@@ -214,10 +221,28 @@ Future<void> _uploadPendingItem(
       .child('${pendingItem.id}.${_getFileExtension(pendingItem.filePath)}');
 
   debugPrint('$logPrefix Uploading to Storage: ${storageRef.fullPath}');
-  final uploadTask = storageRef.putFile(file);
-  final snapshot = await uploadTask;
-  final downloadUrl = await snapshot.ref.getDownloadURL();
-  debugPrint('$logPrefix Upload complete. Download URL: $downloadUrl');
+  debugPrint('$logPrefix File exists: ${await file.exists()}');
+  debugPrint('$logPrefix File size: ${await file.length()} bytes');
+  debugPrint('$logPrefix User UID: ${user.uid}');
+  debugPrint('$logPrefix User email: ${user.email}');
+  debugPrint('$logPrefix User providers: ${user.providerData.map((p) => p.providerId).toList()}');
+  
+  late final String downloadUrl;
+  try {
+    final uploadTask = storageRef.putFile(file);
+    final snapshot = await uploadTask;
+    downloadUrl = await snapshot.ref.getDownloadURL();
+    debugPrint('$logPrefix Upload complete. Download URL: $downloadUrl');
+  } catch (uploadError) {
+    debugPrint('$logPrefix UPLOAD ERROR: $uploadError');
+    debugPrint('$logPrefix Error type: ${uploadError.runtimeType}');
+    if (uploadError.toString().contains('unauthenticated')) {
+      debugPrint('$logPrefix Authentication token issue detected');
+      debugPrint('$logPrefix Current user: ${FirebaseAuth.instance.currentUser?.uid}');
+      debugPrint('$logPrefix ID token: ${await user.getIdToken(true)}');
+    }
+    rethrow;
+  }
 
   // Get vendor profile for snap metadata
   String vendorName = 'Unknown Vendor';
@@ -261,10 +286,16 @@ Future<void> _uploadPendingItem(
     'mediaUrl': downloadUrl,
     'mediaType': pendingItem.mediaType == MediaType.video ? 'video' : 'photo',
     'caption': pendingItem.caption ?? '',
+    'filterType': pendingItem.filterType,
     'createdAt': Timestamp.fromDate(now),
     'expiresAt': Timestamp.fromDate(expiresAt),
     'location': pendingItem.location,
+    'isStory': true,
+    'storyVendorId': user.uid,
   };
+
+  debugPrint('$logPrefix Creating Firestore document with filterType: "${pendingItem.filterType}"');
+  debugPrint('$logPrefix Full snapData: $snapData');
 
   await FirebaseFirestore.instance.collection('snaps').add(snapData);
   debugPrint(

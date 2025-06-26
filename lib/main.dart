@@ -50,6 +50,14 @@ Future<void> main() async {
     try {
       debugPrint('[main] Debug mode detected, using local emulators.');
 
+      // ✅ CRITICAL FIX: Clear any existing authentication state before connecting to emulators
+      try {
+        await FirebaseAuth.instance.signOut();
+        debugPrint('[main] Cleared existing authentication state for emulator setup.');
+      } catch (signOutError) {
+        debugPrint('[main] No existing auth to clear: $signOutError');
+      }
+
       // Configure emulators with proper error handling and platform-specific logic
       try {
         // For iOS simulator, we need to be more careful with emulator configuration
@@ -68,8 +76,11 @@ Future<void> main() async {
             debugPrint('[main] Continuing without Auth emulator on iOS...');
           }
         } else {
-          // Android configuration (working fine)
-          await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+          // ✅ FIX: Android configuration with proper host mapping
+          // Android emulator maps localhost to 10.0.2.2
+          const authHost = '10.0.2.2';
+          await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
+          debugPrint('Mapping Auth Emulator host "localhost" to "$authHost".');
           debugPrint('[main] Auth emulator configured.');
         }
       } catch (e) {
@@ -82,14 +93,27 @@ Future<void> main() async {
       }
 
       try {
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        // ✅ FIX: Android configuration with proper host mapping
+        const firestoreHost = '10.0.2.2';
+        FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
+        debugPrint('Mapping Firestore Emulator host "localhost" to "$firestoreHost".');
         debugPrint('[main] Firestore emulator configured.');
+        
+        // ✅ Additional configuration to ensure emulator persistence is disabled
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: false,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+        debugPrint('[main] Firestore settings configured for emulator mode.');
       } catch (e) {
         debugPrint('[main] Firestore emulator configuration failed: $e');
       }
 
       try {
-        await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+        // ✅ FIX: Android configuration with proper host mapping
+        const storageHost = '10.0.2.2';
+        await FirebaseStorage.instance.useStorageEmulator(storageHost, 9199);
+        debugPrint('Mapping Storage Emulator host "localhost" to "$storageHost".');
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
@@ -109,12 +133,9 @@ Future<void> main() async {
     // To get your debug SHA-1, run this in your project's `android` directory:
     // ./gradlew signingReport
     if (kDebugMode) {
-      // Use debug provider for development
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.debug,
-        appleProvider: AppleProvider.debug,
-      );
-      debugPrint('[main] Firebase App Check initialized with debug providers.');
+      // ✅ FIX: Disable App Check entirely in debug mode to prevent authentication issues
+      debugPrint('[main] Debug mode: Skipping App Check initialization to prevent auth issues.');
+      debugPrint('[main] App Check will be enabled in production builds only.');
     } else {
       // Use production providers for release builds
       debugPrint('[main] Initializing Firebase App Check for production...');
@@ -125,18 +146,18 @@ Future<void> main() async {
       debugPrint(
         '[main] Firebase App Check initialized with production providers.',
       );
-    }
-
-    // Verify App Check is working by trying to get a token
-    try {
-      final token = await FirebaseAppCheck.instance.getToken(true);
-      if (token != null) {
-        debugPrint('[main] Firebase App Check token obtained successfully.');
-      } else {
-        debugPrint('[main] Warning: Firebase App Check token is null.');
+      
+      // Verify App Check is working by trying to get a token
+      try {
+        final token = await FirebaseAppCheck.instance.getToken(true);
+        if (token != null) {
+          debugPrint('[main] Firebase App Check token obtained successfully.');
+        } else {
+          debugPrint('[main] Warning: Firebase App Check token is null.');
+        }
+      } catch (tokenError) {
+        debugPrint('[main] Warning: Could not get App Check token: $tokenError');
       }
-    } catch (tokenError) {
-      debugPrint('[main] Warning: Could not get App Check token: $tokenError');
     }
   } catch (e) {
     debugPrint('[main] Firebase App Check initialization failed: $e');

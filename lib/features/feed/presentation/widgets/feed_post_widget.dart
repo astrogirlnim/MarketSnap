@@ -167,15 +167,21 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 400),
+      // Different constraints for videos vs photos
+      constraints: widget.snap.mediaType == MediaType.video
+          ? null // No height constraint for videos - let them use natural aspect ratio
+          : const BoxConstraints(maxHeight: 400), // Keep height constraint for photos
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(8),
           bottom: Radius.circular(8),
         ),
         child: widget.snap.mediaType == MediaType.video
-            ? _buildVideoPlayer()
-            : _buildImageDisplay(),
+            ? _buildVideoPlayer() // Videos use their natural aspect ratio
+            : AspectRatio(
+                aspectRatio: 1.0, // Enforce square aspect ratio for photos only
+                child: _buildImageDisplay(),
+              ),
       ),
     );
   }
@@ -192,41 +198,78 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       );
     }
 
+    // Get video aspect ratio
+    final videoAspectRatio = _videoController!.value.aspectRatio;
+    
+    // Determine overlay color from the snap's filterType
+    Color overlayColor = Colors.transparent;
+    final filterType = widget.snap.filterType;
+
+    debugPrint(
+      '[FeedPostWidget] 🎥 Processing video for snap ${widget.snap.id}',
+    );
+    debugPrint(
+      '[FeedPostWidget] 📐 Video aspect ratio: $videoAspectRatio (${videoAspectRatio > 1 ? 'landscape' : 'portrait'})',
+    );
+    debugPrint(
+      '[FeedPostWidget] 🎨 Video filterType: "$filterType"',
+    );
+
+    if (filterType != null && filterType != 'none') {
+      if (filterType == 'warm') {
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
+      } else if (filterType == 'cool') {
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
+      } else if (filterType == 'contrast') {
+        overlayColor = Colors.black.withValues(alpha: 0.3);
+      }
+    }
+
+    debugPrint(
+      '[FeedPostWidget] 🎨 Applied overlay color: $overlayColor for filter: $filterType',
+    );
+
     return AspectRatio(
-      aspectRatio: _videoController!.value.aspectRatio,
+      aspectRatio: videoAspectRatio, // Use the pre-calculated aspect ratio
       child: Stack(
+        alignment: Alignment.center,
         children: [
           VideoPlayer(_videoController!),
 
-          // Play/pause overlay
+          // Filter overlay
           Positioned.fill(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (_videoController!.value.isPlaying) {
-                    _videoController!.pause();
-                  } else {
-                    _videoController!.play();
-                  }
-                });
-              },
-              child: Container(
-                color: Colors.transparent,
-                child: Center(
-                  child: AnimatedOpacity(
-                    opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.soilCharcoal.withValues(alpha: 0.7),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+            child: Container(
+              color: overlayColor,
+            ),
+          ),
+
+          // Play/pause overlay
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (_videoController!.value.isPlaying) {
+                  _videoController!.pause();
+                } else {
+                  _videoController!.play();
+                }
+              });
+            },
+            child: Container(
+              color: Colors.transparent, // Makes the whole area tappable
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.soilCharcoal.withValues(alpha: 0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
                     ),
                   ),
                 ),
@@ -240,40 +283,67 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Build image display widget
   Widget _buildImageDisplay() {
-    return Image.network(
-      widget.snap.mediaUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          height: 200,
-          color: AppColors.eggshell,
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                  : null,
-              color: AppColors.marketBlue,
-            ),
+    // Determine overlay color from the snap's filterType
+    Color overlayColor = Colors.transparent;
+    final filterType = widget.snap.filterType;
+
+    debugPrint(
+      '[FeedPostWidget] Processing image for snap ${widget.snap.id} with filterType: "$filterType"',
+    );
+
+    if (filterType != null && filterType != 'none') {
+      if (filterType == 'warm') {
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
+      } else if (filterType == 'cool') {
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
+      } else if (filterType == 'contrast') {
+        overlayColor = Colors.black.withValues(alpha: 0.3);
+      }
+    }
+
+    debugPrint(
+      '[FeedPostWidget] Applied overlay color: $overlayColor for filter: $filterType',
+    );
+
+    return Stack(
+      children: [
+        // Main image
+        Image.network(
+          widget.snap.mediaUrl,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.grey[300],
+              child: const Center(
+                child: CircularProgressIndicator(color: AppColors.marketBlue),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.grey[300],
+              child: const Center(
+                child: Icon(Icons.error, color: Colors.red, size: 48),
+              ),
+            );
+          },
+        ),
+        
+        // Filter overlay
+        if (overlayColor != Colors.transparent)
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: overlayColor,
           ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        debugPrint('[FeedPostWidget] Error loading image: $error');
-        return Container(
-          height: 200,
-          color: AppColors.seedBrown,
-          child: const Center(
-            child: Icon(
-              Icons.image_not_supported,
-              size: 48,
-              color: AppColors.soilTaupe,
-            ),
-          ),
-        );
-      },
+      ],
     );
   }
 

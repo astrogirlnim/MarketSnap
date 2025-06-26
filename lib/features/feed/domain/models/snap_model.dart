@@ -10,6 +10,7 @@ class Snap {
   final String mediaUrl;
   final MediaType mediaType;
   final String? caption;
+  final String? filterType;
   final DateTime createdAt;
   final DateTime expiresAt;
 
@@ -21,6 +22,7 @@ class Snap {
     required this.mediaUrl,
     required this.mediaType,
     this.caption,
+    this.filterType,
     required this.createdAt,
     required this.expiresAt,
   });
@@ -37,6 +39,7 @@ class Snap {
           ? MediaType.video
           : MediaType.photo,
       caption: data['caption'],
+      filterType: data['filterType'],
       createdAt: (data['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
       expiresAt: (data['expiresAt'] as Timestamp? ?? Timestamp.now()).toDate(),
     );

@@ -117,6 +117,15 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Apply selected filter to the image
   Future<void> _applyFilter(LutFilterType filterType) async {
+    // For videos, just update the state to show the color overlay
+    if (widget.mediaType == MediaType.video) {
+      setState(() {
+        _selectedFilter = filterType;
+      });
+      return;
+    }
+
+    // For photos, process the image file
     if (_isApplyingFilter) return;
 
     setState(() {
@@ -146,9 +155,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     } catch (e) {
       // Handle error
     } finally {
-      setState(() {
-        _isApplyingFilter = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isApplyingFilter = false;
+        });
+      }
     }
   }
 
@@ -175,8 +186,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         caption: caption,
         mediaType: mediaType,
         vendorId: currentUser.uid,
-        // Let constructor handle id and createdAt
+        filterType: _selectedFilter.name,
       );
+
+      debugPrint('[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})');
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
@@ -279,47 +292,55 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build video preview
+  /// Build video preview with filter overlay
   Widget _buildVideoPreview() {
-    if (!_isVideoInitialized || _videoController == null) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.black,
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 16),
-              Text(
-                'Loading video...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
+    if (!_isVideoInitialized) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        aspectRatio: _videoController!.value.aspectRatio,
-        child: VideoPlayer(_videoController!),
-      ),
+    // Define overlay colors for video filters
+    Color overlayColor = Colors.transparent;
+    switch (_selectedFilter) {
+      case LutFilterType.warm:
+        overlayColor = Colors.orange.withValues(alpha: 0.3);
+        break;
+      case LutFilterType.cool:
+        overlayColor = Colors.blue.withValues(alpha: 0.3);
+        break;
+      case LutFilterType.contrast:
+        overlayColor = Colors.black.withValues(alpha: 0.3);
+        break;
+      case LutFilterType.none:
+        overlayColor = Colors.transparent;
+        break;
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Video player
+        AspectRatio(
+          aspectRatio: _videoController!.value.aspectRatio,
+          child: VideoPlayer(_videoController!),
+        ),
+        // Animated filter overlay
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: overlayColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ],
     );
   }
 
   /// Build filter selection row with optimized rendering
   Widget _buildFilterSelection() {
-    // Video doesn't support filters yet
-    if (widget.mediaType == MediaType.video) {
-      return const SizedBox.shrink();
-    }
+    // Show filters for both images and videos
+    // Note: For videos, filters are applied as preview overlays only
+    // The actual video file remains unmodified
 
     return Container(
       height: 100,
@@ -502,9 +523,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Filter selection (only for photos)
-                    if (widget.mediaType == MediaType.photo)
-                      _buildFilterSelection(),
+                    // Filter selection (now enabled for videos too)
+                    _buildFilterSelection(),
 
                     // Caption input
                     _buildCaptionInput(),

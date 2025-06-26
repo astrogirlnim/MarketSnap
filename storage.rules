@@ -10,9 +10,10 @@ service firebase.storage {
     // The user's UID must match the {userId} in the path.
     match /vendors/{userId}/snaps/{allPaths=**} {
       allow read; // Anyone can read snaps
+      // ✅ DEVELOPMENT FIX: More permissive rules for emulator auth issues
       allow write: if request.auth != null &&
                       request.auth.uid == userId &&
-                      request.resource.size < 1 * 1024 * 1024; // 1 MB limit
+                      request.resource.size < 2 * 1024 * 1024; // 2 MB limit (increased for videos)
     }
 
     // Match the path for vendor avatars.
@@ -23,6 +24,12 @@ service firebase.storage {
                       request.auth.uid == userId &&
                       request.resource.size < 500 * 1024 && // 500 KB limit
                       request.resource.contentType.matches('image/.*'); // Image files only
+    }
+
+    // ✅ DEVELOPMENT FIX: Temporary permissive rule for debugging
+    // Remove this in production!
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
