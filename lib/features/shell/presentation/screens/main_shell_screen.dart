@@ -3,12 +3,18 @@ import 'package:marketsnap/features/capture/presentation/screens/camera_preview_
 import 'package:marketsnap/features/feed/presentation/screens/feed_screen.dart';
 import 'package:marketsnap/features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'package:marketsnap/features/profile/application/profile_service.dart';
+import 'package:marketsnap/core/services/hive_service.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
 
 class MainShellScreen extends StatefulWidget {
   final ProfileService profileService;
+  final HiveService hiveService;
   
-  const MainShellScreen({super.key, required this.profileService});
+  const MainShellScreen({
+    super.key, 
+    required this.profileService,
+    required this.hiveService,
+  });
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -19,7 +25,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   List<Widget> get _widgetOptions => <Widget>[
     const FeedScreen(),
-    const CameraPreviewScreen(),
+    CameraPreviewScreen(hiveService: widget.hiveService),
     VendorProfileScreen(
       profileService: widget.profileService,
       isInTabNavigation: true, // This prevents back button from showing

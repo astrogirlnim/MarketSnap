@@ -290,7 +290,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 debugPrint(
                   '[AuthWrapper] Profile complete, navigating to MainShellScreen',
                 );
-                return MainShellScreen(profileService: profileService);
+                return MainShellScreen(
+                  profileService: profileService,
+                  hiveService: hiveService,
+                );
               } else {
                 debugPrint(
                   '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
@@ -427,7 +430,7 @@ class DevelopmentCameraWrapper extends StatelessWidget {
       body: Stack(
         children: [
           // Camera preview screen
-          const CameraPreviewScreen(),
+          CameraPreviewScreen(hiveService: hiveService),
 
           // Development overlay banner
           Positioned(

@@ -5,7 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/background_sync_service.dart';
-import '../../../../main.dart';
+import '../../../../core/services/hive_service.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -13,11 +13,13 @@ class MediaReviewScreen extends StatefulWidget {
   final String mediaPath;
   final MediaType mediaType;
   final String? caption;
+  final HiveService hiveService;
 
   const MediaReviewScreen({
     super.key,
     required this.mediaPath,
     required this.mediaType,
+    required this.hiveService,
     this.caption,
   });
 
@@ -256,12 +258,39 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         location: null, // TODO: Add location support in future
       );
 
-      // Add to Hive queue for background upload
-      await hiveService.addPendingMedia(pendingItem);
-
-      debugPrint(
-        '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
-      );
+      // Add to Hive queue for background upload with error handling for closed boxes
+      try {
+        await widget.hiveService.addPendingMedia(pendingItem);
+        debugPrint(
+          '[MediaReviewScreen] Media added to upload queue: ${pendingItem.id}',
+        );
+      } catch (e) {
+        debugPrint('[MediaReviewScreen] Error adding to Hive queue: $e');
+        
+        // Check if this is a "box already closed" error
+        if (e.toString().contains('Box has already been closed') ||
+            e.toString().contains('box is closed')) {
+          debugPrint('[MediaReviewScreen] Hive box closed - attempting to reinitialize...');
+          
+          try {
+            // Try to reinitialize HiveService
+            await widget.hiveService.init();
+            debugPrint('[MediaReviewScreen] HiveService reinitialized successfully');
+            
+            // Retry adding to queue
+            await widget.hiveService.addPendingMedia(pendingItem);
+            debugPrint(
+              '[MediaReviewScreen] Media added to upload queue after reinit: ${pendingItem.id}',
+            );
+          } catch (reinitError) {
+            debugPrint('[MediaReviewScreen] Failed to reinitialize HiveService: $reinitError');
+            throw Exception('Failed to save media locally: $reinitError');
+          }
+        } else {
+          // Re-throw other errors
+          rethrow;
+        }
+      }
 
       // Trigger immediate sync to upload the media right away
       bool uploadSuccessful = false;
