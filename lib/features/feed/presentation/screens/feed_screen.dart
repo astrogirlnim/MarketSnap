@@ -15,14 +15,11 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   final FeedService _feedService = FeedService();
-  late Future<List<StoryItem>> _storiesFuture;
-  late Future<List<Snap>> _snapsFuture;
 
   @override
   void initState() {
     super.initState();
-    _storiesFuture = _feedService.getStories();
-    _snapsFuture = _feedService.getFeedSnaps();
+    print('[FeedScreen] Initializing feed screen with real-time streams');
   }
 
   @override
@@ -49,49 +46,66 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _refreshFeed() async {
-    setState(() {
-      _storiesFuture = _feedService.getStories();
-      _snapsFuture = _feedService.getFeedSnaps();
-    });
+    print('[FeedScreen] Manual refresh triggered');
+    // With streams, we don't need to manually refresh as data updates automatically
+    // But we'll trigger a rebuild to satisfy the RefreshIndicator
+    setState(() {});
   }
 
   Widget _buildStoriesSection() {
-    return FutureBuilder<List<StoryItem>>(
-      future: _storiesFuture,
+    return StreamBuilder<List<StoryItem>>(
+      stream: _feedService.getStoriesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          print('[FeedScreen] Stories stream: waiting for data');
           return const SizedBox(height: 110, child: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasError) {
+          print('[FeedScreen] Stories stream error: ${snapshot.error}');
           return const SizedBox(height: 110, child: Center(child: Text('Error loading stories')));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          print('[FeedScreen] Stories stream: no data available');
           return const SizedBox.shrink();
         }
-        return StoryCarouselWidget(stories: snapshot.data!);
+        
+        final stories = snapshot.data!;
+        print('[FeedScreen] Stories stream: displaying ${stories.length} stories');
+        return StoryCarouselWidget(stories: stories);
       },
     );
   }
 
   Widget _buildSnapsList() {
-    return FutureBuilder<List<Snap>>(
-      future: _snapsFuture,
+    return StreamBuilder<List<Snap>>(
+      stream: _feedService.getFeedSnapsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          print('[FeedScreen] Snaps stream: waiting for data');
           return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasError) {
+          print('[FeedScreen] Snaps stream error: ${snapshot.error}');
           return const SliverFillRemaining(child: Center(child: Text('Error loading snaps')));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          print('[FeedScreen] Snaps stream: no data available');
           return const SliverFillRemaining(child: Center(child: Text('No snaps yet!')));
         }
         
         final snaps = snapshot.data!;
+        print('[FeedScreen] Snaps stream: displaying ${snaps.length} snaps');
+        
         return SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) {
-              return FeedPostWidget(snap: snaps[index]);
+              final snap = snaps[index];
+              final isCurrentUserSnap = _feedService.isCurrentUserSnap(snap);
+              
+              return FeedPostWidget(
+                snap: snap,
+                isCurrentUserPost: isCurrentUserSnap,
+              );
             },
             childCount: snaps.length,
           ),

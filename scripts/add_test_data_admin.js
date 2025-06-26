@@ -14,109 +14,85 @@ db.settings({
   ssl: false,
 });
 
-// Simple colored placeholder data URLs (small 1x1 pixel images)
-const PLACEHOLDER_IMAGES = {
-  green: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  orange: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
-  yellow: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGA4jR9awAAAABJRU5ErkJggg==',
-  tomato: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  lettuce: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-  bread: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGA4jR9awAAAABJRU5ErkJggg=='
-};
-
 async function addTestData() {
   console.log('🧪 Adding test data to MarketSnap Firestore emulator using Admin SDK...');
-  console.log('📸 Using local data URL images to avoid network timeouts');
   
   try {
-    // Sample snaps data with local data URLs
+    // Better placeholder images using picsum.photos (reliable service)
+    const PLACEHOLDER_IMAGES = {
+      avatar1: 'https://picsum.photos/50/50?random=1',
+      avatar2: 'https://picsum.photos/50/50?random=2', 
+      avatar3: 'https://picsum.photos/50/50?random=3',
+      media1: 'https://picsum.photos/400/300?random=10',
+      media2: 'https://picsum.photos/400/300?random=11',
+      media3: 'https://picsum.photos/400/300?random=12'
+    };
+
+    // Sample snaps data
     const testSnaps = [
       {
         vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
         vendorName: 'Test',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.green,
-        mediaUrl: PLACEHOLDER_IMAGES.tomato,
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
+        mediaUrl: PLACEHOLDER_IMAGES.media1,
         mediaType: 'photo',
-        caption: 'Fresh organic tomatoes just picked! 🍅',
-        createdAt: admin.firestore.Timestamp.now(),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
+        caption: 'Fresh organic tomatoes just picked this morning! 🍅',
+        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // 24 hours from now
       },
       {
-        vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
-        vendorName: 'Test',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.green,
-        mediaUrl: PLACEHOLDER_IMAGES.lettuce,
-        mediaType: 'photo',
-        caption: 'Crispy lettuce ready for your salad! 🥬',
-        createdAt: admin.firestore.Timestamp.now(),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
-      },
-      {
-        vendorId: 'gdAtsPSKZhdH3HHoufDe8UN7Eawr',
+        vendorId: 'vendor-sunrise-bakery',
         vendorName: 'Sunrise Bakery',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.orange,
-        mediaUrl: PLACEHOLDER_IMAGES.bread,
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
+        mediaUrl: PLACEHOLDER_IMAGES.media2,
         mediaType: 'photo',
         caption: 'Warm sourdough just out of the oven! 🍞',
-        createdAt: admin.firestore.Timestamp.now(),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22 * 60 * 60 * 1000)) // 22 hours from now
       },
       {
-        vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
-        vendorName: 'Test',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.green,
-        mediaUrl: PLACEHOLDER_IMAGES.yellow,
+        vendorId: 'vendor-green-garden',
+        vendorName: 'Green Garden',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
+        mediaUrl: PLACEHOLDER_IMAGES.media3,
         mediaType: 'photo',
-        caption: 'Golden corn fresh from the field! 🌽',
-        createdAt: admin.firestore.Timestamp.now(),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
+        caption: 'Beautiful leafy greens ready for your salad! 🥬',
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 4 * 60 * 60 * 1000)), // 4 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 20 * 60 * 60 * 1000)) // 20 hours from now
       }
     ];
 
-    console.log('📱 Adding sample snaps with local images...');
+    console.log('📝 Adding sample snaps to Firestore...');
     
-    // First, clear existing test data
-    console.log('🧹 Clearing existing test data...');
+    // Clear existing snaps first
     const existingSnaps = await db.collection('snaps').get();
-    const deleteBatch = db.batch();
-    existingSnaps.docs.forEach(doc => {
-      deleteBatch.delete(doc.ref);
-    });
-    if (existingSnaps.size > 0) {
-      await deleteBatch.commit();
-      console.log(`   ✅ Deleted ${existingSnaps.size} existing snaps`);
-    }
-    
-    // Add new test data
     const batch = db.batch();
     
-    testSnaps.forEach((snap, index) => {
-      const docRef = db.collection('snaps').doc();
-      batch.set(docRef, snap);
-      console.log(`  ✅ Queued snap ${index + 1}: ${snap.vendorName} - ${snap.caption}`);
+    existingSnaps.docs.forEach(doc => {
+      batch.delete(doc.ref);
     });
+    
+    if (existingSnaps.docs.length > 0) {
+      await batch.commit();
+      console.log(`🗑️  Cleared ${existingSnaps.docs.length} existing snaps`);
+    }
 
-    await batch.commit();
-    console.log('🎉 All test data added successfully with local images!');
-    
-    // Verify data was added
-    const snapshot = await db.collection('snaps').get();
-    console.log(`📊 Total snaps in collection: ${snapshot.size}`);
-    
-    console.log('\n🔍 To view the data:');
-    console.log('   • Open Firestore UI: http://127.0.0.1:4000/firestore');
-    console.log('   • Check \'snaps\' collection');
-    console.log('\n📱 To test in your app:');
-    console.log('   • Navigate to the Feed tab');
-    console.log('   • Pull down to refresh');
-    console.log('   • Images should load instantly (no network requests)');
-    
+    // Add new test snaps
+    for (let i = 0; i < testSnaps.length; i++) {
+      const snap = testSnaps[i];
+      const docRef = db.collection('snaps').doc();
+      await docRef.set(snap);
+      console.log(`✅ Added snap ${i + 1}: "${snap.caption}" by ${snap.vendorName}`);
+    }
+
+    console.log('🎉 Test data added successfully!');
+    console.log('📱 You can now view the snaps in your MarketSnap app feed');
+    console.log('🌐 Or check the Firestore emulator at http://127.0.0.1:4000/firestore');
+
   } catch (error) {
     console.error('❌ Error adding test data:', error);
     process.exit(1);
   }
-  
-  process.exit(0);
 }
 
 addTestData(); 

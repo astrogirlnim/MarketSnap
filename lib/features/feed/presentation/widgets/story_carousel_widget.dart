@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class StoryCarouselWidget extends StatelessWidget {
   final List<StoryItem> stories;
@@ -32,7 +34,8 @@ class StoryCarouselWidget extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: 32,
-                    backgroundImage: NetworkImage(story.vendorAvatarUrl),
+                    backgroundImage: _getImageProvider(story.vendorAvatarUrl),
+                    backgroundColor: AppColors.eggshell,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -47,5 +50,23 @@ class StoryCarouselWidget extends StatelessWidget {
         },
       ),
     );
+  }
+
+  /// Helper method to get the appropriate ImageProvider for URLs or data URLs
+  ImageProvider _getImageProvider(String imageUrl) {
+    if (imageUrl.startsWith('data:image/')) {
+      // Handle data URL
+      try {
+        final base64String = imageUrl.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return MemoryImage(bytes);
+      } catch (e) {
+        // Fallback to a placeholder if data URL parsing fails
+        return const AssetImage('assets/images/icon.png');
+      }
+    } else {
+      // Handle regular URL
+      return NetworkImage(imageUrl);
+    }
   }
 } 

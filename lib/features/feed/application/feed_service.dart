@@ -9,59 +9,95 @@ class FeedService {
   // ignore: unused_field
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // In a real app, we would also fetch user's follow list.
-  // For now, we'll fetch recent snaps from all vendors.
+  /// Get current user's ID for distinguishing own posts
+  String? get currentUserId => _auth.currentUser?.uid;
 
-  Future<List<StoryItem>> getStories() async {
-    // 1. For simplicity, we'll get stories from a few recent vendors.
-    // In a real app, this would be based on followed vendors.
-    final snapsQuery = await _firestore
+  /// Real-time stream of stories from all vendors
+  /// In a real app, this would be filtered by followed vendors
+  Stream<List<StoryItem>> getStoriesStream() {
+    print('[FeedService] Setting up real-time stories stream');
+    
+    return _firestore
         .collection('snaps')
         .orderBy('createdAt', descending: true)
-        .limit(20)
-        .get();
+        .limit(50) // Get more snaps to group by vendor
+        .snapshots()
+        .map((snapshot) {
+          print('[FeedService] Received ${snapshot.docs.length} snaps for stories');
+          
+          final snaps = snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
 
-    final snaps = snapsQuery.docs.map((doc) => Snap.fromFirestore(doc)).toList();
+          // Group snaps by vendor
+          final Map<String, List<Snap>> snapsByVendor = {};
+          for (var snap in snaps) {
+            if (!snapsByVendor.containsKey(snap.vendorId)) {
+              snapsByVendor[snap.vendorId] = [];
+            }
+            snapsByVendor[snap.vendorId]!.add(snap);
+          }
 
-    // 2. Group snaps by vendor
-    final Map<String, List<Snap>> snapsByVendor = {};
-    for (var snap in snaps) {
-      if (!snapsByVendor.containsKey(snap.vendorId)) {
-        snapsByVendor[snap.vendorId] = [];
-      }
-      snapsByVendor[snap.vendorId]!.add(snap);
+          // Create StoryItems
+          final List<StoryItem> stories = [];
+          snapsByVendor.forEach((vendorId, vendorSnaps) {
+            if (vendorSnaps.isNotEmpty) {
+              stories.add(StoryItem(
+                vendorId: vendorId,
+                vendorName: vendorSnaps.first.vendorName,
+                vendorAvatarUrl: vendorSnaps.first.vendorAvatarUrl,
+                snaps: vendorSnaps,
+                hasUnseenSnaps: true, // In a real app, this would track viewed status
+              ));
+            }
+          });
+
+          print('[FeedService] Created ${stories.length} story items');
+          return stories;
+        });
+  }
+
+  /// Real-time stream of feed snaps
+  /// Returns snaps ordered by creation time (newest first)
+  Stream<List<Snap>> getFeedSnapsStream({int limit = 20}) {
+    print('[FeedService] Setting up real-time feed snaps stream with limit: $limit');
+    
+    return _firestore
+        .collection('snaps')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+          print('[FeedService] Received ${snapshot.docs.length} snaps for feed');
+          final snaps = snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
+          
+          // Log current user's snaps for debugging
+          final currentUser = currentUserId;
+          if (currentUser != null) {
+            final userSnaps = snaps.where((snap) => snap.vendorId == currentUser).length;
+            print('[FeedService] Found $userSnaps snaps from current user ($currentUser)');
+          }
+          
+          return snaps;
+        });
+  }
+
+  /// Check if a snap belongs to the current user
+  bool isCurrentUserSnap(Snap snap) {
+    final currentUser = currentUserId;
+    final isUserSnap = currentUser != null && snap.vendorId == currentUser;
+    if (isUserSnap) {
+      print('[FeedService] Snap "${snap.caption}" belongs to current user');
     }
+    return isUserSnap;
+  }
 
-    // 3. Create StoryItems
-    final List<StoryItem> stories = [];
-    snapsByVendor.forEach((vendorId, vendorSnaps) {
-      if (vendorSnaps.isNotEmpty) {
-        stories.add(StoryItem(
-          vendorId: vendorId,
-          vendorName: vendorSnaps.first.vendorName,
-          vendorAvatarUrl: vendorSnaps.first.vendorAvatarUrl,
-          snaps: vendorSnaps,
-        ));
-      }
-    });
-
-    return stories;
+  /// Legacy methods for backward compatibility (now use streams internally)
+  Future<List<StoryItem>> getStories() async {
+    print('[FeedService] Using legacy getStories - converting stream to future');
+    return getStoriesStream().first;
   }
 
   Future<List<Snap>> getFeedSnaps({DocumentSnapshot? lastDocument, int limit = 10}) async {
-    // For now, fetching all recent snaps.
-    // A real implementation would filter by followed vendors.
-    Query query = _firestore
-        .collection('snaps')
-        .orderBy('createdAt', descending: true)
-        .limit(limit);
-
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument);
-    }
-
-    final querySnapshot = await query.get();
-    final snaps = querySnapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
-    return snaps;
+    print('[FeedService] Using legacy getFeedSnaps - converting stream to future');
+    return getFeedSnapsStream(limit: limit).first;
   }
 } 
