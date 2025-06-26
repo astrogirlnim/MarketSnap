@@ -376,7 +376,6 @@ export const sendMessageNotification = onDocumentCreated(
         notification: {
           title: `New message from ${fromUserName}`,
           body: text,
-          sound: "default",
         },
         data: {
           type: "new_message",
