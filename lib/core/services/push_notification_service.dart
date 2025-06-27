@@ -37,7 +37,9 @@ class PushNotificationService {
     if (type == 'new_message') {
       final fromUid = data['fromUid'];
       // Fetch the user profile to navigate to the chat screen
-      final fromUser = await profileService.loadAnyUserProfileFromFirestore(fromUid);
+      final fromUser = await profileService.loadAnyUserProfileFromFirestore(
+        fromUid,
+      );
 
       if (fromUser != null) {
         navigatorKey.currentState?.push(
