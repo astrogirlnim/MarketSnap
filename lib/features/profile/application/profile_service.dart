@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/models/vendor_profile.dart';
+import '../../../core/models/regular_user_profile.dart';
 import '../../../core/services/hive_service.dart';
 
 /// Service for managing vendor profiles with offline-first capabilities.
@@ -354,6 +355,187 @@ class ProfileService {
     } catch (e) {
       debugPrint('[ProfileService] Error deleting profile: $e');
       throw Exception('Failed to delete profile: $e');
+    }
+  }
+
+  /// Gets the current user's regular user profile from local storage
+  RegularUserProfile? getCurrentRegularUserProfile() {
+    final uid = currentUserUid;
+    if (uid == null) {
+      debugPrint('[ProfileService] No authenticated user found');
+      return null;
+    }
+    return _hiveService.getRegularUserProfile(uid);
+  }
+
+  /// Creates or updates a regular user profile locally
+  Future<void> saveRegularUserProfile({
+    required String displayName,
+    String? localAvatarPath,
+  }) async {
+    final uid = currentUserUid;
+    if (uid == null) {
+      throw Exception('User must be authenticated to save profile');
+    }
+
+    debugPrint('[ProfileService] Saving regular user profile for UID: $uid');
+
+    try {
+      // Get current user's contact info from auth
+      final user = _auth.currentUser;
+      final phoneNumber = user?.phoneNumber;
+      final email = user?.email;
+
+      final profile = RegularUserProfile(
+        uid: uid,
+        displayName: displayName.trim(),
+        localAvatarPath: localAvatarPath,
+        phoneNumber: phoneNumber,
+        email: email,
+        needsSync: true,
+      );
+
+      // Save locally
+      await _hiveService.saveRegularUserProfile(profile);
+
+      debugPrint('[ProfileService] Regular user profile saved locally');
+
+      // Try to sync to Firestore if online
+      try {
+        await syncRegularUserProfileToFirestore(uid);
+      } catch (e) {
+        debugPrint('[ProfileService] Profile saved locally, will sync when online: $e');
+      }
+    } catch (e) {
+      debugPrint('[ProfileService] Error saving regular user profile: $e');
+      throw Exception('Failed to save profile: $e');
+    }
+  }
+
+  /// Syncs a regular user profile from local storage to Firestore
+  Future<void> syncRegularUserProfileToFirestore(String uid) async {
+    debugPrint('[ProfileService] Syncing regular user profile to Firestore for UID: $uid');
+
+    final profile = _hiveService.getRegularUserProfile(uid);
+    if (profile == null) {
+      debugPrint('[ProfileService] No regular user profile found locally for UID: $uid');
+      return;
+    }
+
+    if (!profile.needsSync) {
+      debugPrint('[ProfileService] Regular user profile already synced for UID: $uid');
+      return;
+    }
+
+    try {
+      debugPrint('[ProfileService] Starting regular user profile Firestore sync process...');
+
+      // Upload avatar if we have a local path but no URL
+      String? avatarURL = profile.avatarURL;
+      if (profile.localAvatarPath != null && profile.avatarURL == null) {
+        debugPrint('[ProfileService] Uploading avatar before regular user profile sync');
+        avatarURL = await uploadAvatar(profile.localAvatarPath!);
+      }
+
+      // Update profile with avatar URL if we got one
+      final profileToSync = avatarURL != null
+          ? profile.copyWith(avatarURL: avatarURL, localAvatarPath: null)
+          : profile;
+
+      debugPrint(
+        '[ProfileService] Writing regular user profile to Firestore collection: regularUsers/$uid',
+      );
+
+      // Sync to Firestore regular users collection
+      await _firestore
+          .collection('regularUsers')
+          .doc(uid)
+          .set(profileToSync.toFirestore())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception(
+              'Firestore write operation timed out after 10 seconds',
+            ),
+          );
+
+      debugPrint('[ProfileService] Regular user profile Firestore write completed successfully');
+
+      // Mark as synced locally
+      await _hiveService.saveRegularUserProfile(
+        profileToSync.copyWith(needsSync: false),
+      );
+
+      debugPrint('[ProfileService] Regular user profile synced to Firestore successfully');
+    } catch (e) {
+      debugPrint('[ProfileService] Error syncing regular user profile to Firestore: $e');
+      throw Exception('Failed to sync regular user profile: $e');
+    }
+  }
+
+  /// Checks if the current user has a complete regular user profile
+  bool hasCompleteRegularUserProfile() {
+    final uid = currentUserUid;
+    if (uid == null) return false;
+    return _hiveService.hasCompleteRegularUserProfile(uid);
+  }
+
+  /// Loads regular user profile from Firestore and caches locally
+  Future<RegularUserProfile?> loadRegularUserProfileFromFirestore(String uid) async {
+    debugPrint('[ProfileService] Loading regular user profile from Firestore for UID: $uid');
+
+    try {
+      final doc = await _firestore.collection('regularUsers').doc(uid).get();
+
+      if (!doc.exists) {
+        debugPrint(
+          '[ProfileService] No regular user profile found in Firestore for UID: $uid',
+        );
+        return null;
+      }
+
+      final data = doc.data()!;
+      final profile = RegularUserProfile.fromFirestore(data, uid);
+
+      // Cache locally
+      await _hiveService.saveRegularUserProfile(profile);
+
+      debugPrint('[ProfileService] Regular user profile loaded and cached successfully');
+      return profile;
+    } catch (e) {
+      debugPrint('[ProfileService] Error loading regular user profile from Firestore: $e');
+      throw Exception('Failed to load regular user profile: $e');
+    }
+  }
+
+  /// Deletes the current user's regular user profile
+  Future<void> deleteCurrentRegularUserProfile() async {
+    final uid = currentUserUid;
+    if (uid == null) {
+      throw Exception('User must be authenticated to delete profile');
+    }
+
+    debugPrint('[ProfileService] Deleting regular user profile for user: $uid');
+
+    try {
+      // Delete from Firestore
+      await _firestore.collection('regularUsers').doc(uid).delete();
+
+      // Delete avatar from Storage
+      try {
+        await _storage.ref().child('regularUsers/$uid/avatar.jpg').delete();
+      } catch (e) {
+        debugPrint(
+          '[ProfileService] Avatar deletion failed (may not exist): $e',
+        );
+      }
+
+      // Delete from local storage
+      await _hiveService.deleteRegularUserProfile(uid);
+
+      debugPrint('[ProfileService] Regular user profile deleted successfully');
+    } catch (e) {
+      debugPrint('[ProfileService] Error deleting regular user profile: $e');
+      throw Exception('Failed to delete regular user profile: $e');
     }
   }
 }

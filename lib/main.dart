@@ -24,6 +24,9 @@ import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'features/auth/presentation/screens/user_type_selection_screen.dart';
+import 'features/profile/presentation/screens/regular_user_profile_screen.dart';
+import 'core/models/user_type.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -503,27 +506,64 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   hiveService: hiveService,
                 );
               } else {
-                // No existing profile found - check if user needs to create one
-                if (profileService.hasCompleteProfile()) {
-                  debugPrint(
-                    '[AuthWrapper] Profile complete, navigating to MainShellScreen',
-                  );
+                // No existing profile found - check if user has any profile (vendor or regular)
+                final hasVendorProfile = profileService.hasCompleteProfile();
+                final hasRegularProfile = profileService.hasCompleteRegularUserProfile();
+                
+                if (hasVendorProfile || hasRegularProfile) {
+                  debugPrint('[AuthWrapper] User has complete profile, navigating to MainShellScreen');
                   return MainShellScreen(
                     profileService: profileService,
                     hiveService: hiveService,
                   );
                 } else {
-                  debugPrint(
-                    '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
-                  );
-                  return VendorProfileScreen(
-                    profileService: profileService,
-                    onProfileComplete: () {
-                      debugPrint(
-                        '[AuthWrapper] Profile completed, triggering rebuild',
-                      );
-                      // Trigger a rebuild of the AuthWrapper to check profile status again
-                      setState(() {});
+                  debugPrint('[AuthWrapper] No profile found, navigating to UserTypeSelectionScreen');
+                  
+                  // Import the UserTypeSelectionScreen
+                  return UserTypeSelectionScreen(
+                    onUserTypeSelected: (userType) {
+                      debugPrint('[AuthWrapper] User selected type: ${userType.displayName}');
+                      
+                      // Navigate to appropriate profile screen
+                      if (userType == UserType.vendor) {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => VendorProfileScreen(
+                              profileService: profileService,
+                              onProfileComplete: () {
+                                debugPrint('[AuthWrapper] Vendor profile completed');
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => MainShellScreen(
+                                      profileService: profileService,
+                                      hiveService: hiveService,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      } else {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => RegularUserProfileScreen(
+                              profileService: profileService,
+                              onProfileComplete: () {
+                                debugPrint('[AuthWrapper] Regular user profile completed');
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => MainShellScreen(
+                                      profileService: profileService,
+                                      hiveService: hiveService,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      }
                     },
                   );
                 }
