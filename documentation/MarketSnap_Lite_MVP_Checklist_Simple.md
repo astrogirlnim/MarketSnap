@@ -150,11 +150,12 @@ Legend:
   - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
   - [ ] Unit test: conversation auto-deletes after 24 h.
 
-- [ ] **8. RAG Feedback & Analytics**
-  - [ ] Add upvote/skip/edit UI to recipe/FAQ cards.
-  - [ ] Store user feedback in Firestore.
-  - [ ] Track engagement and feedback analytics.
-  - [ ] Pass feedback to RAG prompts for adaptive suggestions.
+- [X] **8. RAG Feedback & Analytics** ✅ **COMPLETED WITH UI FIX**
+  - [X] Add upvote/skip/edit UI to recipe/FAQ cards.
+  - [X] Store user feedback in Firestore.
+  - [X] Track engagement and feedback analytics.
+  - [X] Pass feedback to RAG prompts for adaptive suggestions.
+  - [X] **CRITICAL FIX:** Resolved UI interaction bug with architectural refactoring
 
 - [ ] **9. RAG Personalization**
   - [ ] Store user interests/history in Firestore.
