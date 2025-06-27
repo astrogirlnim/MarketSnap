@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -62,7 +63,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   late AnimationController _filterAnimationController;
   late Animation<double> _filterAnimation;
   late AnimationController _aiButtonAnimationController;
-  late Animation<double> _aiButtonAnimation;
 
   // Posting state
   bool _hasConnectivity = true;
@@ -94,15 +94,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
 
     _aiButtonAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
-    );
-    _aiButtonAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _aiButtonAnimationController,
-        curve: Curves.elasticOut,
-      ),
-    );
+    )..repeat(); // Start the breathing animation immediately
 
     // Initialize services
     _initializeLutService();
@@ -549,7 +543,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
+                        children: [
               const Text(
                 'Add a caption',
                 style: TextStyle(
@@ -559,56 +553,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ),
               ),
               const Spacer(),
+              // Placeholder to maintain layout spacing
               if (_aiCaptionAvailable)
-                ScaleTransition(
-                  scale: _aiButtonAnimation,
-                  child: RotationTransition(
-                    turns: _isGeneratingCaption 
-                        ? Tween(begin: 0.0, end: 1.0).animate(
-                            CurvedAnimation(
-                              parent: _aiButtonAnimationController,
-                              curve: Curves.linear,
-                            ),
-                          )
-                        : const AlwaysStoppedAnimation<double>(0),
-                    child: IconButton(
-                      onPressed: _isGeneratingCaption ? null : _generateAICaption,
-                      icon: _isGeneratingCaption
-                          ? Container(
-                              width: 24,
-                              height: 24,
-                              padding: const EdgeInsets.all(2),
-                              child: Image.asset(
-                                'assets/images/icons/wicker_mascot.png',
-                                width: 20,
-                                height: 20,
-                                fit: BoxFit.contain,
-                              ),
-                            )
-                          : Container(
-                              width: 24,
-                              height: 24,
-                              padding: const EdgeInsets.all(2),
-                              child: Image.asset(
-                                'assets/images/icons/wicker_mascot.png',
-                                width: 20,
-                                height: 20,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                      tooltip: _isGeneratingCaption
-                          ? 'Wicker is crafting your caption...'
-                          : 'Ask Wicker for a caption suggestion',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.orange.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                      ),
-                    ),
-                  ),
-                ),
+                const SizedBox(width: 48, height: 24),
             ],
           ),
           const SizedBox(height: 8),
@@ -846,72 +793,123 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-        ),
-        title: Text(
-          'Review ${widget.mediaType.name.capitalize()}',
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          // Share/save options could go here
-          IconButton(
-            onPressed: () {
-              // TODO: Implement share functionality
-            },
-            icon: const Icon(Icons.share, color: Colors.grey),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Media preview section - Fixed height
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.5,
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                child: _buildMediaPreview(),
+    return Stack(
+      children: [
+        // Main app content
+        Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+            ),
+            title: Text(
+              'Review ${widget.mediaType.name.capitalize()}',
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
             ),
-
-            // Scrollable bottom section
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Filter selection (now enabled for videos too)
-                    _buildFilterSelection(),
-
-                    // Caption input
-                    _buildCaptionInput(),
-
-                    // Post button
-                    _buildPostButton(),
-
-                    // Bottom padding for safe area
-                    SizedBox(
-                      height: MediaQuery.of(context).padding.bottom + 16,
-                    ),
-                  ],
+            actions: [
+              // Share/save options could go here
+              IconButton(
+                onPressed: () {
+                  // TODO: Implement share functionality
+                },
+                icon: const Icon(Icons.share, color: Colors.grey),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Media preview section - Fixed height
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    child: _buildMediaPreview(),
+                  ),
                 ),
-              ),
+
+                // Scrollable bottom section
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Filter selection (now enabled for videos too)
+                        _buildFilterSelection(),
+
+                        // Caption input
+                        _buildCaptionInput(),
+
+                        // Post button
+                        _buildPostButton(),
+
+                        // Bottom padding for safe area
+                        SizedBox(
+                          height: MediaQuery.of(context).padding.bottom + 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        
+        // Wicker overlay - positioned in the foreground
+        if (_aiCaptionAvailable)
+          Positioned(
+            right: 8,
+            bottom: MediaQuery.of(context).size.height * 0.32, // Position near the caption area
+            child: AnimatedBuilder(
+              animation: _aiButtonAnimationController,
+              builder: (context, child) {
+                // Friendly breathing animation when idle
+                final breathingScale = _isGeneratingCaption 
+                    ? 1.0 
+                    : 1.0 + (sin(_aiButtonAnimationController.value * 2 * pi) * 0.08);
+                
+                // Gentle shake when generating
+                final shakeOffset = _isGeneratingCaption
+                    ? sin(_aiButtonAnimationController.value * 8 * pi) * 3.0
+                    : 0.0;
+                
+                return Transform.translate(
+                  offset: Offset(shakeOffset, 0),
+                  child: Transform.scale(
+                    scale: breathingScale,
+                    child: GestureDetector(
+                      onTap: _isGeneratingCaption ? null : _generateAICaption,
+                      child: Tooltip(
+                        message: _isGeneratingCaption
+                            ? 'Wicker is crafting your caption...'
+                            : 'Ask Wicker for a caption suggestion',
+                        child: SizedBox(
+                          width: 72,
+                          height: 72,
+                          child: Image.asset(
+                            'assets/images/icons/wicker_mascot.png',
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }
