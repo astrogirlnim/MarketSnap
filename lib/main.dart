@@ -453,17 +453,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<bool>? _postAuthFuture;
   String? _currentUserId;
 
-  @override
-  void dispose() {
-    // Dispose auth service resources with null safety
-    try {
-      authService.dispose();
-    } catch (e) {
-      debugPrint('[AuthWrapper] Error disposing auth service: $e');
-    }
-    super.dispose();
-  }
-
   /// Handles post-authentication flow including account linking
   Future<bool> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] 🚀 Starting post-authentication flow');
