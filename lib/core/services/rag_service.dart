@@ -1,6 +1,9 @@
 import 'dart:developer' as developer;
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'rag_feedback_service.dart';
+import '../models/rag_feedback.dart';
 
 /// Recipe snippet response model
 class RecipeSnippet {
@@ -122,6 +125,7 @@ class RAGService {
 
   late Box<Map> _cacheBox;
   bool _isInitialized = false;
+  final RAGFeedbackService _feedbackService = RAGFeedbackService();
 
   /// Initialize the RAG service
   Future<void> initialize() async {
@@ -235,6 +239,7 @@ class RAGService {
     required String caption,
     required String vendorId,
     required String mediaType,
+    String? snapId,
   }) async {
     if (!_isInitialized) {
       throw Exception('RAGService not initialized. Call initialize() first.');
@@ -259,6 +264,31 @@ class RAGService {
       name: 'RAGService',
     );
 
+    // Get user preferences from feedback history to improve suggestions
+    Map<String, dynamic> userPreferences = {};
+    String? currentUserId;
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        currentUserId = currentUser.uid;
+        userPreferences = await _feedbackService.getUserPreferences(
+          userId: currentUserId,
+        );
+        
+        if (userPreferences.isNotEmpty) {
+          developer.log(
+            '[RAGService] User preferences loaded: ${userPreferences['preferredContentType']} content, ${userPreferences['preferredKeywords']?.length ?? 0} preferred keywords',
+            name: 'RAGService',
+          );
+        }
+      }
+    } catch (e) {
+      developer.log(
+        '[RAGService] Could not load user preferences: $e',
+        name: 'RAGService',
+      );
+    }
+
     try {
       // Call Cloud Functions for recipe and FAQ data
       final functions = FirebaseFunctions.instance;
@@ -277,6 +307,7 @@ class RAGService {
               'keywords': keywords,
               'mediaType': mediaType,
               'vendorId': vendorId,
+              'userPreferences': userPreferences,
             })
             .timeout(_requestTimeout);
 
@@ -320,6 +351,7 @@ class RAGService {
               'keywords': keywords,
               'vendorId': vendorId,
               'limit': 3, // Get top 3 relevant FAQs
+              'userPreferences': userPreferences,
             })
             .timeout(_requestTimeout);
 
@@ -435,6 +467,7 @@ class RAGService {
         '[RAGService] ========== ENHANCEMENT REQUEST COMPLETE ==========',
         name: 'RAGService',
       );
+      
       return enhancementData;
     } catch (e) {
       developer.log(
@@ -445,6 +478,125 @@ class RAGService {
       // Return empty enhancement data on error
       return SnapEnhancementData(faqs: [], query: caption);
     }
+  }
+
+  /// Record view tracking for analytics (non-blocking)
+  // ignore: unused_element
+  void _recordViewTracking({
+    required String snapId,
+    required String vendorId,
+    required SnapEnhancementData enhancementData,
+  }) {
+    try {
+      // Record recipe view
+      if (enhancementData.hasValidRecipe) {
+        final recipe = enhancementData.recipe!;
+        final recipeHash = _generateRecipeHash(recipe);
+        
+        _feedbackService.recordRecipeFeedback(
+          snapId: snapId,
+          vendorId: vendorId,
+          action: RAGFeedbackAction.view,
+          recipeHash: recipeHash,
+          recipeName: recipe.recipeName,
+          relevanceScore: recipe.relevanceScore,
+          metadata: {
+            'keywords': _extractKeywords(enhancementData.query),
+            'category': recipe.category,
+          },
+        );
+      }
+
+      // Record FAQ views
+      for (final faq in enhancementData.faqs) {
+        _feedbackService.recordFAQFeedback(
+          snapId: snapId,
+          vendorId: vendorId,
+          action: RAGFeedbackAction.view,
+          faqId: faq.vendorId, // Using vendorId as FAQ ID for now
+          faqQuestion: faq.question,
+          relevanceScore: faq.score,
+          metadata: {
+            'keywords': _extractKeywords(enhancementData.query),
+            'category': faq.category,
+          },
+        );
+      }
+    } catch (e) {
+      developer.log(
+        '[RAGService] Error recording view tracking: $e',
+        name: 'RAGService',
+      );
+      // Non-blocking - continue execution
+    }
+  }
+
+  /// Generate a hash for recipe content for consistent tracking
+  String _generateRecipeHash(RecipeSnippet recipe) {
+    final content = '${recipe.recipeName}:${recipe.ingredients.join(",")}';
+    return content.hashCode.toString();
+  }
+
+  /// Record user feedback on RAG suggestions
+  Future<void> recordFeedback({
+    required String snapId,
+    required String vendorId,
+    required RAGFeedbackAction action,
+    required RAGContentType contentType,
+    required String contentId,
+    required String contentTitle,
+    required double relevanceScore,
+    String? userComment,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      if (contentType == RAGContentType.recipe) {
+        await _feedbackService.recordRecipeFeedback(
+          snapId: snapId,
+          vendorId: vendorId,
+          action: action,
+          recipeHash: contentId,
+          recipeName: contentTitle,
+          relevanceScore: relevanceScore,
+          userComment: userComment,
+          metadata: metadata,
+        );
+      } else {
+        await _feedbackService.recordFAQFeedback(
+          snapId: snapId,
+          vendorId: vendorId,
+          action: action,
+          faqId: contentId,
+          faqQuestion: contentTitle,
+          relevanceScore: relevanceScore,
+          userComment: userComment,
+          metadata: metadata,
+        );
+      }
+
+      developer.log(
+        '[RAGService] Recorded $action feedback for $contentType: $contentTitle',
+        name: 'RAGService',
+      );
+    } catch (e) {
+      developer.log(
+        '[RAGService] Error recording feedback: $e',
+        name: 'RAGService',
+      );
+    }
+  }
+
+  /// Get feedback analytics for vendor
+  Future<Map<String, dynamic>> getVendorAnalytics({
+    required String vendorId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return await _feedbackService.getVendorFeedbackAnalytics(
+      vendorId: vendorId,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 
   /// Clear expired cache entries

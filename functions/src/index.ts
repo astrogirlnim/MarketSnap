@@ -667,7 +667,7 @@ export const getRecipeSnippet = createAIHelper(
     logger.log("[getRecipeSnippet] Input data:", data);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const {caption, keywords, mediaType, vendorId} = data;
+    const {caption, keywords, mediaType, vendorId, userPreferences} = data;
 
     if (!caption) {
       throw new functions.https.HttpsError(
@@ -689,7 +689,8 @@ export const getRecipeSnippet = createAIHelper(
 
       logger.log(
         `[getRecipeSnippet] Processing caption: "${caption}" with ` +
-        `${(keywords || []).length} keywords`
+        `${(keywords || []).length} keywords and user preferences: ` +
+        `${userPreferences ? JSON.stringify(userPreferences) : "none"}`
       );
 
       // Import OpenAI
@@ -713,6 +714,32 @@ export const getRecipeSnippet = createAIHelper(
         apiKey: OPENAI_API_KEY,
       });
 
+      // Build user preferences context
+      let userPreferencesContext = "";
+      if (userPreferences && Object.keys(userPreferences).length > 0) {
+        const preferredKeywords = userPreferences.preferredKeywords || [];
+        const preferredCategories = userPreferences.preferredCategories || [];
+        const preferredContentType =
+          userPreferences.preferredContentType || "balanced";
+        const totalPositiveFeedback =
+          userPreferences.totalPositiveFeedback || 0;
+
+        userPreferencesContext = `
+
+USER PREFERENCES (based on ${totalPositiveFeedback} positive interactions):
+- Preferred ingredients: ${preferredKeywords.slice(0, 5).join(", ")}
+- Preferred food categories: ${preferredCategories.slice(0, 3).join(", ")}
+- Content preference: ${preferredContentType}
+- When possible, incorporate these preferred elements into suggestions`;
+
+        logger.log(
+          "[getRecipeSnippet] Using user preferences: " +
+          `${preferredKeywords.length} keywords, ` +
+          `${preferredCategories.length} categories, ` +
+          `${preferredContentType} content type`
+        );
+      }
+
       // Build context-aware prompt for recipe generation
       const keywordList = (keywords || []).join(", ");
       const prompt = "You are a helpful cooking assistant for MarketSnap, " +
@@ -722,7 +749,7 @@ export const getRecipeSnippet = createAIHelper(
 
 Product description: "${caption}"
 Detected keywords: ${keywordList}
-Media type: ${mediaType || "photo"}
+Media type: ${mediaType || "photo"}${userPreferencesContext}
 
 CRITICAL DECISION LOGIC:
 1. First determine: Is this describing FOOD, PRODUCE, or EDIBLE ITEMS?
@@ -860,7 +887,7 @@ export const vectorSearchFAQ = createAIHelper(
     logger.log("[vectorSearchFAQ] Starting FAQ search");
     logger.log("[vectorSearchFAQ] Input data:", data);
 
-    const {query, keywords, vendorId, limit = 3} = data;
+    const {query, keywords, vendorId, limit = 3, userPreferences} = data;
 
     if (!query) {
       throw new functions.https.HttpsError(
@@ -882,7 +909,9 @@ export const vectorSearchFAQ = createAIHelper(
 
       logger.log(
         `[vectorSearchFAQ] Searching for: "${query}" ` +
-        `${vendorId ? `from vendor: ${vendorId}` : "across all vendors"}`
+        `${vendorId ? `from vendor: ${vendorId}` : "across all vendors"} ` +
+        "with user preferences: " +
+        `${userPreferences ? JSON.stringify(userPreferences) : "none"}`
       );
 
       // Import OpenAI for embeddings
@@ -940,13 +969,32 @@ export const vectorSearchFAQ = createAIHelper(
         `[vectorSearchFAQ] Found ${faqSnapshot.docs.length} FAQ entries`
       );
 
-      // Calculate similarity scores
+      // Calculate similarity scores with user preference boosting
       const results = [];
       const queryWords = query.toLowerCase().split(" ");
       const keywordSet = new Set([
         ...queryWords,
         ...(keywords || []).map((k: string) => k.toLowerCase()),
       ]);
+
+      // Extract user preferred keywords for boosting
+      const preferredKeywords = userPreferences?.preferredKeywords || [];
+      const preferredCategories = userPreferences?.preferredCategories || [];
+      const preferredKeywordSet: Set<string> = new Set(
+        preferredKeywords
+          .filter((k: unknown): k is string => typeof k === "string")
+          .map((k: string) => k.toLowerCase())
+      );
+      const preferredCategorySet: Set<string> = new Set(
+        preferredCategories
+          .filter((c: unknown): c is string => typeof c === "string")
+          .map((c: string) => c.toLowerCase())
+      );
+
+      logger.log(
+        `[vectorSearchFAQ] Using ${preferredKeywords.length} keywords ` +
+        `and ${preferredCategories.length} categories for scoring boost`
+      );
 
       for (const doc of faqSnapshot.docs) {
         const faqData = doc.data();
@@ -985,6 +1033,25 @@ export const vectorSearchFAQ = createAIHelper(
           score += 0.1;
         }
 
+        // User preference bonuses
+        let preferenceBonus = 0;
+
+        // Boost score for preferred keywords in FAQ content
+        preferredKeywordSet.forEach((preferredKeyword) => {
+          if (combinedText.includes(preferredKeyword)) {
+            preferenceBonus += 0.15; // Significant boost for preferred keywords
+          }
+        });
+
+        // Boost score for preferred categories
+        preferredCategorySet.forEach((preferredCategory) => {
+          if (category.toLowerCase().includes(preferredCategory)) {
+            preferenceBonus += 0.2; // Strong boost for preferred categories
+          }
+        });
+
+        score += Math.min(preferenceBonus, 0.3); // Cap preference bonus at 0.3
+
         // Only include results with reasonable relevance
         if (score > 0.1) {
           results.push({
@@ -1004,7 +1071,8 @@ export const vectorSearchFAQ = createAIHelper(
 
       logger.log(
         `[vectorSearchFAQ] Returning ${topResults.length} results ` +
-        `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")})`
+        `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")}) ` +
+        "with preference boosting applied"
       );
 
       return {

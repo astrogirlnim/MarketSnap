@@ -6,6 +6,7 @@ import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../core/services/rag_service.dart';
+import '../../../../core/models/rag_feedback.dart';
 
 /// Individual feed post widget displaying a snap with media and interactions
 /// Handles both photo and video content with proper aspect ratios
@@ -175,7 +176,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            color: AppColors.soilTaupe.withAlpha(26),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -326,11 +327,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
-        overlayColor = Colors.orange.withValues(alpha: 0.3);
+        overlayColor = Colors.orange.withAlpha(77);
       } else if (filterType == 'cool') {
-        overlayColor = Colors.blue.withValues(alpha: 0.3);
+        overlayColor = Colors.blue.withAlpha(77);
       } else if (filterType == 'contrast') {
-        overlayColor = Colors.black.withValues(alpha: 0.3);
+        overlayColor = Colors.black.withAlpha(77);
       }
     }
 
@@ -368,7 +369,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.soilCharcoal.withValues(alpha: 0.7),
+                      color: AppColors.soilCharcoal.withAlpha(179),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -398,11 +399,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
-        overlayColor = Colors.orange.withValues(alpha: 0.3);
+        overlayColor = Colors.orange.withAlpha(77);
       } else if (filterType == 'cool') {
-        overlayColor = Colors.blue.withValues(alpha: 0.3);
+        overlayColor = Colors.blue.withAlpha(77);
       } else if (filterType == 'contrast') {
-        overlayColor = Colors.black.withValues(alpha: 0.3);
+        overlayColor = Colors.black.withAlpha(77);
       }
     }
 
@@ -584,15 +585,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   /// Build Recipe Card
   Widget _buildRecipeCard() {
     final recipe = _enhancementData?.recipe;
-    if (recipe == null) return const SizedBox.shrink();
-
-    // Don't show recipe card for non-food items or empty recipes
-    if (recipe.recipeName.isEmpty ||
-        recipe.category == 'non_food' ||
-        recipe.relevanceScore < 0.3) {
-      debugPrint(
-        '[FeedPostWidget] Skipping recipe card - non-food item or low relevance: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})',
-      );
+    if (recipe == null || !(_enhancementData?.hasValidRecipe ?? false)) {
       return const SizedBox.shrink();
     }
 
@@ -600,17 +593,19 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       '[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})',
     );
 
+    final recipeHash = _generateRecipeHash(recipe);
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.harvestOrange.withValues(alpha: 0.3),
+          color: AppColors.harvestOrange.withAlpha(77),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            color: AppColors.soilTaupe.withAlpha(26),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -622,7 +617,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.harvestOrange.withValues(alpha: 0.1),
+                color: AppColors.harvestOrange.withAlpha(26),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -638,41 +633,13 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                 color: AppColors.soilCharcoal,
               ),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  recipe.recipeName,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.harvestOrange,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                if (!_isRecipeExpanded && recipe.ingredients.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    recipe.ingredients.take(3).join(' • '),
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.soilTaupe,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (!_isRecipeExpanded) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tap to see full recipe',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.harvestOrange.withValues(alpha: 0.7),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ],
+            subtitle: Text(
+              recipe.recipeName,
+              style: AppTypography.body.copyWith(
+                color: AppColors.harvestOrange,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
             ),
             trailing: Icon(
               _isRecipeExpanded ? Icons.expand_less : Icons.expand_more,
@@ -680,6 +647,14 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
+              // This is a tracking action, not feedback.
+              _trackAction(
+                contentType: 'recipe',
+                contentId: recipeHash,
+                contentTitle: recipe.recipeName,
+                action: RAGFeedbackAction.expand,
+                relevanceScore: recipe.relevanceScore,
+              );
               setState(() {
                 _isRecipeExpanded = !_isRecipeExpanded;
               });
@@ -717,25 +692,25 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                       ),
                     ),
                   ],
-                  if (recipe.fromCache) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.cached,
-                          size: 14,
-                          color: AppColors.soilTaupe.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Cached suggestion',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.soilTaupe.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: AppSpacing.md),
+                  // New, isolated feedback widget
+                  _FeedbackInteraction(
+                    key: ValueKey('recipe_feedback_$recipeHash'),
+                    onUpvote: () => _recordFeedback(
+                      contentType: 'recipe',
+                      contentId: recipeHash,
+                      contentTitle: recipe.recipeName,
+                      action: RAGFeedbackAction.upvote,
+                      relevanceScore: recipe.relevanceScore,
                     ),
-                  ],
+                    onDownvote: () => _recordFeedback(
+                      contentType: 'recipe',
+                      contentId: recipeHash,
+                      contentTitle: recipe.recipeName,
+                      action: RAGFeedbackAction.downvote,
+                      relevanceScore: recipe.relevanceScore,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -759,10 +734,10 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.leafGreen.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.leafGreen.withAlpha(77)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            color: AppColors.soilTaupe.withAlpha(26),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -774,7 +749,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.leafGreen.withValues(alpha: 0.1),
+                color: AppColors.leafGreen.withAlpha(26),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -790,19 +765,22 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                 color: AppColors.soilCharcoal,
               ),
             ),
-            subtitle: Text(
-              '${faqs.length} answer${faqs.length == 1 ? '' : 's'} found',
-              style: AppTypography.body.copyWith(
-                color: AppColors.leafGreen,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
             trailing: Icon(
               _isFAQExpanded ? Icons.expand_less : Icons.expand_more,
               color: AppColors.soilTaupe,
             ),
             onTap: () {
               HapticFeedback.lightImpact();
+              // Track expand action for first FAQ
+              if (faqs.isNotEmpty) {
+                _trackAction(
+                  contentType: 'faq',
+                  contentId: faqs.first.vendorId, // Using vendorId as FAQ ID for now
+                  contentTitle: faqs.first.question,
+                  action: RAGFeedbackAction.expand,
+                  relevanceScore: faqs.first.score,
+                );
+              }
               setState(() {
                 _isFAQExpanded = !_isFAQExpanded;
               });
@@ -811,65 +789,282 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           if (_isFAQExpanded) ...[
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
               child: Column(
                 children: faqs
                     .take(3)
                     .map(
-                      (faq) => Container(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          color: AppColors.eggshell.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Q: ${faq.question}',
-                              style: AppTypography.body.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.soilCharcoal,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'A: ${faq.answer}',
-                              style: AppTypography.body.copyWith(
-                                color: AppColors.soilTaupe,
-                              ),
-                            ),
-                            if (faq.score > 0) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    size: 12,
-                                    color: AppColors.sunsetAmber,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${(faq.score * 100).toInt()}% match',
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.soilTaupe.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                      (faq) => _buildFAQItem(faq),
                     )
                     .toList(),
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Build individual FAQ item with feedback buttons
+  Widget _buildFAQItem(FAQResult faq) {
+    final faqId = '${faq.vendorId}_${faq.question.hashCode}';
+
+    return Container(
+      margin: const EdgeInsets.only(top: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.eggshell.withAlpha(128),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Q: ${faq.question}',
+            style: AppTypography.body.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.soilCharcoal,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'A: ${faq.answer}',
+            style: AppTypography.body.copyWith(
+              color: AppColors.soilTaupe,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _FeedbackInteraction(
+            key: ValueKey('faq_feedback_$faqId'),
+            onUpvote: () => _recordFeedback(
+              contentType: 'faq',
+              contentId: faqId,
+              contentTitle: faq.question,
+              action: RAGFeedbackAction.upvote,
+              relevanceScore: faq.score,
+            ),
+            onDownvote: () => _recordFeedback(
+              contentType: 'faq',
+              contentId: faqId,
+              contentTitle: faq.question,
+              action: RAGFeedbackAction.downvote,
+              relevanceScore: faq.score,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Track user actions (expand, view) without blocking feedback UI
+  void _trackAction({
+    required String contentType,
+    required String contentId,
+    required String contentTitle,
+    required RAGFeedbackAction action,
+    required double relevanceScore,
+  }) {
+    debugPrint(
+      '[FeedPostWidget] Tracking $action action for $contentType: $contentTitle',
+    );
+
+    // Record action via RAG service (non-blocking, no UI changes)
+    _ragService.recordFeedback(
+      snapId: widget.snap.id,
+      vendorId: widget.snap.vendorId,
+      action: action,
+      contentType: contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentId: contentId,
+      contentTitle: contentTitle,
+      relevanceScore: relevanceScore,
+    );
+  }
+
+  /// Record user feedback on RAG suggestions
+  void _recordFeedback({
+    required String contentType,
+    required String contentId,
+    required String contentTitle,
+    required RAGFeedbackAction action,
+    required double relevanceScore,
+  }) {
+    debugPrint(
+      '[FeedPostWidget] Recording $action feedback for $contentType: $contentTitle',
+    );
+
+    // Record feedback via RAG service (non-blocking)
+    _ragService.recordFeedback(
+      snapId: widget.snap.id,
+      vendorId: widget.snap.vendorId,
+      action: action,
+      contentType:
+          contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentId: contentId,
+      contentTitle: contentTitle,
+      relevanceScore: relevanceScore,
+    );
+
+    // Show brief feedback message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            action == RAGFeedbackAction.upvote
+                ? '👍 Helpful! Thanks for the feedback.'
+                : '👎 Noted. This helps us improve.',
+            style: AppTypography.body.copyWith(color: Colors.white),
+          ),
+          backgroundColor: action == RAGFeedbackAction.upvote
+              ? AppColors.leafGreen
+              : AppColors.soilTaupe,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Generate consistent recipe hash for tracking
+  String _generateRecipeHash(RecipeSnippet recipe) {
+    final combinedString = '${recipe.recipeName}_${recipe.ingredients.join('_')}';
+    return combinedString.hashCode.toString();
+  }
+}
+
+class _FeedbackInteraction extends StatefulWidget {
+  final VoidCallback onUpvote;
+  final VoidCallback onDownvote;
+
+  const _FeedbackInteraction({
+    super.key,
+    required this.onUpvote,
+    required this.onDownvote,
+  });
+
+  @override
+  State<_FeedbackInteraction> createState() => _FeedbackInteractionState();
+}
+
+class _FeedbackInteractionState extends State<_FeedbackInteraction> {
+  bool _feedbackGiven = false;
+
+  void _handleFeedback(VoidCallback feedbackAction) {
+    if (_feedbackGiven) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _feedbackGiven = true;
+    });
+    feedbackAction();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.cornsilk.withAlpha(128),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.seedBrown.withAlpha(51),
+        ),
+      ),
+      child: _feedbackGiven
+          ? _buildThanksWidget()
+          : _buildPromptWidget(),
+    );
+  }
+
+  Widget _buildPromptWidget() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Was this helpful?',
+          style: AppTypography.body.copyWith(
+            color: AppColors.soilCharcoal,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Row(
+          children: [
+            _buildFeedbackButton(
+              icon: Icons.thumb_up_outlined,
+              label: 'Yes',
+              color: AppColors.leafGreen,
+              onTap: () => _handleFeedback(widget.onUpvote),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _buildFeedbackButton(
+              icon: Icons.thumb_down_outlined,
+              label: 'No',
+              color: AppColors.appleRed,
+              onTap: () => _handleFeedback(widget.onDownvote),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThanksWidget() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.check_circle,
+          size: 18,
+          color: AppColors.leafGreen,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Thanks for your feedback!',
+          style: AppTypography.body.copyWith(
+            color: AppColors.leafGreen,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeedbackButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withAlpha(128),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
