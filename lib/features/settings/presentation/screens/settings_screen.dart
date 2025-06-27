@@ -1035,6 +1035,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           '[SettingsScreen] Is authenticated: ${main.authService.isAuthenticated}',
           name: 'SettingsScreen',
         );
+
+        // Force navigation as backup if AuthWrapper doesn't respond quickly
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && main.authService.currentUser == null) {
+            developer.log(
+              '[SettingsScreen] Force navigating to root - user is null after delay',
+              name: 'SettingsScreen',
+            );
+            
+            // Navigate to the root and let AuthWrapper handle the auth state
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/',
+              (route) => false,
+            );
+          }
+        });
       }
     } catch (e) {
       developer.log(
