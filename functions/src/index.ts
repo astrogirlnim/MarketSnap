@@ -430,24 +430,16 @@ const createAIHelper = (
   return functions.https.onCall(async (data, context) => {
     logger.log(`[${functionName}] received request.`);
 
-    // Check if we're running in emulator mode
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || 
-                      process.env.NODE_ENV === "development" ||
-                      !process.env.GCLOUD_PROJECT ||
-                      process.env.GCLOUD_PROJECT === "demo-project";
-    
-    logger.log(`[${functionName}] Running in emulator mode: ${isEmulator}`);
-
-    // In emulator mode, skip authentication validation but log the attempt
-    if (isEmulator) {
-      logger.log(`[${functionName}] Emulator mode: skipping auth validation`);
+    // Allow calls from Firebase emulator during development
+    if (process.env.FUNCTIONS_EMULATOR === "true") {
+      logger.log(`[${functionName}] Running in emulator mode`);
     } else {
       // In production, require authentication
       if (!context.auth) {
         logger.error(`[${functionName}] Authentication required`);
         throw new functions.https.HttpsError(
           "unauthenticated",
-          "Authentication required to use AI functions"
+          "Authentication required"
         );
       }
       logger.log(`[${functionName}] Authenticated user: ${context.auth.uid}`);
@@ -669,10 +661,12 @@ Return only the caption text, no quotes or extra formatting.`;
  */
 export const getRecipeSnippet = createAIHelper(
   "getRecipeSnippet",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (data, context) => {
     logger.log("[getRecipeSnippet] Starting recipe generation");
     logger.log("[getRecipeSnippet] Input data:", data);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {caption, keywords, mediaType, vendorId} = data;
 
     if (!caption) {
@@ -693,7 +687,7 @@ export const getRecipeSnippet = createAIHelper(
         );
       }
 
-    logger.log(
+      logger.log(
         `[getRecipeSnippet] Processing caption: "${caption}" with ` +
         `${(keywords || []).length} keywords`
       );
@@ -721,9 +715,9 @@ export const getRecipeSnippet = createAIHelper(
 
       // Build context-aware prompt for recipe generation
       const keywordList = (keywords || []).join(", ");
-      const prompt = `You are a helpful cooking assistant for MarketSnap, ` +
-        `a farmers market app. Based on the following produce/product ` +
-        `description, suggest a simple, delicious recipe that highlights ` +
+      const prompt = "You are a helpful cooking assistant for MarketSnap, " +
+        "a farmers market app. Based on the following produce/product " +
+        "description, suggest a simple, delicious recipe that highlights " +
         `the main ingredients.
 
 Product description: "${caption}"
@@ -733,27 +727,31 @@ Media type: ${mediaType || "photo"}
 Please provide:
 1. A recipe name (under 35 characters)
 2. A brief description/snippet (under 120 characters) 
-3. Main ingredients list (3-4 items max, keep each under 15 characters)
+3. Complete ingredients list (4-6 items max, each under 15 characters)
 4. Product category (produce, baked_goods, dairy, herbs, crafts, etc.)
 
 Focus on:
 - Simple, accessible recipes suitable for home cooking
 - Highlighting the freshness and quality of market ingredients
-- CONCISE ingredients and descriptions for mobile display
-- Practical recipes that can be made with common kitchen tools
+- COMPLETE ingredient lists (include ALL necessary items like oil, salt, etc.)
+- CONCISE but COMPLETE responses for mobile display
 
 Return your response as JSON with this exact structure:
 {
   "recipeName": "Recipe Title",
   "snippet": "Brief description of the recipe and why it's great",
-  "ingredients": ["ingredient1", "ingredient2", "ingredient3"],
+  "ingredients": ["ingredient1", "ingredient2", "ingredient3", "ingredient4"],
   "category": "produce",
   "relevanceScore": 0.85
 }
 
+IMPORTANT: Include ALL ingredients needed for the recipe, even basic ones ` +
+        "like olive oil, salt, pepper, lemon juice, etc. The ingredients " +
+        `array should be complete and contain 4-6 items.
+
 If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
-        `return null for recipeName and snippet, but still provide the ` +
-        `category and a relevanceScore of 0.1.`;
+        "return null for recipeName and snippet, but still provide the " +
+        "category and a relevanceScore of 0.1.";
 
       logger.log("[getRecipeSnippet] Sending request to OpenAI GPT-4");
 
@@ -765,14 +763,16 @@ If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
             role: "system",
             content: "You are a helpful cooking assistant that provides " +
               "simple, practical recipes for farmers market products. " +
-              "Always respond with valid JSON matching the requested format.",
+              "Always respond with valid JSON matching the requested format. " +
+              "Make sure to include ALL ingredients and keep responses " +
+              "concise but complete.",
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        max_tokens: 400,
+        max_tokens: 600, // Increased from 400 to ensure complete responses
         temperature: 0.7,
         top_p: 0.9,
       });
@@ -783,19 +783,28 @@ If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
         throw new Error("OpenAI returned empty response");
       }
 
-      logger.log(`[getRecipeSnippet] OpenAI response: ${responseText}`);
+      logger.log(
+        "[getRecipeSnippet] Raw OpenAI response " +
+        `(${responseText.length} chars): ${responseText}`
+      );
 
       // Parse the JSON response
       let recipeData;
       try {
         // Clean the response to remove markdown backticks and "json" identifier
-        const cleanedResponse = responseText.replace(/```json\n|```/g, "").trim();
+        const cleanedResponse = responseText.replace(/```json\n|```/g, "")
+          .trim();
+        logger.log(
+          "[getRecipeSnippet] Cleaned response for parsing: " +
+          `${cleanedResponse}`
+        );
         recipeData = JSON.parse(cleanedResponse);
       } catch (parseError) {
         logger.error(
           "[getRecipeSnippet] Failed to parse JSON response:",
           parseError
         );
+        logger.error("[getRecipeSnippet] Raw response was:", responseText);
         throw new Error("Invalid JSON response from OpenAI");
       }
 
@@ -840,6 +849,7 @@ If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
  */
 export const vectorSearchFAQ = createAIHelper(
   "vectorSearchFAQ",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (data, context) => {
     logger.log("[vectorSearchFAQ] Starting FAQ search");
     logger.log("[vectorSearchFAQ] Input data:", data);
@@ -899,7 +909,7 @@ export const vectorSearchFAQ = createAIHelper(
 
       const queryEmbedding = embeddingResponse.data[0].embedding;
       logger.log(
-        `[vectorSearchFAQ] Generated embedding with ` +
+        "[vectorSearchFAQ] Generated embedding with " +
         `${queryEmbedding.length} dimensions`
       );
 
@@ -914,7 +924,7 @@ export const vectorSearchFAQ = createAIHelper(
       }
 
       const faqSnapshot = await faqQuery.get();
-      
+
       if (faqSnapshot.empty) {
         logger.log("[vectorSearchFAQ] No FAQs found in database");
         return {results: []};
@@ -934,30 +944,31 @@ export const vectorSearchFAQ = createAIHelper(
 
       for (const doc of faqSnapshot.docs) {
         const faqData = doc.data();
-        
+
         // Calculate relevance score based on keyword matching
         // In a full implementation, this would use vector similarity
         let score = 0;
-        
+
         const questionText = (faqData.question || "").toLowerCase();
         const answerText = (faqData.answer || "").toLowerCase();
         const chunkText = (faqData.chunkText || "").toLowerCase();
-        
+        const combinedText = `${questionText} ${answerText} ${chunkText}`;
+
         // Score based on exact query matches
-        if (chunkText.includes(query.toLowerCase())) {
+        if (combinedText.includes(query.toLowerCase())) {
           score += 0.5;
         }
-        
+
         // Score based on keyword matches
         let keywordMatches = 0;
         keywordSet.forEach((keyword) => {
-          if (chunkText.includes(keyword)) {
+          if (combinedText.includes(keyword)) {
             keywordMatches++;
           }
         });
-        
+
         score += (keywordMatches / Math.max(keywordSet.size, 1)) * 0.4;
-        
+
         // Category bonus for matching product types
         const category = faqData.category || "";
         const categoryKeywords = ["produce", "baked", "dairy", "herb", "craft"];
@@ -985,15 +996,16 @@ export const vectorSearchFAQ = createAIHelper(
       results.sort((a, b) => b.score - a.score);
       const topResults = results.slice(0, limit);
 
-    logger.log(
+      logger.log(
         `[vectorSearchFAQ] Returning ${topResults.length} results ` +
         `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")})`
-    );
+      );
 
-    return {
+      return {
         results: topResults,
         totalFound: results.length,
-        searchMethod: "keyword_similarity", // In production: "vector_similarity"
+        // In production: "vector_similarity"
+        searchMethod: "keyword_similarity",
       };
     } catch (error) {
       logger.error("[vectorSearchFAQ] Error searching FAQs:", error);

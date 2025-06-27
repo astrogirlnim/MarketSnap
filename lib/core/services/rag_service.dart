@@ -136,47 +136,6 @@ class RAGService {
     return key.hashCode.toString();
   }
 
-  /// Check if cached data exists and is still valid
-  SnapEnhancementData? _getCachedData(String key) {
-    try {
-      final cachedData = _cacheBox.get(key);
-      if (cachedData == null) return null;
-
-      final data = Map<String, dynamic>.from(cachedData);
-      final timestamp = DateTime.tryParse(data['timestamp'] ?? '') ?? DateTime.now();
-      
-      // Check if cache is expired
-      final age = DateTime.now().difference(timestamp);
-      if (age > _cacheExpiry) {
-        developer.log('[RAGService] Cache expired for key: $key', name: 'RAGService');
-        _cacheBox.delete(key);
-        return null;
-      }
-
-      developer.log('[RAGService] Cache hit for key: $key', name: 'RAGService');
-      
-      // Reconstruct the enhancement data
-      RecipeSnippet? recipe;
-      if (data['recipe'] != null) {
-        recipe = RecipeSnippet.fromJson(Map<String, dynamic>.from(data['recipe'])).copyWithCache();
-      }
-
-      final faqs = (data['faqs'] as List?)
-          ?.map((faq) => FAQResult.fromJson(Map<String, dynamic>.from(faq)))
-          .toList() ?? [];
-
-      return SnapEnhancementData(
-        recipe: recipe,
-        faqs: faqs,
-        query: data['query'] ?? '',
-        fromCache: true,
-      );
-    } catch (e) {
-      developer.log('[RAGService] Error reading cache: $e', name: 'RAGService');
-      return null;
-    }
-  }
-
   /// Cache the enhancement data
   Future<void> _cacheData(String key, SnapEnhancementData data) async {
     try {
