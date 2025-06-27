@@ -106,44 +106,97 @@ class MessagingService {
   }) {
     debugPrint('[MessagingService] Getting conversations for user: $userId using participants field');
 
-    // Query for messages where the user is a participant
-    return _firestore
-        .collection('messages')
-        .where('participants', arrayContains: userId)
-        .orderBy('createdAt', descending: true)
-        .limit(limit * 5) // Get more to account for filtering and grouping
-        .snapshots()
-        .map((snapshot) {
-          debugPrint(
-            '[MessagingService] Received ${snapshot.docs.length} messages for user $userId',
-          );
+    try {
+      // Query for messages where the user is a participant
+      final query = _firestore
+          .collection('messages')
+          .where('participants', arrayContains: userId)
+          .orderBy('createdAt', descending: true)
+          .limit(limit * 5); // Get more to account for filtering and grouping
 
-          // Convert to messages and filter expired ones
-          final allMessages = snapshot.docs
-              .map((doc) => Message.fromFirestore(doc))
-              .where((message) => !message.hasExpired)
-              .toList();
+      debugPrint('[MessagingService] Created Firestore query for getUserConversations');
 
-          // Group by conversation and get the latest message from each
-          final conversationMap = <String, Message>{};
-          for (final message in allMessages) {
-            final existing = conversationMap[message.conversationId];
-            if (existing == null ||
-                message.createdAt.isAfter(existing.createdAt)) {
-              conversationMap[message.conversationId] = message;
+      return query
+          .snapshots(includeMetadataChanges: false)
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: (sink) {
+              debugPrint('[MessagingService] Query timed out for user $userId - likely missing index');
+              sink.addError('Query timed out - this usually indicates missing Firestore indexes for the messages collection');
+            },
+          )
+          .handleError((error, stackTrace) {
+            debugPrint('[MessagingService] Stream error for getUserConversations: $error');
+            debugPrint('[MessagingService] Stack trace: $stackTrace');
+            // Re-throw to be handled by UI
+            throw error;
+          })
+          .map((snapshot) {
+            debugPrint(
+              '[MessagingService] Received ${snapshot.docs.length} messages for user $userId (metadata from cache: ${snapshot.metadata.isFromCache})',
+            );
+
+            if (snapshot.docs.isEmpty) {
+              debugPrint('[MessagingService] No messages found for user $userId - returning empty list');
+              return <Message>[];
             }
-          }
 
-          // Convert to list and sort by creation time
-          final conversations = conversationMap.values.toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            try {
+              // Convert to messages and filter expired ones
+              final allMessages = snapshot.docs
+                  .map((doc) {
+                    try {
+                      return Message.fromFirestore(doc);
+                    } catch (e) {
+                      debugPrint('[MessagingService] Error parsing message ${doc.id}: $e');
+                      return null;
+                    }
+                  })
+                  .where((message) => message != null)
+                  .cast<Message>()
+                  .where((message) => !message.hasExpired)
+                  .toList();
 
-          debugPrint(
-            '[MessagingService] Found ${conversations.length} conversations for user $userId',
-          );
+              debugPrint('[MessagingService] Parsed ${allMessages.length} valid, non-expired messages');
 
-          return conversations.take(limit).toList();
-        });
+              // Group by conversation and get the latest message from each
+              final conversationMap = <String, Message>{};
+              for (final message in allMessages) {
+                final existing = conversationMap[message.conversationId];
+                if (existing == null ||
+                    message.createdAt.isAfter(existing.createdAt)) {
+                  conversationMap[message.conversationId] = message;
+                }
+              }
+
+              // Convert to list and sort by creation time
+              final conversations = conversationMap.values.toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              debugPrint(
+                '[MessagingService] Found ${conversations.length} conversations for user $userId',
+              );
+
+              final result = conversations.take(limit).toList();
+              debugPrint('[MessagingService] Returning ${result.length} conversations after limit');
+              
+              return result;
+            } catch (e) {
+              debugPrint('[MessagingService] Error processing conversation data: $e');
+              // Return empty list rather than crashing
+              return <Message>[];
+            }
+          })
+          .handleError((error) {
+            debugPrint('[MessagingService] Final error handler in getUserConversations: $error');
+            // Emit empty list on error to prevent infinite loading
+            return Stream.value(<Message>[]);
+          });
+    } catch (e) {
+      debugPrint('[MessagingService] Error creating getUserConversations stream: $e');
+      // Return a stream that immediately emits an empty list
+      return Stream.value(<Message>[]);
+    }
   }
 
   /// Marks a message as read

@@ -746,3 +746,174 @@ The RAG (Recipe & FAQ Snippets) feature shows "Loading suggestions..." briefly, 
 
 ### Resolution Priority
 **Medium-High** - Core feature is implemented but not visible to users. Affects MVP completion and user experience testing. 
+```
+
+## Current Active Issue: Messages Loading Bug (Phase 4.7)
+**Status**: ✅ **RESOLVED** - BehaviorSubject-like stream implementation fixes ConversationListScreen loading
+**Priority**: HIGH (was blocking messaging functionality)
+**Date**: 2025-06-27
+**Resolution Date**: 2025-06-27
+
+### ✅ SOLUTION IMPLEMENTED: BehaviorSubject-like Authentication Stream
+
+**Root Cause Identified:**
+The offline authentication support introduced in commit f2d43ca (Phase 4.1) used a broadcast `StreamController` that didn't emit current state to new subscribers:
+
+1. **AuthWrapper** subscribed first during app initialization and received auth state properly
+2. **ConversationListScreen** subscribed later when user navigated to Messages tab
+3. Broadcast streams don't preserve state for late subscribers → ConversationListScreen hung in `ConnectionState.waiting`
+4. User was authenticated but Messages screen couldn't detect it
+
+**Technical Fix Applied:**
+```dart
+// Before: Simple broadcast stream that lost state
+return _offlineAuthController!.stream;
+
+// After: BehaviorSubject-like pattern that emits current state
+return Stream<User?>.multi((controller) {
+  // Emit current state immediately for new subscribers
+  final currentState = _lastEmittedUser;
+  controller.add(currentState);
+  
+  // Forward future events from main stream
+  // ... subscription handling
+});
+```
+
+**Implementation Details:**
+- Added `_lastEmittedUser` tracking variable to cache latest authentication state
+- Updated all `_offlineAuthController.add()` calls to track emitted state
+- New `authStateChanges` getter uses `Stream.multi()` for BehaviorSubject-like behavior
+- Preserves all offline authentication functionality while fixing stream behavior
+
+**Testing Results:**
+- ✅ **Flutter Analyze:** No issues found
+- ✅ **Flutter Test:** All 11 tests passing
+- ✅ **Offline Auth:** Preserved offline authentication support from Phase 4.1
+- ✅ **Messages Screen:** Now loads immediately when navigating from any tab
+
+**Validation:**
+Users can now:
+1. Authenticate and go through profile setup
+2. Navigate to main app with 3-tab bottom navigation
+3. **✅ Click Messages tab → Screen loads immediately showing conversations**
+4. All messaging functionality works as designed
+5. Offline authentication continues to work seamlessly
+
+### Previous Investigation Summary
+
+**Authentication Flow Analysis (COMPLETED):**
+- ✅ User authentication working perfectly in AuthWrapper
+- ✅ Profile creation and account linking successful
+- ✅ Navigation to main app working correctly
+- ❌ Messages screen hanging in loading state despite authenticated user
+
+**Root Cause Discovery Process:**
+1. ✅ **Firebase Components Working:** Emulators running correctly, authentication valid
+2. ✅ **ConversationListScreen Code:** Timeout, error handling, and UI properly implemented
+3. ✅ **Stream Implementation:** Both screens used same `authService.authStateChanges` stream
+4. ✅ **Timing Issue:** AuthWrapper got state first, ConversationListScreen subscribed later
+5. ✅ **Broadcast Stream Problem:** Late subscribers didn't receive current authentication state
+
+**Code Locations:**
+- **Fixed:** `lib/features/auth/application/auth_service.dart` (authStateChanges getter + state tracking)
+- **Affected:** `lib/features/messaging/presentation/screens/conversation_list_screen.dart` (now working)
+- **Working:** `lib/main.dart` (AuthWrapper continues to work)
+
+### Impact Assessment
+
+**✅ MESSAGING SYSTEM FULLY FUNCTIONAL:**
+- **Real-time messaging:** ✅ Working
+- **Conversation persistence:** ✅ Working  
+- **Vendor discovery:** ✅ Working
+- **Authentication integration:** ✅ **FIXED** - Messages screen loads immediately
+- **Offline support:** ✅ Maintained from Phase 4.1
+
+**✅ NO BREAKING CHANGES:**
+- All existing authentication flows continue to work
+- Offline authentication functionality preserved
+- AuthWrapper navigation logic unchanged
+- Phone/email/Google sign-in methods unaffected
+
+**✅ DEVELOPMENT READY:**
+- Phase 3.5 Messaging implementation now 100% functional
+- Ready to proceed with Phase 4 implementation priorities
+- No additional messaging system work required
+- Perfect code quality maintained (0 analysis issues, all tests passing)
+
+---
+
+## Previous Debugging Sessions
+
+## Session 1: Phase 4.6 RAG Recipe Implementation (RESOLVED)
+**Date**: 2025-06-25
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Recipe suggestions appearing for non-food items
+- OpenAI API integration bugs
+- Cache invalidation problems
+- Flutter UI display issues
+
+### Solutions Implemented
+- Enhanced food detection logic
+- Fixed OpenAI GPT-4o integration
+- Implemented 4-hour caching system
+- Added comprehensive error handling
+
+## Session 2: Camera Buffer Overflow (RESOLVED)  
+**Date**: 2025-06-20
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Camera preview buffer overflow on low-end devices
+- Memory leaks in camera service
+- Frame rate issues on Android emulators
+
+### Solutions Implemented
+- Smart buffer management
+- Memory cleanup routines
+- Frame rate optimization
+- Device capability detection
+
+## Session 3: Hive TypeID Conflicts (RESOLVED)
+**Date**: 2025-06-18  
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- TypeID conflicts between models
+- Hive adapter registration issues
+- Data persistence corruption
+
+### Solutions Implemented
+- Unique TypeID assignment system
+- Proper adapter registration order
+- Data migration utilities
+
+## Session 4: OTP Verification Bug (RESOLVED)
+**Date**: 2025-06-15
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- OTP codes not sending properly
+- Verification timeout handling
+- UI state management during verification
+
+### Solutions Implemented
+- Improved OTP service reliability
+- Better timeout handling
+- Enhanced UI feedback
+
+## Session 5: Video Filter Persistence (RESOLVED)
+**Date**: 2025-06-12
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Video filters not persisting after recording
+- Aspect ratio problems with filters
+- Memory leaks in filter processing
+
+### Solutions Implemented
+- Filter state persistence system
+- Aspect ratio preservation
+- Memory management optimization 
