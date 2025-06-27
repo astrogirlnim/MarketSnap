@@ -187,6 +187,72 @@ After these steps, the application built and ran successfully on the iOS simulat
 
 ---
 
+## 8. Fifth Issue: Vendor Authentication Re-Login Flow Failure
+
+**Date:** January 27, 2025
+
+**Issue:** Vendor users can sign up and login initially, but cannot re-login after signing out
+
+**Status:** 🔄 **PARTIALLY RESOLVED - STREAM CONTROLLER FIXED, ROOT CAUSE PERSISTS**
+
+#### Problem Analysis
+- **Symptom:** First-time vendor signup works perfectly, profile setup completes, user reaches main app
+- **Critical Issue:** After signing out and attempting to re-login with same credentials, user is immediately redirected back to login page
+- **Error Pattern:** Stream controller lifecycle errors in AuthService (`Cannot add new events after calling close`)
+- **Secondary Issue:** OpenAI GPT-4 Vision model deprecation causing AI caption generation failures
+
+#### Stream Controller Fix Implemented ✅
+**Problem:** Firebase auth state listener continued firing after AuthService disposal
+- **Root Cause:** Dangling Firebase auth state subscription trying to add events to closed stream controller
+- **Solution Applied:**
+  - Added proper stream subscription management (`_connectivitySubscription`, `_firebaseAuthSubscription`)
+  - Implemented `isClosed` checks before all stream controller operations
+  - Enhanced `dispose()` method to cancel subscriptions before closing controller
+  - Added comprehensive lifecycle logging for debugging
+
+#### Remaining Authentication Issues 🔄
+**Current Behavior After Stream Fix:**
+1. **Vendor signup** → Profile setup screen appears ✅
+2. **Profile completion** → Successfully reaches main app ✅  
+3. **Sign out** → Returns to login screen ✅
+4. **Re-login attempt** → Still redirected back to login page ❌
+
+**Suspected Root Causes:**
+1. **Profile Persistence Issue:** Vendor profile may not be properly saved to Firestore during initial setup
+2. **FCM Token Timing:** Fixed FCM token save logic may still have edge cases
+3. **User Type Detection:** System may not properly recognize returning vendor vs new user
+4. **Firestore Security Rules:** May be blocking vendor profile retrieval on subsequent logins
+
+#### Technical Evidence
+**Firebase Functions Logs:**
+- OpenAI GPT-4 Vision model `gpt-4-vision-preview` is deprecated (404 error)
+- Caption generation failing but not blocking core auth flow
+- Recipe snippet and vector search functions working (placeholder implementations)
+
+**Firebase Emulator Logs:**
+- Phone verification codes being generated correctly (439604, 624210, 279462)
+- Authentication token validation passing for uid `r4Rbkx1hiQzMPiJIjbdwqbaxn0nW`
+- No obvious Firestore permission or data retrieval errors in logs
+
+#### Next Debugging Steps Required
+1. **Profile Verification:** Check if vendor profile actually exists in Firestore after initial signup
+2. **Auth Flow Analysis:** Add detailed logging to profile service and auth wrapper
+3. **User Type Logic:** Verify user type detection logic for returning vendors
+4. **Firestore Rules:** Ensure vendor profile read permissions are correct
+5. **OpenAI Model Update:** Update deprecated `gpt-4-vision-preview` to `gpt-4o` or `gpt-4-turbo`
+
+#### Impact Assessment
+- **First-time vendor onboarding:** ✅ Working perfectly
+- **Vendor profile setup:** ✅ Functional 
+- **Core app functionality:** ✅ All features working for authenticated users
+- **Vendor retention:** ❌ **CRITICAL** - Users cannot return to app after signing out
+- **User experience:** ❌ **SEVERE** - Creates impression of broken authentication
+
+#### Priority Level: **🚨 HIGH PRIORITY**
+This issue prevents vendor retention and creates a poor user experience where vendors lose access to their accounts after signing out.
+
+---
+
 ## Development Workflow Status
 
 ### **✅ Scripts & Automation**
@@ -198,6 +264,7 @@ After these steps, the application built and ran successfully on the iOS simulat
 - **Active Context:** Updated with current Phase 3.3 completion status
 - **Progress Tracking:** Story Reel & Feed marked as complete
 - **System Patterns:** Firebase emulator integration patterns documented
+- **Debugging Log:** Authentication flow issues documented with technical analysis
 - **Technical Context:** Local development environment fully configured
 
 ### **🔄 Next Action Items**

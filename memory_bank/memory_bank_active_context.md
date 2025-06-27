@@ -101,9 +101,40 @@
 
 ---
 
-## 🚨 **NEXT FOCUS: Phase 4 Implementation Layer**
+## 🚨 **CRITICAL PRIORITY: Authentication Re-Login Flow Debugging**
 
-**Current Priority:** Begin Phase 4 implementation with focus on:
+**Current Status:** 🔄 **HIGH PRIORITY DEBUGGING** - Vendor re-login authentication failure
+
+**Issue:** Vendor users can complete initial signup and reach main app successfully, but cannot re-login after signing out. Users are immediately redirected back to login page on subsequent login attempts.
+
+**Progress Made:**
+- ✅ **Stream Controller Lifecycle Fixed:** Resolved Firebase auth state listener disposal issues
+- ✅ **FCM Token Logic Enhanced:** Improved timing and error handling for FCM token persistence
+- ✅ **Code Quality:** All changes pass flutter analyze (0 issues) and flutter test (11/11 passing)
+
+**Remaining Investigation Required:**
+1. **Profile Persistence Verification:** Check if vendor profiles are actually saved to Firestore during initial setup
+2. **User Type Detection Logic:** Verify returning vendor recognition vs new user flow
+3. **Firestore Security Rules:** Ensure vendor profile read permissions are correctly configured
+4. **Auth Flow Analysis:** Add comprehensive logging to identify exact failure point
+
+**Secondary Issues Identified:**
+- **OpenAI Model Deprecation:** `gpt-4-vision-preview` model deprecated (404 errors) - needs update to `gpt-4o`
+- **Firebase Functions:** Caption generation failing but not blocking core functionality
+
+**Impact Assessment:**
+- **First-time onboarding:** ✅ Working perfectly
+- **Core app features:** ✅ All functional for authenticated users  
+- **Vendor retention:** ❌ **CRITICAL** - Users cannot return after signing out
+- **User experience:** ❌ **SEVERE** - Creates broken authentication impression
+
+**Next Debugging Session Priority:** Focus on profile persistence and user type detection logic before implementing new features.
+
+---
+
+## 🎯 **SECONDARY FOCUS: Phase 4 Implementation Layer**
+
+**Current Priority:** After resolving authentication issues, continue Phase 4 implementation:
 1. **Media Posting Fix:** Resolve remaining file persistence issues during upload
 2. **Offline Queue Enhancement:** Improve background sync reliability
 3. **AI Helper Features:** Implement AI-powered content suggestions
