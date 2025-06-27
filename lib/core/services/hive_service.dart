@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import '../models/pending_media.dart';
 import '../models/user_settings.dart';
 import '../models/vendor_profile.dart';
+import '../models/regular_user_profile.dart';
 import 'secure_storage_service.dart';
 
 /// Service responsible for initializing and managing the Hive local database.
@@ -19,12 +20,14 @@ class HiveService {
   late final Box<PendingMediaItem> pendingMediaQueueBox;
   late final Box<UserSettings> userSettingsBox;
   late final Box<VendorProfile> vendorProfileBox;
+  late final Box<RegularUserProfile> regularUserProfileBox;
   late final Box<Map<String, dynamic>> authCacheBox;
 
   // Box names
   static const String pendingMediaQueueBoxName = 'pendingMediaQueue';
   static const String userSettingsBoxName = 'userSettings';
   static const String vendorProfileBoxName = 'vendorProfile';
+  static const String regularUserProfileBoxName = 'regularUserProfile';
   static const String authCacheBoxName = 'authCache';
 
   // Directory for quarantined media files
@@ -58,6 +61,10 @@ class HiveService {
     if (!Hive.isAdapterRegistered(3)) {
       Hive.registerAdapter(PendingMediaItemAdapter());
     }
+
+    if (!Hive.isAdapterRegistered(4)) {
+      Hive.registerAdapter(RegularUserProfileAdapter());
+    }
   }
 
   Future<HiveAesCipher> _getEncryptionCipher() async {
@@ -83,6 +90,12 @@ class HiveService {
         vendorProfileBoxName,
         cipher,
         (box) => vendorProfileBox = box,
+      );
+
+      await _openBoxWithRecovery<RegularUserProfile>(
+        regularUserProfileBoxName,
+        cipher,
+        (box) => regularUserProfileBox = box,
       );
 
       await _openBoxWithRecovery<Map<String, dynamic>>(
@@ -269,6 +282,27 @@ class HiveService {
   /// Check if vendor profile exists and is complete
   bool hasCompleteVendorProfile(String uid) {
     final profile = getVendorProfile(uid);
+    return profile?.isComplete ?? false;
+  }
+
+  /// Get regular user profile for the given UID
+  RegularUserProfile? getRegularUserProfile(String uid) {
+    return regularUserProfileBox.get(uid);
+  }
+
+  /// Save or update regular user profile
+  Future<void> saveRegularUserProfile(RegularUserProfile profile) async {
+    await regularUserProfileBox.put(profile.uid, profile);
+  }
+
+  /// Delete regular user profile
+  Future<void> deleteRegularUserProfile(String uid) async {
+    await regularUserProfileBox.delete(uid);
+  }
+
+  /// Check if regular user profile exists and is complete
+  bool hasCompleteRegularUserProfile(String uid) {
+    final profile = getRegularUserProfile(uid);
     return profile?.isComplete ?? false;
   }
 
