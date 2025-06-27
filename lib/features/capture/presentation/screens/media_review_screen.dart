@@ -890,13 +890,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           ),
         ),
 
-        // Wicker overlay - positioned in the foreground
+        // Wicker overlay - positioned in the top-right corner
         if (_aiCaptionAvailable)
           Positioned(
-            right: 8,
-            bottom:
-                MediaQuery.of(context).size.height *
-                0.32, // Position near the caption area
+            top: 16, // Position at the top of the screen
+            right: 16, // Position in the right corner
             child: AnimatedBuilder(
               animation: _aiButtonAnimationController,
               builder: (context, child) {
@@ -922,13 +920,23 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         message: _isGeneratingCaption
                             ? 'Wicker is crafting your caption...'
                             : 'Ask Wicker for a caption suggestion',
-                        child: SizedBox(
-                          width: 72,
-                          height: 72,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(36),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(4),
                           child: Image.asset(
                             'assets/images/icons/wicker_mascot.png',
-                            width: 72,
-                            height: 72,
+                            width: 64, // Slightly smaller for corner position
+                            height: 64,
                             fit: BoxFit.contain,
                           ),
                         ),
