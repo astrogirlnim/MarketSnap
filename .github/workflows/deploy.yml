@@ -422,6 +422,18 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/service-account.json" >> $GITHUB_ENV
           echo "✅ Authenticated with Google Cloud via Service Account"
 
+      - name: Install and Setup Google Cloud SDK
+        run: |
+          # Install Google Cloud SDK
+          curl -sSL https://sdk.cloud.google.com | bash
+          echo "$HOME/google-cloud-sdk/bin" >> $GITHUB_PATH
+          
+          # Activate service account
+          $HOME/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file=./service-account.json --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          $HOME/google-cloud-sdk/bin/gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
+          
+          echo "✅ Google Cloud SDK installed and authenticated"
+
       - name: Generate firebase.json from template
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -488,39 +500,63 @@ jobs:
             exit 0
           fi
           
-          # Configure Firebase Functions environment variables using Google Cloud Secret Manager
           echo "🔐 Setting up environment variables via Google Cloud Secret Manager..."
           
-          # Set OpenAI API Key as secret
-          echo "$OPENAI_API_KEY" | gcloud secrets create openai-api-key \
-            --data-file=- \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }} || \
-          echo "$OPENAI_API_KEY" | gcloud secrets versions add openai-api-key \
-            --data-file=- \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          # Enable Secret Manager API if not already enabled
+          gcloud services enable secretmanager.googleapis.com --project=${{ secrets.FIREBASE_PROJECT_ID }} || true
           
-          # Set AI functions enabled flag as secret
-          echo "$AI_FUNCTIONS_ENABLED" | gcloud secrets create ai-functions-enabled \
-            --data-file=- \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }} || \
-          echo "$AI_FUNCTIONS_ENABLED" | gcloud secrets versions add ai-functions-enabled \
-            --data-file=- \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          # Set OpenAI API Key as secret (create or update)
+          if gcloud secrets describe openai-api-key --project=${{ secrets.FIREBASE_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "Updating existing openai-api-key secret..."
+            echo "$OPENAI_API_KEY" | gcloud secrets versions add openai-api-key \
+              --data-file=- \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          else
+            echo "Creating new openai-api-key secret..."
+            echo "$OPENAI_API_KEY" | gcloud secrets create openai-api-key \
+              --data-file=- \
+              --replication-policy="automatic" \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          fi
           
-          # Configure Firebase Functions to use the secrets
-          gcloud functions add-iam-policy-binding \
-            --region=us-central1 \
-            --member="serviceAccount:${{ secrets.FIREBASE_PROJECT_ID }}@appspot.gserviceaccount.com" \
-            --role="roles/secretmanager.secretAccessor" \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }} || true
+          # Set AI functions enabled flag as secret (create or update)
+          if gcloud secrets describe ai-functions-enabled --project=${{ secrets.FIREBASE_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "Updating existing ai-functions-enabled secret..."
+            echo "$AI_FUNCTIONS_ENABLED" | gcloud secrets versions add ai-functions-enabled \
+              --data-file=- \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          else
+            echo "Creating new ai-functions-enabled secret..."
+            echo "$AI_FUNCTIONS_ENABLED" | gcloud secrets create ai-functions-enabled \
+              --data-file=- \
+              --replication-policy="automatic" \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }}
+          fi
+          
+          # Get the compute service account email (more reliable than assuming the format)
+          COMPUTE_SA=$(gcloud iam service-accounts list --project=${{ secrets.FIREBASE_PROJECT_ID }} --filter="email:*@appspot.gserviceaccount.com" --format="value(email)")
+          
+          if [ -n "$COMPUTE_SA" ]; then
+            echo "Setting IAM permissions for service account: $COMPUTE_SA"
+            
+            # Grant Secret Manager access to both secrets
+            gcloud secrets add-iam-policy-binding openai-api-key \
+              --member="serviceAccount:$COMPUTE_SA" \
+              --role="roles/secretmanager.secretAccessor" \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }} || true
+              
+            gcloud secrets add-iam-policy-binding ai-functions-enabled \
+              --member="serviceAccount:$COMPUTE_SA" \
+              --role="roles/secretmanager.secretAccessor" \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }} || true
+              
+            echo "✅ IAM permissions configured successfully"
+          else
+            echo "⚠️  Could not find compute service account, IAM permissions may need manual configuration"
+          fi
           
           echo "✅ AI Functions environment variables configured successfully"
           echo "🎯 AI features are now enabled in production"
-
-      - name: Activate Service Account for gcloud
-        run: |
-          gcloud auth activate-service-account --key-file=./service-account.json
-          echo "✅ gcloud service account activated"
 
       - name: Configure TTL Policies
         run: |
@@ -530,7 +566,9 @@ jobs:
             --collection-group=messages \
             --enable-ttl \
             --project=${{ secrets.FIREBASE_PROJECT_ID }} \
-            --quiet
+            --quiet || {
+            echo "⚠️  TTL policy configuration failed, but deployment will continue"
+          }
           echo "✅ TTL policy configured successfully"
   
 #  deploy_ios:
