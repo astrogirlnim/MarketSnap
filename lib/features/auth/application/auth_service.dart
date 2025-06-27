@@ -191,6 +191,7 @@ class AuthService {
   // Offline authentication state management
   StreamController<User?>? _offlineAuthController;
   User? _cachedUser;
+  User? _lastEmittedUser; // Track last emitted state
   bool _isOfflineMode = false;
 
   AuthService({
@@ -242,6 +243,7 @@ class AuthService {
     }
     
     // Emit initial auth state immediately to prevent loading state
+    _lastEmittedUser = _cachedUser;
     _offlineAuthController?.add(_cachedUser);
     debugPrint('[AuthService] 🚀 Initial auth state emitted synchronously: ${_cachedUser?.uid ?? 'null'}');
   }
@@ -258,6 +260,7 @@ class AuthService {
     
     // Re-emit auth state with correct offline mode
     if (_isOfflineMode && _cachedUser != null) {
+      _lastEmittedUser = _cachedUser;
       _offlineAuthController?.add(_cachedUser);
       debugPrint('[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser?.uid}');
     }
@@ -275,6 +278,7 @@ class AuthService {
       if (!_isOfflineMode) {
         // Online: Cache the user and forward the state
         _cachedUser = user;
+        _lastEmittedUser = user;
         _offlineAuthController?.add(user);
         debugPrint('[AuthService] ✅ Cached user state updated (online)');
         
@@ -326,12 +330,14 @@ class AuthService {
       if (isOffline) {
         // Going offline: Use cached user state
         debugPrint('[AuthService] 📱 Switching to offline mode with cached user: ${_cachedUser?.uid ?? 'none'}');
+        _lastEmittedUser = _cachedUser;
         _offlineAuthController?.add(_cachedUser);
       } else {
         // Going online: Sync with Firebase
         debugPrint('[AuthService] 🌐 Switching to online mode, syncing with Firebase');
         final firebaseUser = _firebaseAuth.currentUser;
         _cachedUser = firebaseUser;
+        _lastEmittedUser = firebaseUser;
         _offlineAuthController?.add(firebaseUser);
       }
     }
@@ -349,7 +355,28 @@ class AuthService {
   /// Stream of authentication state changes (works offline)
   Stream<User?> get authStateChanges {
     if (_offlineAuthController != null) {
-      return _offlineAuthController!.stream;
+      // Fix: Emit current state to new subscribers using a BehaviorSubject-like pattern
+      return Stream<User?>.multi((controller) {
+        // Emit current state immediately for new subscribers
+        final currentState = _lastEmittedUser;
+        debugPrint('[AuthService] 🔄 New subscriber - emitting last state: ${currentState?.uid ?? 'null'}');
+        controller.add(currentState);
+        
+        // Listen to future changes
+        final subscription = _offlineAuthController!.stream.listen(
+          (user) {
+            _lastEmittedUser = user;
+            controller.add(user);
+          },
+          onError: (error) => controller.addError(error),
+          onDone: () => controller.close(),
+        );
+        
+        // Clean up subscription when stream is cancelled
+        controller.onCancel = () {
+          subscription.cancel();
+        };
+      });
     }
     return _firebaseAuth.authStateChanges();
   }
@@ -373,6 +400,7 @@ class AuthService {
     try {
       // Clear cached state immediately
       _cachedUser = null;
+      _lastEmittedUser = null;
       _offlineAuthController?.add(null);
       
       // Clear persistent authentication cache
@@ -516,6 +544,7 @@ class AuthService {
       final result = await _signInWithCredentialWrapper(credential);
       // Update cached user after successful sign-in
       _cachedUser = result.user;
+      _lastEmittedUser = result.user;
       _offlineAuthController?.add(result.user);
       debugPrint('[AuthService] ✅ Phone sign-in successful, cached user updated');
       return result;
@@ -1138,6 +1167,7 @@ class AuthService {
       
       // Update cached user after successful sign-in
       _cachedUser = result.user;
+      _lastEmittedUser = result.user;
       _offlineAuthController?.add(result.user);
       debugPrint('[AuthService] ✅ Google sign-in successful, cached user updated');
       
