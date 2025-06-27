@@ -54,7 +54,7 @@ class FeedService {
   /// Get current user's ID for distinguishing own posts
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Real-time stream of stories from the current user
+  /// Real-time stream of stories from the current user with live profile updates
   Stream<List<StoryItem>> getStoriesStream() {
     final userId = currentUserId;
     if (userId == null) {
@@ -66,17 +66,17 @@ class FeedService {
     }
 
     developer.log(
-      '[FeedService] Setting up real-time stories stream for user: $userId',
+      '[FeedService] Setting up real-time stories stream with profile updates for user: $userId',
       name: 'FeedService',
     );
 
-    return _firestore
+    // Create the base stories stream
+    final storiesStream = _firestore
         .collection('snaps')
-        // ✅ FIX: Query for the current user's stories specifically
         .where('storyVendorId', isEqualTo: userId)
         .where('isStory', isEqualTo: true)
         .orderBy('createdAt', descending: true)
-        .limit(20) // A user's own stories are limited
+        .limit(20)
         .snapshots()
         .map((snapshot) {
           developer.log(
@@ -88,27 +88,82 @@ class FeedService {
               .map((doc) => Snap.fromFirestore(doc))
               .toList();
 
-          // Since we are only getting one user's stories, we can simplify the grouping
           if (snaps.isEmpty) {
-            return [];
+            return <StoryItem>[];
           }
 
+          // Create story item with original data (will be updated with fresh profile data below)
           final storyItem = StoryItem(
             vendorId: userId,
             vendorName: snaps.first.vendorName,
             vendorAvatarUrl: snaps.first.vendorAvatarUrl,
             snaps: snaps,
-            hasUnseenSnaps: true, // Placeholder logic
+            hasUnseenSnaps: true,
           );
 
-          developer.log(
-            '[FeedService] Created 1 story item for user $userId with ${snaps.length} snaps',
-            name: 'FeedService',
-          );
-
-          // Return a list containing the single story item for the current user
           return [storyItem];
         });
+
+    // Combine with profile update stream to get real-time updates
+    return StreamGroup.merge([
+      storiesStream,
+      _profileUpdateNotifier.allProfileUpdates.map((_) => <StoryItem>[]), // Trigger refresh on profile updates
+    ]).asyncMap((storyItemsList) async {
+      // If it's just a profile update trigger (empty list), get current stories
+      if (storyItemsList.isEmpty) {
+        try {
+          final snapshot = await _firestore
+              .collection('snaps')
+              .where('storyVendorId', isEqualTo: userId)
+              .where('isStory', isEqualTo: true)
+              .orderBy('createdAt', descending: true)
+              .limit(20)
+              .get();
+          
+          final snaps = snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
+          
+          if (snaps.isEmpty) {
+            return <StoryItem>[];
+          }
+
+          storyItemsList = [StoryItem(
+            vendorId: userId,
+            vendorName: snaps.first.vendorName,
+            vendorAvatarUrl: snaps.first.vendorAvatarUrl,
+            snaps: snaps,
+            hasUnseenSnaps: true,
+          )];
+        } catch (e) {
+          developer.log('[FeedService] Error fetching stories after profile update: $e');
+          return <StoryItem>[];
+        }
+      }
+
+      // Apply current profile data to all story items
+      return _applyProfileUpdatesToStories(storyItemsList);
+    });
+  }
+
+  /// Apply cached profile updates to a list of story items
+  List<StoryItem> _applyProfileUpdatesToStories(List<StoryItem> stories) {
+    return stories.map((story) {
+      final cachedProfile = _profileCache[story.vendorId];
+      if (cachedProfile != null) {
+        // Update story item with fresh profile data
+        final updatedStory = StoryItem(
+          vendorId: story.vendorId,
+          vendorName: cachedProfile['displayName']!,
+          vendorAvatarUrl: cachedProfile['avatarURL']!,
+          snaps: story.snaps,
+          hasUnseenSnaps: story.hasUnseenSnaps,
+        );
+        developer.log(
+          '[FeedService] 🔄 Updated story profile data for ${story.vendorId}: ${cachedProfile['displayName']}',
+        );
+        return updatedStory;
+      }
+      return story; // Return unchanged if no cached profile data
+    }).toList();
   }
 
   /// Real-time stream of feed snaps with live profile updates
