@@ -193,6 +193,10 @@ class AuthService {
   User? _cachedUser;
   User? _lastEmittedUser; // Track last emitted state
   bool _isOfflineMode = false;
+  
+  // Stream subscriptions for proper cleanup
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<User?>? _firebaseAuthSubscription;
 
   AuthService({
     FirebaseAuth? firebaseAuth,
@@ -266,28 +270,33 @@ class AuthService {
     }
     
     // Monitor connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
       final isOffline = results.contains(ConnectivityResult.none);
       _handleConnectivityChange(isOffline);
     });
     
     // Monitor Firebase auth state changes when online
-    _firebaseAuth.authStateChanges().listen((User? user) {
+    _firebaseAuthSubscription = _firebaseAuth.authStateChanges().listen((User? user) {
       debugPrint('[AuthService] 🔥 Firebase auth state changed: ${user?.uid ?? 'null'}');
       
-      if (!_isOfflineMode) {
-        // Online: Cache the user and forward the state
-        _cachedUser = user;
-        _lastEmittedUser = user;
-        _offlineAuthController?.add(user);
-        debugPrint('[AuthService] ✅ Cached user state updated (online)');
-        
-        // Cache for offline persistence
-        if (user != null) {
-          _cacheCurrentUser(user);
-        } else {
-          _clearUserCache();
+      // Check if controller is still active before adding events
+      if (_offlineAuthController?.isClosed == false) {
+        if (!_isOfflineMode) {
+          // Online: Cache the user and forward the state
+          _cachedUser = user;
+          _lastEmittedUser = user;
+          _offlineAuthController?.add(user);
+          debugPrint('[AuthService] ✅ Cached user state updated (online)');
+          
+          // Cache for offline persistence
+          if (user != null) {
+            _cacheCurrentUser(user);
+          } else {
+            _clearUserCache();
+          }
         }
+      } else {
+        debugPrint('[AuthService] ⚠️ Skipping auth state update - controller is closed');
       }
     });
   }
@@ -324,7 +333,7 @@ class AuthService {
   void _handleConnectivityChange(bool isOffline) {
     debugPrint('[AuthService] 📡 Connectivity changed: ${isOffline ? 'OFFLINE' : 'ONLINE'}');
     
-    if (_isOfflineMode != isOffline) {
+    if (_isOfflineMode != isOffline && _offlineAuthController?.isClosed == false) {
       _isOfflineMode = isOffline;
       
       if (isOffline) {
@@ -340,6 +349,8 @@ class AuthService {
         _lastEmittedUser = firebaseUser;
         _offlineAuthController?.add(firebaseUser);
       }
+    } else if (_offlineAuthController?.isClosed == true) {
+      debugPrint('[AuthService] ⚠️ Skipping connectivity change - controller is closed');
     }
   }
 
@@ -407,7 +418,13 @@ class AuthService {
       // Clear cached state immediately
       _cachedUser = null;
       _lastEmittedUser = null;
-      _offlineAuthController?.add(null);
+      
+      // Only add to controller if it's still active
+      if (_offlineAuthController?.isClosed == false) {
+        _offlineAuthController?.add(null);
+      } else {
+        debugPrint('[AuthService] ⚠️ Skipping sign out state emission - controller is closed');
+      }
       
       // Clear persistent authentication cache
       _clearUserCache();
@@ -427,7 +444,23 @@ class AuthService {
 
   /// Dispose resources
   void dispose() {
+    debugPrint('[AuthService] 🛑 Disposing AuthService and cleaning up resources');
+    
+    // Cancel all stream subscriptions first
+    _connectivitySubscription?.cancel();
+    _firebaseAuthSubscription?.cancel();
+    
+    // Then close the stream controller
     _offlineAuthController?.close();
+    
+    // Clear references
+    _connectivitySubscription = null;
+    _firebaseAuthSubscription = null;
+    _offlineAuthController = null;
+    _cachedUser = null;
+    _lastEmittedUser = null;
+    
+    debugPrint('[AuthService] ✅ AuthService disposal completed');
   }
 
   // ================================
