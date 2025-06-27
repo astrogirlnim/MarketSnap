@@ -10,7 +10,9 @@ import '../../../../core/services/hive_service.dart';
 import '../../../../main.dart' show backgroundSyncService;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/services/background_sync_service.dart';
+import 'queue_view_screen.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -248,33 +250,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           }
         }
       } else {
-        // Offline: Add to queue and show offline message
+        // Offline: Add to queue and show offline message with queue count
         debugPrint('[MediaReviewScreen] Offline - added to queue for later upload');
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.wifi_off, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('📱 Will post when online')),
-                ],
-              ),
-              backgroundColor: Colors.blue.shade600,
-              duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'View Queue',
-                textColor: Colors.white,
-                onPressed: () {
-                  // TODO: Navigate to pending uploads screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Pending uploads feature coming soon!')),
-                  );
-                },
-              ),
-            ),
-          );
+          // Get current queue count for better user feedback
+          _showOfflineQueueMessage();
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       }
@@ -581,6 +562,76 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         ],
       ),
     );
+  }
+
+  /// Show offline queue message with current queue count
+  Future<void> _showOfflineQueueMessage() async {
+    try {
+      // Get current queue count
+      final pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final queueCount = pendingBox.length;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.wifi_off, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  queueCount == 1 
+                    ? '📱 1 post queued for upload'
+                    : '📱 $queueCount posts queued for upload',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blue.shade600,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'View Queue',
+            textColor: Colors.white,
+            onPressed: () {
+              // Navigate to queue view screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const QueueViewScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Error getting queue count: $e');
+      // Fallback to simple message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.wifi_off, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('📱 Will post when online')),
+            ],
+          ),
+          backgroundColor: Colors.blue.shade600,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'View Queue',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const QueueViewScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
   }
 
   /// Initialize connectivity monitoring
