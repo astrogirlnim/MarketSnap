@@ -105,6 +105,10 @@ RELEASE_KEYSTORE_BASE64     # Android release keystore (base64 encoded)
 KEYSTORE_PASSWORD           # Android keystore password
 KEY_ALIAS                   # Android key alias
 KEY_PASSWORD                # Android key password
+
+# AI Features (Optional - Required for Wicker caption suggestions and RAG features)
+OPENAI_API_KEY              # OpenAI API key for AI caption generation and RAG features
+AI_FUNCTIONS_ENABLED        # Set to "true" to enable AI features in production
 ```
 
 #### Environment Variables Structure
@@ -125,6 +129,10 @@ IOS_APP_ID=<ios_app_id>
 
 # App Bundle/Package Identifiers
 APP_BUNDLE_ID=<bundle_id>
+
+# AI Features (Optional)
+OPENAI_API_KEY=<your_openai_api_key>
+AI_FUNCTIONS_ENABLED=true
 ```
 
 ## 📱 Deployment Targets

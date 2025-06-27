@@ -11,8 +11,11 @@ import {CallableContext} from "firebase-functions/v1/https";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-// Load environment variables from the root of the project
-dotenv.config({path: path.resolve(__dirname, "../../.env")});
+// Load environment variables from the root of the project (local development only)
+if (process.env.FUNCTIONS_EMULATOR === "true") {
+  dotenv.config({path: path.resolve(__dirname, "../../.env")});
+  logger.log("Local development: Loaded environment variables from .env file");
+}
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -411,9 +414,59 @@ export const sendMessageNotification = onDocumentCreated(
 
 // --- AI Helper Functions (Phase 2 Scaffolding) ---
 
-// Configuration for AI Functions
-const AI_FUNCTIONS_ENABLED = process.env.AI_FUNCTIONS_ENABLED === "true";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// Configuration for AI Functions with Google Cloud Secret Manager support
+let AI_FUNCTIONS_ENABLED: boolean = false;
+let OPENAI_API_KEY: string | undefined;
+
+/**
+ * Initialize AI configuration from environment variables or Secret Manager
+ */
+async function initializeAIConfig(): Promise<void> {
+  try {
+    if (process.env.FUNCTIONS_EMULATOR === "true") {
+      // Local development: use environment variables
+      AI_FUNCTIONS_ENABLED = process.env.AI_FUNCTIONS_ENABLED === "true";
+      OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      logger.log(`[AI Config] Local mode - AI_FUNCTIONS_ENABLED: ${AI_FUNCTIONS_ENABLED}`);
+      if (OPENAI_API_KEY) {
+        logger.log(`[AI Config] Local mode - OpenAI key found: sk-...${OPENAI_API_KEY.slice(-4)}`);
+      }
+    } else {
+      // Production: use Google Cloud Secret Manager
+      const {SecretManagerServiceClient} = require("@google-cloud/secret-manager");
+      const client = new SecretManagerServiceClient();
+      
+      try {
+        // Get AI_FUNCTIONS_ENABLED from Secret Manager
+        const [enabledResponse] = await client.accessSecretVersion({
+          name: `projects/${process.env.GCLOUD_PROJECT}/secrets/ai-functions-enabled/versions/latest`,
+        });
+        AI_FUNCTIONS_ENABLED = enabledResponse.payload?.data?.toString() === "true";
+        
+        // Get OPENAI_API_KEY from Secret Manager
+        const [keyResponse] = await client.accessSecretVersion({
+          name: `projects/${process.env.GCLOUD_PROJECT}/secrets/openai-api-key/versions/latest`,
+        });
+        OPENAI_API_KEY = keyResponse.payload?.data?.toString();
+        
+        logger.log(`[AI Config] Production mode - AI_FUNCTIONS_ENABLED: ${AI_FUNCTIONS_ENABLED}`);
+        if (OPENAI_API_KEY) {
+          logger.log(`[AI Config] Production mode - OpenAI key found: sk-...${OPENAI_API_KEY.slice(-4)}`);
+        }
+      } catch (secretError) {
+        logger.warn(`[AI Config] Could not load secrets from Secret Manager: ${secretError.message}`);
+        logger.warn("[AI Config] AI functions will remain disabled");
+        // Fallback to environment variables if Secret Manager fails
+        AI_FUNCTIONS_ENABLED = process.env.AI_FUNCTIONS_ENABLED === "true";
+        OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      }
+    }
+  } catch (error) {
+    logger.error(`[AI Config] Error initializing AI configuration: ${error}`);
+    AI_FUNCTIONS_ENABLED = false;
+    OPENAI_API_KEY = undefined;
+  }
+}
 
 /**
  * A disabled-aware wrapper for HTTPS callable functions.
@@ -429,6 +482,12 @@ const createAIHelper = (
 ) => {
   return functions.https.onCall(async (data, context) => {
     logger.log(`[${functionName}] received request.`);
+
+    // Initialize AI configuration if not already done
+    if (AI_FUNCTIONS_ENABLED === false && OPENAI_API_KEY === undefined) {
+      logger.log(`[${functionName}] Initializing AI configuration...`);
+      await initializeAIConfig();
+    }
 
     // Allow calls from Firebase emulator during development
     if (process.env.FUNCTIONS_EMULATOR === "true") {
@@ -469,7 +528,7 @@ const createAIHelper = (
       `sk-...${OPENAI_API_KEY.slice(-4)}`
     );
 
-    // TODO: Phase 4 - Replace with actual implementation
+    // Execute the actual AI function handler
     return handler(data, context);
   });
 };
