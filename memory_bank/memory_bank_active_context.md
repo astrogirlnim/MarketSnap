@@ -21,6 +21,8 @@
 - ✅ **Security & Rules:** Updated Firestore rules for `faqVectors` collection with proper access controls
 - ✅ **UI Integration COMPLETE:** Feed posts now display recipe and FAQ suggestions with beautiful collapsible cards
 - ✅ **Perfect Code Quality:** All Flutter analyze (0 issues) and TypeScript compilation successful
+- ✅ **EMULATOR INTEGRATION FIX:** Resolved authentication errors by configuring Firebase Functions emulator in main.dart
+- ❌ **CURRENT BUG:** RAG suggestions not displaying despite successful Cloud Function calls - debugging in progress
 
 **NEW: UI Integration Achievement (January 28, 2025):**
 - ✅ **FeedPostWidget RAG Integration:** Each snap automatically loads recipe suggestions and FAQ answers
@@ -38,6 +40,35 @@
 - Implemented proper error states and loading indicators
 - Created test FAQ data for development validation
 - Zero compilation errors with perfect code quality
+
+**🐛 DEBUGGING: RAG Suggestions Display Issue (January 29, 2025)**
+
+**Current Problem:**
+RAG suggestions briefly show "Loading suggestions..." then disappear without displaying any recipe or FAQ cards, despite successful Cloud Function calls.
+
+**Evidence:**
+- ✅ Cloud Functions working: `getRecipeSnippet` returns craft category, `vectorSearchFAQ` returns 1 FAQ with 0.27 score
+- ❌ Flutter displays: "Enhancement data loaded - Recipe: false, FAQs: 0"
+- **Gap:** Cloud Functions return valid data, but Flutter app shows 0 results
+
+**Root Cause Analysis:**
+Issue lies in data flow between Cloud Functions and Flutter UI:
+1. **Response Parsing:** RAGService may not correctly parse vectorSearchFAQ JSON response
+2. **Threshold Logic:** FAQ similarity score (0.27) might not meet display threshold
+3. **State Management:** Enhancement data may not properly trigger UI updates
+4. **Model Serialization:** FAQ results might fail during JSON-to-model conversion
+
+**Investigation Required:**
+- Debug RAGService.getSnapEnhancements() response parsing and logging
+- Validate FAQ similarity score threshold logic and filtering
+- Trace complete data flow from Cloud Functions → RAGService → FeedPostWidget
+- Check FAQ model serialization from Cloud Function JSON structure
+- Test with higher similarity scores to isolate threshold issues
+
+**Files to Debug:**
+- `lib/core/services/rag_service.dart` - Response parsing logic
+- `lib/features/feed/presentation/widgets/feed_post_widget.dart` - UI integration
+- `lib/core/models/faq_vector.dart` - Data model serialization
 
 ### **✅ Phase 4.1 Implementation Layer COMPLETED (January 27, 2025)**
 

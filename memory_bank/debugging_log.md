@@ -650,4 +650,99 @@ curl -s "http://127.0.0.1:8080/v1/projects/marketsnap-app/databases/(default)/do
 
 # Check Firebase emulator status
 firebase emulators:exec "echo 'Emulators running'"
-``` 
+```
+
+## 🐛 RAG Suggestions Not Displaying Despite Successful Cloud Function Calls
+**Date:** January 29, 2025  
+**Phase:** 4.6 RAG Implementation - UI Integration Issue  
+**Severity:** Medium - Feature not visible to users  
+
+### Problem Description
+The RAG (Recipe & FAQ Snippets) feature shows "Loading suggestions..." briefly, then disappears without displaying any suggestions. However, the Cloud Functions are working correctly and returning valid data.
+
+### Evidence from Logs
+
+#### ✅ Cloud Functions Working Correctly
+```
+[getRecipeSnippet] OpenAI response: {
+  "recipeName": null,
+  "snippet": null, 
+  "ingredients": [],
+  "category": "crafts",
+  "relevanceScore": 0.1
+}
+
+[vectorSearchFAQ] Found 1 FAQ entries
+[vectorSearchFAQ] Returning 1 results (scores: 0.27)
+```
+
+#### ❌ Flutter App Not Processing Results
+```
+[FeedPostWidget] Enhancement data loaded - Recipe: false, FAQs: 0
+```
+
+**Gap Identified:** Cloud Functions return 1 FAQ result, but Flutter shows 0 FAQs.
+
+### Root Cause Analysis
+
+#### 1. **Data Flow Investigation Needed**
+- ✅ Cloud Functions emulator configured and running
+- ✅ Firebase Functions emulator integration added to main.dart
+- ✅ Cloud Functions returning valid responses
+- ❌ RAG service not correctly parsing/processing Cloud Function responses
+- ❌ UI not displaying valid FAQ results
+
+#### 2. **Likely Issues**
+- **Response Parsing:** RAGService may not be correctly parsing the vectorSearchFAQ response
+- **Data Mapping:** FAQ results might not be properly mapped to the UI model
+- **Filtering Logic:** Valid FAQ results might be filtered out due to threshold logic
+- **State Management:** Enhancement data might not be properly triggering UI updates
+
+#### 3. **Current Codebase State**
+
+**✅ Working Components:**
+- Firebase Functions emulator integration
+- Cloud Functions (getRecipeSnippet, vectorSearchFAQ) with real OpenAI integration
+- RAG service architecture and caching
+- UI integration in FeedPostWidget (cards/loading states)
+- FAQ test data in Firestore
+
+**❌ Broken Components:**
+- Response parsing in RAGService.getSnapEnhancements()
+- FAQ result display logic in feed post widget
+- Enhancement data state propagation
+
+### Next Steps Required
+
+#### Phase 1: Debugging & Investigation
+1. **Add comprehensive logging** to RAGService.getSnapEnhancements() method
+2. **Debug Cloud Function responses** - log raw HTTP responses
+3. **Trace data flow** from Cloud Functions → RAGService → UI Widget
+4. **Validate FAQ threshold logic** - check if 0.27 similarity score meets display criteria
+
+#### Phase 2: Response Parsing Fix
+1. **Examine vectorSearchFAQ response structure** in RAGService
+2. **Fix FAQ result parsing** if data mapping is incorrect
+3. **Validate FAQ model serialization** from Cloud Function JSON
+4. **Test with different similarity scores** to ensure threshold logic
+
+#### Phase 3: UI State Management
+1. **Debug enhancement data propagation** to feed post widget
+2. **Verify card display logic** for FAQ results
+3. **Test loading/error state transitions** 
+4. **Validate card expansion/collapse functionality**
+
+### Technical Context
+- **Environment:** Local Firebase emulators with Android emulator
+- **User:** CO9wojfc8I8bJVQHdsjWigVxS15A (Test vendor profile)
+- **Test Content:** "I'm selling this dog statuette" - craft item with FAQ data available
+- **Expected Behavior:** FAQ card should display with 1 result about dog statuette materials
+
+### Code Files to Investigate
+1. `lib/core/services/rag_service.dart` - Response parsing logic
+2. `lib/features/feed/presentation/widgets/feed_post_widget.dart` - UI integration
+3. `lib/core/models/faq_vector.dart` - Data model serialization
+4. Cloud Functions logs for response format validation
+
+### Resolution Priority
+**Medium-High** - Core feature is implemented but not visible to users. Affects MVP completion and user experience testing. 
