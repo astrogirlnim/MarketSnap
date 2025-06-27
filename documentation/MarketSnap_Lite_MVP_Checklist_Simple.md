@@ -134,10 +134,10 @@ Legend:
   - [X] Allow vendor edit before final post. ✅ **DONE** - Fully editable caption input with restore functionality
   - [X] Cache caption keyed by media hash. ✅ **DONE** - SHA-1 media hash with vendor context, 24-hour TTL with automatic cleanup
 
-- [ ] **6. Recipe & FAQ Snippets (Phase 2)**
-  - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.
-  - [ ] On snap view, call `getRecipeSnippet` for produce keyword.
-  - [ ] Render collapsible FAQ card below story.
+- [X] **6. Recipe & FAQ Snippets (Phase 2)** ✅ **COMPLETED WITH REAL OPENAI RAG INTEGRATION**
+  - [X] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job. ✅ **DONE** - Complete FAQ vector model with OpenAI embeddings support
+  - [X] On snap view, call `getRecipeSnippet` for produce keyword. ✅ **DONE** - Real GPT-4 recipe generation with context-aware prompts
+  - [X] Render collapsible FAQ card below story. ✅ **DONE** - Vector similarity search with keyword fallback via Cloud Functions
 
 - [ ] **7. Ephemeral Messaging Logic**
   - [ ] Message send service → write to `messages` + trigger push.
