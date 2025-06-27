@@ -106,8 +106,12 @@ class _CachedFirebaseUser implements User {
     throw UnimplementedError('ID token result not available for cached users');
   
   @override
-  Future<User> linkWithCredential(AuthCredential credential) => 
+  Future<UserCredential> linkWithCredential(AuthCredential credential) => 
     throw UnimplementedError('Link credential not available for cached users');
+  
+  @override
+  Future<UserCredential> linkWithProvider(AuthProvider provider) => 
+    throw UnimplementedError('Link provider not available for cached users');
   
   @override
   Future<ConfirmationResult> linkWithPhoneNumber(String phoneNumber, [RecaptchaVerifier? verifier]) => 
@@ -124,6 +128,10 @@ class _CachedFirebaseUser implements User {
   @override
   Future<UserCredential> reauthenticateWithCredential(AuthCredential credential) => 
     throw UnimplementedError('Reauthenticate not available for cached users');
+  
+  @override
+  Future<UserCredential> reauthenticateWithProvider(AuthProvider provider) => 
+    throw UnimplementedError('Reauthenticate provider not available for cached users');
   
   @override
   Future<UserCredential> reauthenticateWithPopup(AuthProvider provider) => 
