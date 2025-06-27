@@ -153,6 +153,85 @@ After these steps, the application built and ran successfully on the iOS simulat
 
 ---
 
+## 8. Fifth Issue: Vendor Authentication Re-Login Flow Failure
+
+**Date:** January 27, 2025
+
+**Issue:** Vendor users can sign up and login initially, but cannot re-login after signing out
+
+**Status:** 🔄 **PARTIALLY RESOLVED - STREAM CONTROLLER FIXED, ROOT CAUSE PERSISTS**
+
+#### Problem Analysis
+- **Symptom:** First-time vendor signup works perfectly, profile setup completes, user reaches main app
+- **Critical Issue:** After signing out and attempting to re-login with same credentials, user is immediately redirected back to login page
+
+---
+
+## 9. Persistent Authentication Redirect Bug (Post-AccountLinkingService Fix)
+
+**Date:** January 27, 2025 - 17:23 UTC
+
+**Issue:** After implementing AccountLinkingService fix to detect both vendor and regular user profiles, authentication redirect bug persists for both user types
+
+**Status:** 🔴 **UNRESOLVED - DEEPER ARCHITECTURAL ISSUE**
+
+#### Log Analysis Results
+From the latest authentication flow logs:
+
+**Vendor User (Ld6zM8dFEfBycWaN6fiLAyQq2KYy):**
+```
+[AccountLinkingService] Found existing regular user profile for current UID: Ld6zM8dFEfBycWaN6fiLAyQq2KYy
+[AccountLinkingService] Successfully linked existing profile: Test
+[AuthWrapper] Account linking flow completed. Has existing profile: true
+[AuthWrapper] User has existing profile - going to main app
+[MainShellScreen] User type detected: Vendor
+```
+
+**Regular User (JjWeYyrbtlh1OUHc7RxmnqQtVENE):**
+```
+[AccountLinkingService] Found existing regular user profile for current UID: JjWeYyrbtlh1OUHc7RxmnqQtVENE
+[AccountLinkingService] Successfully linked existing profile: Customer
+[AuthWrapper] Account linking flow completed. Has existing profile: true
+[AuthWrapper] User has existing profile - going to main app
+[MainShellScreen] User type detected: Regular User
+```
+
+#### Key Findings
+1. **✅ AccountLinkingService Fix Working:** Both user types are properly detected and linked
+2. **✅ AuthWrapper Logic Executing:** "User has existing profile - going to main app" logged correctly
+3. **✅ MainShellScreen Initializing:** User type detection working for both vendor and regular users
+4. **❌ Navigation Still Failing:** Despite successful flow, users still redirected to login screen
+
+#### Technical Evidence
+- **Firebase Authentication:** Working correctly, users authenticate successfully
+- **Profile Detection:** Both vendor and regular user profiles found and linked properly
+- **AuthWrapper Flow:** All conditional logic executing as expected
+- **MainShellScreen Initialization:** User type detection and screen initialization successful
+
+#### Hypothesis: Navigation Layer Issue
+The bug appears to be occurring **after** successful authentication and profile linking, suggesting:
+- **Possible Issue 1:** Navigation state management problem in AuthWrapper
+- **Possible Issue 2:** Route replacement not working properly
+- **Possible Issue 3:** Widget rebuild causing re-evaluation of auth state
+- **Possible Issue 4:** Stream subscription or FutureBuilder timing issue
+
+#### Next Investigation Required
+The issue is NOT in the AccountLinkingService logic (now fixed) but appears to be in:
+1. The AuthWrapper navigation implementation
+2. The FutureBuilder/StreamBuilder logic in main.dart
+3. Potential race conditions in authentication state management
+4. Widget lifecycle and rebuild patterns
+
+#### Current Status
+- **User Experience:** Users can authenticate but are immediately returned to login screen
+- **Backend Systems:** All Firebase services operational, authentication working
+- **Code Quality:** flutter analyze passes with 0 issues
+- **Test Environment:** Firebase emulators running correctly
+
+**Priority:** HIGH - Critical authentication flow broken despite successful backend operations
+
+---
+
 ## System Health Overview
 
 ### **✅ Firebase Emulator Status**
@@ -184,72 +263,6 @@ After these steps, the application built and ran successfully on the iOS simulat
 - **Phase 3.3:** Story Reel & Feed implementation ✅ **COMPLETE**
 - **Next Phase:** Media review screen with LUT filters and "Post" button
 - **Testing Priority:** Verify image loading fix resolves perpetual loading issue
-
----
-
-## 8. Fifth Issue: Vendor Authentication Re-Login Flow Failure
-
-**Date:** January 27, 2025
-
-**Issue:** Vendor users can sign up and login initially, but cannot re-login after signing out
-
-**Status:** 🔄 **PARTIALLY RESOLVED - STREAM CONTROLLER FIXED, ROOT CAUSE PERSISTS**
-
-#### Problem Analysis
-- **Symptom:** First-time vendor signup works perfectly, profile setup completes, user reaches main app
-- **Critical Issue:** After signing out and attempting to re-login with same credentials, user is immediately redirected back to login page
-- **Error Pattern:** Stream controller lifecycle errors in AuthService (`Cannot add new events after calling close`)
-- **Secondary Issue:** OpenAI GPT-4 Vision model deprecation causing AI caption generation failures
-
-#### Stream Controller Fix Implemented ✅
-**Problem:** Firebase auth state listener continued firing after AuthService disposal
-- **Root Cause:** Dangling Firebase auth state subscription trying to add events to closed stream controller
-- **Solution Applied:**
-  - Added proper stream subscription management (`_connectivitySubscription`, `_firebaseAuthSubscription`)
-  - Implemented `isClosed` checks before all stream controller operations
-  - Enhanced `dispose()` method to cancel subscriptions before closing controller
-  - Added comprehensive lifecycle logging for debugging
-
-#### Remaining Authentication Issues 🔄
-**Current Behavior After Stream Fix:**
-1. **Vendor signup** → Profile setup screen appears ✅
-2. **Profile completion** → Successfully reaches main app ✅  
-3. **Sign out** → Returns to login screen ✅
-4. **Re-login attempt** → Still redirected back to login page ❌
-
-**Suspected Root Causes:**
-1. **Profile Persistence Issue:** Vendor profile may not be properly saved to Firestore during initial setup
-2. **FCM Token Timing:** Fixed FCM token save logic may still have edge cases
-3. **User Type Detection:** System may not properly recognize returning vendor vs new user
-4. **Firestore Security Rules:** May be blocking vendor profile retrieval on subsequent logins
-
-#### Technical Evidence
-**Firebase Functions Logs:**
-- OpenAI GPT-4 Vision model `gpt-4-vision-preview` is deprecated (404 error)
-- Caption generation failing but not blocking core auth flow
-- Recipe snippet and vector search functions working (placeholder implementations)
-
-**Firebase Emulator Logs:**
-- Phone verification codes being generated correctly (439604, 624210, 279462)
-- Authentication token validation passing for uid `r4Rbkx1hiQzMPiJIjbdwqbaxn0nW`
-- No obvious Firestore permission or data retrieval errors in logs
-
-#### Next Debugging Steps Required
-1. **Profile Verification:** Check if vendor profile actually exists in Firestore after initial signup
-2. **Auth Flow Analysis:** Add detailed logging to profile service and auth wrapper
-3. **User Type Logic:** Verify user type detection logic for returning vendors
-4. **Firestore Rules:** Ensure vendor profile read permissions are correct
-5. **OpenAI Model Update:** Update deprecated `gpt-4-vision-preview` to `gpt-4o` or `gpt-4-turbo`
-
-#### Impact Assessment
-- **First-time vendor onboarding:** ✅ Working perfectly
-- **Vendor profile setup:** ✅ Functional 
-- **Core app functionality:** ✅ All features working for authenticated users
-- **Vendor retention:** ❌ **CRITICAL** - Users cannot return to app after signing out
-- **User experience:** ❌ **SEVERE** - Creates impression of broken authentication
-
-#### Priority Level: **🚨 HIGH PRIORITY**
-This issue prevents vendor retention and creates a poor user experience where vendors lose access to their accounts after signing out.
 
 ---
 

@@ -103,32 +103,55 @@
 
 ## 🚨 **CRITICAL PRIORITY: Authentication Re-Login Flow Debugging**
 
-**Current Status:** 🔄 **HIGH PRIORITY DEBUGGING** - Vendor re-login authentication failure
+**Current Status:** 🔴 **HIGH PRIORITY DEBUGGING** - Persistent authentication redirect bug after AccountLinkingService fix
 
-**Issue:** Vendor users can complete initial signup and reach main app successfully, but cannot re-login after signing out. Users are immediately redirected back to login page on subsequent login attempts.
+**Issue:** Both vendor and regular users can authenticate successfully and reach main app, but immediately get redirected back to login screen despite successful authentication flow completion.
 
-**Progress Made:**
-- ✅ **Stream Controller Lifecycle Fixed:** Resolved Firebase auth state listener disposal issues
-- ✅ **FCM Token Logic Enhanced:** Improved timing and error handling for FCM token persistence
-- ✅ **Code Quality:** All changes pass flutter analyze (0 issues) and flutter test (11/11 passing)
+**Latest Investigation Results (January 27, 2025 - 17:23 UTC):**
 
-**Remaining Investigation Required:**
-1. **Profile Persistence Verification:** Check if vendor profiles are actually saved to Firestore during initial setup
-2. **User Type Detection Logic:** Verify returning vendor recognition vs new user flow
-3. **Firestore Security Rules:** Ensure vendor profile read permissions are correctly configured
-4. **Auth Flow Analysis:** Add comprehensive logging to identify exact failure point
+**✅ AccountLinkingService Fix Successfully Implemented:**
+- Updated `findExistingProfileForCurrentUser()` to search both `vendors` and `regularUsers` collections
+- Both user types now properly detected and linked during authentication
+- All logs show successful profile detection and linking
 
-**Secondary Issues Identified:**
-- **OpenAI Model Deprecation:** `gpt-4-vision-preview` model deprecated (404 errors) - needs update to `gpt-4o`
-- **Firebase Functions:** Caption generation failing but not blocking core functionality
+**❌ Navigation Layer Issue Identified:**
+Despite successful authentication and profile linking, users still redirected to login. Log analysis shows:
+
+**Vendor User (Ld6zM8dFEfBycWaN6fiLAyQq2KYy):**
+```
+[AccountLinkingService] Successfully linked existing profile: Test
+[AuthWrapper] User has existing profile - going to main app
+[MainShellScreen] User type detected: Vendor
+```
+
+**Regular User (JjWeYyrbtlh1OUHc7RxmnqQtVENE):**
+```
+[AccountLinkingService] Successfully linked existing profile: Customer  
+[AuthWrapper] User has existing profile - going to main app
+[MainShellScreen] User type detected: Regular User
+```
+
+**Critical Finding:** All backend logic working correctly, but users still experience redirect to login screen.
+
+**Hypothesis - Navigation Layer Issues:**
+1. **Widget Rebuild Cycles:** AuthWrapper may be re-evaluating auth state causing navigation loops
+2. **Stream/Future Timing:** Race conditions in FutureBuilder/StreamBuilder logic
+3. **Route Replacement:** Navigation state management issues in main.dart AuthWrapper
+4. **Memory Leaks:** Widget disposal and recreation causing state loss
+
+**Next Investigation Priority:**
+- Examine AuthWrapper FutureBuilder/StreamBuilder implementation 
+- Check widget lifecycle and navigation state management
+- Look for race conditions in authentication state evaluation
+- Verify route replacement logic in AuthWrapper
 
 **Impact Assessment:**
-- **First-time onboarding:** ✅ Working perfectly
-- **Core app features:** ✅ All functional for authenticated users  
-- **Vendor retention:** ❌ **CRITICAL** - Users cannot return after signing out
-- **User experience:** ❌ **SEVERE** - Creates broken authentication impression
+- **Authentication Backend:** ✅ Working perfectly (Firebase, profiles, linking)
+- **Profile Detection:** ✅ Both user types detected correctly
+- **User Experience:** ❌ **CRITICAL** - Users cannot stay authenticated despite successful login
+- **Code Quality:** ✅ flutter analyze (0 issues), all tests passing
 
-**Next Debugging Session Priority:** Focus on profile persistence and user type detection logic before implementing new features.
+**Priority Level:** 🚨 **HIGHEST PRIORITY** - Critical authentication flow broken despite working backend
 
 ---
 
