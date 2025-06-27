@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import 'package:marketsnap/core/models/message.dart';
 import 'package:marketsnap/core/models/vendor_profile.dart';
 import 'package:marketsnap/core/services/messaging_service.dart';
@@ -27,14 +27,23 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('[ConversationListScreen] Building conversation list screen');
+    developer.log(
+      '[ConversationListScreen] Building conversation list screen',
+      name: 'ConversationListScreen',
+    );
     
     // Get current user directly instead of using stream that might not emit properly
     final currentUser = _authService.currentUser;
-    print('[ConversationListScreen] Current user from authService.currentUser: ${currentUser?.uid}');
-    
+    developer.log(
+      '[ConversationListScreen] Current user from authService.currentUser: ${currentUser?.uid}',
+      name: 'ConversationListScreen',
+    );
+
     if (currentUser == null) {
-      print('[ConversationListScreen] No current user - showing login prompt');
+      developer.log(
+        '[ConversationListScreen] No current user - showing login prompt',
+        name: 'ConversationListScreen',
+      );
       return Scaffold(
         appBar: AppBar(
           title: const Text('Messages'),
@@ -48,9 +57,12 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         ),
       );
     }
-    
+
     final currentUserId = currentUser.uid;
-    print('[ConversationListScreen] Building message list for user: $currentUserId');
+    developer.log(
+      '[ConversationListScreen] Building message list for user: $currentUserId',
+      name: 'ConversationListScreen',
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -74,15 +86,24 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       body: StreamBuilder<List<Message>>(
         stream: _messagingService.getUserConversations(userId: currentUserId),
         builder: (context, snapshot) {
-          print('[ConversationListScreen] Messages stream - connection: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, error: ${snapshot.error}');
+          developer.log(
+            '[ConversationListScreen] Messages stream - connection: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, error: ${snapshot.error}',
+            name: 'ConversationListScreen',
+          );
           
           if (snapshot.connectionState == ConnectionState.waiting) {
-            print('[ConversationListScreen] Messages stream waiting - showing loading');
+            developer.log(
+              '[ConversationListScreen] Messages stream waiting - showing loading',
+              name: 'ConversationListScreen',
+            );
             return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            print('[ConversationListScreen] Messages stream error: ${snapshot.error}');
+            developer.log(
+              '[ConversationListScreen] Messages stream error: ${snapshot.error}',
+              name: 'ConversationListScreen',
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -105,10 +126,16 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           }
 
           final conversations = snapshot.data ?? [];
-          print('[ConversationListScreen] Received ${conversations.length} conversations');
+          developer.log(
+            '[ConversationListScreen] Received ${conversations.length} conversations',
+            name: 'ConversationListScreen',
+          );
 
           if (conversations.isEmpty) {
-            print('[ConversationListScreen] No conversations - showing empty state');
+            developer.log(
+              '[ConversationListScreen] No conversations - showing empty state',
+              name: 'ConversationListScreen',
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -130,7 +157,10 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
             );
           }
 
-          print('[ConversationListScreen] Building conversation list with ${conversations.length} items');
+          developer.log(
+            '[ConversationListScreen] Building conversation list with ${conversations.length} items',
+            name: 'ConversationListScreen',
+          );
           return ListView.separated(
             itemCount: conversations.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
