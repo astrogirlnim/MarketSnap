@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:marketsnap/features/feed/domain/models/snap_model.dart';
 import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 import 'package:marketsnap/core/services/profile_update_notifier.dart';
@@ -25,6 +26,7 @@ class StreamGroup {
 
 class FeedService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
   // Note: _auth will be used for user-specific feed filtering in future updates
   // ignore: unused_field
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -280,5 +282,109 @@ class FeedService {
       name: 'FeedService',
     );
     return getFeedSnapsStream(limit: limit).first;
+  }
+
+  /// Delete a snap by ID - removes from both Firestore and Storage
+  /// Only allows deletion if the current user owns the snap
+  /// Returns true if deletion was successful, false otherwise
+  Future<bool> deleteSnap(String snapId) async {
+    final currentUser = currentUserId;
+    if (currentUser == null) {
+      developer.log(
+        '[FeedService] ❌ Cannot delete snap: user not authenticated',
+        name: 'FeedService',
+      );
+      return false;
+    }
+
+    developer.log(
+      '[FeedService] 🗑️ Starting deletion process for snap: $snapId',
+      name: 'FeedService',
+    );
+
+    try {
+      // Step 1: Get the snap document to verify ownership and get media URL
+      final snapDoc = await _firestore.collection('snaps').doc(snapId).get();
+      
+      if (!snapDoc.exists) {
+        developer.log(
+          '[FeedService] ❌ Snap not found: $snapId',
+          name: 'FeedService',
+        );
+        return false;
+      }
+
+      final snapData = snapDoc.data()!;
+      final vendorId = snapData['vendorId'] as String?;
+      final mediaUrl = snapData['mediaUrl'] as String?;
+
+      // Step 2: Verify ownership
+      if (vendorId != currentUser) {
+        developer.log(
+          '[FeedService] ❌ Cannot delete snap: user ($currentUser) does not own snap (owner: $vendorId)',
+          name: 'FeedService',
+        );
+        return false;
+      }
+
+      developer.log(
+        '[FeedService] ✅ Ownership verified - proceeding with deletion',
+        name: 'FeedService',
+      );
+
+      // Step 3: Delete media file from Firebase Storage (if exists)
+      if (mediaUrl != null && mediaUrl.isNotEmpty) {
+        try {
+          // Extract storage path from media URL
+          final storageRef = _storage.refFromURL(mediaUrl);
+          await storageRef.delete();
+          developer.log(
+            '[FeedService] ✅ Successfully deleted media file from Storage: ${storageRef.fullPath}',
+            name: 'FeedService',
+          );
+        } catch (storageError) {
+          // Log storage deletion error but continue with Firestore deletion
+          developer.log(
+            '[FeedService] ⚠️ Failed to delete media file from Storage: $storageError',
+            name: 'FeedService',
+          );
+          developer.log(
+            '[FeedService] 📋 Media URL was: $mediaUrl',
+            name: 'FeedService',
+          );
+        }
+      } else {
+        developer.log(
+          '[FeedService] ℹ️ No media URL found - skipping Storage deletion',
+          name: 'FeedService',
+        );
+      }
+
+      // Step 4: Delete Firestore document
+      await _firestore.collection('snaps').doc(snapId).delete();
+      developer.log(
+        '[FeedService] ✅ Successfully deleted snap document from Firestore: $snapId',
+        name: 'FeedService',
+      );
+
+      // Step 5: Log successful completion
+      developer.log(
+        '[FeedService] 🎉 Snap deletion completed successfully: $snapId',
+        name: 'FeedService',
+      );
+
+      return true;
+
+    } catch (error, stackTrace) {
+      developer.log(
+        '[FeedService] ❌ Failed to delete snap $snapId: $error',
+        name: 'FeedService',
+      );
+      developer.log(
+        '[FeedService] 📋 Stack trace: $stackTrace',
+        name: 'FeedService',
+      );
+      return false;
+    }
   }
 }
