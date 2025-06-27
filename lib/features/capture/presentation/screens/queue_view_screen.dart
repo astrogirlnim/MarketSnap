@@ -24,6 +24,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[QueueViewScreen] Initializing QueueViewScreen');
     _initializeQueue();
     _checkConnectivity();
   }
