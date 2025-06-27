@@ -94,8 +94,13 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     const SizedBox(height: AppSpacing.md),
                   ],
 
-                  // Wicker Mascot - Bigger and more prominent
-                  const Center(child: BasketIcon(size: 200)),
+                  // Wicker Mascot - Bigger and more prominent with first-time blink animation
+                  const Center(
+                    child: BasketIcon(
+                      size: 200, 
+                      enableFirstTimeAnimation: true,
+                    ),
+                  ),
 
                   const SizedBox(height: AppSpacing.lg),
 

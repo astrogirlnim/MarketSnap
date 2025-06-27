@@ -1007,28 +1007,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      // Clear snackbar and show success
+      // Clear snackbar and show success message
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         
-        // Navigate to auth screen since user is now signed out
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/auth',
-          (route) => false,
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully. Redirecting to login...'),
+            backgroundColor: AppColors.leafGreen,
+            duration: Duration(seconds: 3),
+          ),
         );
-
-        // Show final success message
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account deleted successfully'),
-                backgroundColor: AppColors.leafGreen,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          }
-        });
+        
+        // The AuthWrapper will automatically detect the user is signed out
+        // and redirect to AuthWelcomeScreen - no manual navigation needed
+        developer.log(
+          '[SettingsScreen] User signed out, AuthWrapper will handle redirect',
+          name: 'SettingsScreen',
+        );
       }
     } catch (e) {
       developer.log(

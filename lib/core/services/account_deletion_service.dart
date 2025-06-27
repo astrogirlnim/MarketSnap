@@ -500,6 +500,16 @@ class AccountDeletionService {
       await _authService.deleteAccount();
       developer.log('[AccountDeletionService] ✅ Firebase Auth account deleted');
     } catch (e) {
+      final errorMessage = e.toString().toLowerCase();
+      
+      // Handle case where Cloud Function already deleted the auth account
+      if (errorMessage.contains('no user record') || 
+          errorMessage.contains('user may have been deleted') ||
+          errorMessage.contains('user not found')) {
+        developer.log('[AccountDeletionService] ✅ Auth account already deleted by Cloud Function');
+        return; // Treat as success since the account is already deleted
+      }
+      
       developer.log('[AccountDeletionService] ❌ Error deleting auth account: $e');
       throw Exception('Failed to delete authentication account: $e');
     }

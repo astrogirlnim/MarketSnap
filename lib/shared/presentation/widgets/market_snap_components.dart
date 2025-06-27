@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
@@ -458,11 +459,21 @@ class MarketSnapLoadingIndicator extends StatelessWidget {
 class BasketIcon extends StatelessWidget {
   final double size;
   final Color? color; // For tinting if needed
+  final bool enableFirstTimeAnimation;
 
-  const BasketIcon({super.key, this.size = 48, this.color});
+  const BasketIcon({
+    super.key, 
+    this.size = 48, 
+    this.color,
+    this.enableFirstTimeAnimation = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (enableFirstTimeAnimation) {
+      return _AnimatedBasketIcon(size: size, color: color);
+    }
+    
     return Image.asset(
       'assets/images/icons/wicker_mascot.png',
       width: size,
@@ -473,6 +484,105 @@ class BasketIcon extends StatelessWidget {
         Icons.shopping_basket_outlined,
         size: size,
         color: color ?? AppColors.harvestOrange,
+      ),
+    );
+  }
+}
+
+/// Animated version of BasketIcon that blinks once on first app open
+class _AnimatedBasketIcon extends StatefulWidget {
+  final double size;
+  final Color? color;
+
+  const _AnimatedBasketIcon({
+    required this.size,
+    this.color,
+  });
+
+  @override
+  State<_AnimatedBasketIcon> createState() => _AnimatedBasketIconState();
+}
+
+class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
+  bool _isBlinking = false;
+  bool _hasAnimated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFirstTimeAndAnimate();
+  }
+
+  Future<void> _checkFirstTimeAndAnimate() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeenWelcome = prefs.getBool('has_seen_welcome_animation') ?? false;
+      
+      if (!hasSeenWelcome && mounted) {
+        // Start the blinking animation after a short delay
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted && !_hasAnimated) {
+          await _performBlinkAnimation();
+          
+          // Mark as seen so it doesn't happen again
+          await prefs.setBool('has_seen_welcome_animation', true);
+        }
+      }
+    } catch (e) {
+      debugPrint('[AnimatedBasketIcon] Error checking first time: $e');
+    }
+  }
+
+  Future<void> _performBlinkAnimation() async {
+    if (!mounted || _hasAnimated) return;
+    
+    setState(() {
+      _hasAnimated = true;
+    });
+
+    // Blink sequence: normal -> blink -> normal
+    for (int i = 0; i < 2; i++) {
+      if (!mounted) break;
+      
+      // Switch to blinking
+      setState(() {
+        _isBlinking = true;
+      });
+      
+      await Future.delayed(const Duration(milliseconds: 150));
+      
+      if (!mounted) break;
+      
+      // Switch back to normal
+      setState(() {
+        _isBlinking = false;
+      });
+      
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final assetPath = _isBlinking
+        ? 'assets/images/icons/wicker_blinking.png'
+        : 'assets/images/icons/wicker_mascot.png';
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 100),
+      child: Image.asset(
+        assetPath,
+        key: ValueKey(assetPath),
+        width: widget.size,
+        height: widget.size,
+        fit: BoxFit.contain,
+        color: widget.color,
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.shopping_basket_outlined,
+          size: widget.size,
+          color: widget.color ?? AppColors.harvestOrange,
+        ),
       ),
     );
   }
