@@ -29,6 +29,7 @@ import 'features/profile/presentation/screens/regular_user_profile_screen.dart';
 import 'core/models/user_type.dart';
 import 'core/services/profile_update_notifier.dart';
 import 'features/feed/application/feed_service.dart';
+import 'core/services/account_deletion_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -42,6 +43,7 @@ late final MessagingService messagingService;
 late final PushNotificationService pushNotificationService;
 late final ProfileUpdateNotifier profileUpdateNotifier;
 late final FeedService feedService;
+late final AccountDeletionService accountDeletionService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -400,6 +402,32 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create feed service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize account deletion service
+  try {
+    accountDeletionService = AccountDeletionService(
+      authService: authService,
+      profileService: profileService,
+      hiveService: hiveService,
+    );
+    debugPrint('[main] Account deletion service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing account deletion service: $e');
+    // Create fallback account deletion service
+    try {
+      accountDeletionService = AccountDeletionService(
+        authService: authService,
+        profileService: profileService,
+        hiveService: hiveService,
+      );
+      debugPrint('[main] Fallback account deletion service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create account deletion service: $fallbackError',
       );
       rethrow;
     }

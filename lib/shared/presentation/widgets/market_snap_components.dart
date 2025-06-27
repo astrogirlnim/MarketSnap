@@ -34,9 +34,9 @@ class MarketSnapPrimaryButton extends StatelessWidget {
           backgroundColor: AppColors.marketBlue,
           foregroundColor: Colors.white,
           elevation: AppSpacing.elevationSm,
-          shadowColor: AppColors.marketBlue.withValues(alpha: 0.3),
+          shadowColor: AppColors.marketBlue.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
           ),
         ),
         child: isLoading
@@ -90,9 +90,10 @@ class MarketSnapSecondaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.soilCharcoal,
-          side: const BorderSide(color: AppColors.seedBrown, width: 2),
+          backgroundColor: AppColors.eggshell,
+          side: const BorderSide(color: AppColors.seedBrown, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
           ),
         ),
         child: isLoading
@@ -453,17 +454,27 @@ class MarketSnapLoadingIndicator extends StatelessWidget {
   }
 }
 
-/// Basket Icon Widget (using the asset image)
+/// Basket Icon Widget (using the wicker mascot)
 class BasketIcon extends StatelessWidget {
   final double size;
   final Color? color; // For tinting if needed
+  final bool enableWelcomeAnimation;
 
-  const BasketIcon({super.key, this.size = 48, this.color});
+  const BasketIcon({
+    super.key, 
+    this.size = 48, 
+    this.color,
+    this.enableWelcomeAnimation = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (enableWelcomeAnimation) {
+      return _AnimatedBasketIcon(size: size, color: color);
+    }
+    
     return Image.asset(
-      'assets/images/icons/basket_icon.png',
+      'assets/images/icons/wicker_mascot.png',
       width: size,
       height: size,
       fit: BoxFit.contain,
@@ -472,6 +483,101 @@ class BasketIcon extends StatelessWidget {
         Icons.shopping_basket_outlined,
         size: size,
         color: color ?? AppColors.harvestOrange,
+      ),
+    );
+  }
+}
+
+/// Animated version of BasketIcon that blinks once when shown
+class _AnimatedBasketIcon extends StatefulWidget {
+  final double size;
+  final Color? color;
+
+  const _AnimatedBasketIcon({
+    required this.size,
+    this.color,
+  });
+
+  @override
+  State<_AnimatedBasketIcon> createState() => _AnimatedBasketIconState();
+}
+
+class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
+  bool _isBlinking = false;
+  bool _hasAnimated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startWelcomeAnimation();
+  }
+
+  Future<void> _startWelcomeAnimation() async {
+    try {
+      // Start the blinking animation after a short delay
+      await Future.delayed(const Duration(milliseconds: 800));
+      
+      if (mounted && !_hasAnimated) {
+        await _performBlinkAnimation();
+      }
+    } catch (e) {
+      debugPrint('[AnimatedBasketIcon] Error during welcome animation: $e');
+    }
+  }
+
+  Future<void> _performBlinkAnimation() async {
+    if (!mounted || _hasAnimated) return;
+    
+    setState(() {
+      _hasAnimated = true;
+    });
+
+    debugPrint('[AnimatedBasketIcon] 👁️ Starting Wicker blink animation');
+
+    // Single blink sequence: normal -> blink -> normal
+    if (!mounted) return;
+    
+    // Switch to blinking
+    setState(() {
+      _isBlinking = true;
+    });
+    
+    debugPrint('[AnimatedBasketIcon] 😉 Wicker is blinking');
+    await Future.delayed(const Duration(milliseconds: 250));
+    
+    if (!mounted) return;
+    
+    // Switch back to normal
+    setState(() {
+      _isBlinking = false;
+    });
+    
+    debugPrint('[AnimatedBasketIcon] 😊 Wicker blink complete');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final assetPath = _isBlinking
+        ? 'assets/images/icons/wicker_blinking.png'
+        : 'assets/images/icons/wicker_mascot.png';
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 150),
+      child: Image.asset(
+        assetPath,
+        key: ValueKey(assetPath),
+        width: widget.size,
+        height: widget.size,
+        fit: BoxFit.contain,
+        color: widget.color,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('[AnimatedBasketIcon] ⚠️ Error loading image: $assetPath');
+          return Icon(
+            Icons.shopping_basket_outlined,
+            size: widget.size,
+            color: widget.color ?? AppColors.harvestOrange,
+          );
+        },
       ),
     );
   }

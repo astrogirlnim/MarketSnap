@@ -69,14 +69,9 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
           child: Container(
             height: screenHeight - MediaQuery.of(context).padding.top,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.cornsilk,
-                  Color(0xFFFFFBF0), // Slightly lighter variation
-                ],
-                stops: [0.0, 1.0],
+              image: DecorationImage(
+                image: AssetImage('assets/images/login_background.png'),
+                fit: BoxFit.cover,
               ),
             ),
             child: Padding(
@@ -85,8 +80,8 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Spacer to push content down
-                  const Spacer(flex: 1),
+                  // Spacer to push content down less (more compact)
+                  const Spacer(flex: 2),
 
                   // Offline status indicator
                   if (_isOffline) ...[
@@ -96,27 +91,32 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                       type: StatusType.warning,
                       showIcon: true,
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.md),
                   ],
 
-                  // Basket Character Icon - Center of the design
-                  const Center(child: BasketIcon(size: 120)),
+                  // Wicker Mascot - Bigger and more prominent with welcome blink animation
+                  const Center(
+                    child: BasketIcon(
+                      size: 200, 
+                      enableWelcomeAnimation: true,
+                    ),
+                  ),
 
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
 
-                  // Main CTA Button - "Sign Up as Vendor"
+                  // Main CTA Button - "Sign Up"
                   MarketSnapPrimaryButton(
-                    text: 'Sign Up as Vendor',
+                    text: 'Sign Up',
                     icon: Icons.storefront_outlined,
                     onPressed: () {
                       debugPrint(
-                        '[AuthWelcomeScreen] Sign Up as Vendor tapped',
+                        '[AuthWelcomeScreen] Sign Up tapped',
                       );
                       _navigateToAuth(context, isIOSEmulator, true);
                     },
                   ),
 
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
 
                   // Subtitle for vendors
                   Text(
@@ -125,7 +125,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xxl),
+                  const SizedBox(height: AppSpacing.xl),
 
                   // Secondary Action - "Log In"
                   MarketSnapSecondaryButton(
@@ -137,7 +137,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     },
                   ),
 
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
 
                   // Subtitle for existing users
                   Text(
@@ -148,7 +148,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // "What is MarketSnap?" link
                   Center(
@@ -195,7 +195,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     ),
                   ],
 
-                  const Spacer(flex: 1),
+                  const Spacer(flex: 3),
 
                   // Terms and Privacy - Bottom of screen
                   Text(
@@ -206,7 +206,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
 
                   // App version display
                   const VersionDisplayWidget(
@@ -214,7 +214,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     alignment: Alignment.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: AppSpacing.sm),
                 ],
               ),
             ),

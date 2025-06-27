@@ -1109,3 +1109,431 @@ export const vectorSearchFAQ = createAIHelper(
     }
   }
 );
+
+/**
+ * Cloud Function to delete a user account and all associated data
+ * Handles cascading deletion across all collections and storage
+ */
+export const deleteUserAccount = functions.https.onCall(
+  async (data, context) => {
+    logger.log("[deleteUserAccount] 🗑️ Account deletion request received");
+
+    // Verify authentication
+    if (!context.auth) {
+      logger.error("[deleteUserAccount] ❌ Unauthorized request");
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated"
+      );
+    }
+
+    const requestingUid = context.auth.uid;
+    const targetUid = data.uid;
+    const timestamp = data.timestamp;
+
+    logger.log(
+      "[deleteUserAccount] Request details: " +
+      `requestingUid=${requestingUid}, targetUid=${targetUid}, ` +
+      `timestamp=${timestamp}`
+    );
+
+    // Security: Users can only delete their own accounts
+    if (requestingUid !== targetUid) {
+      logger.error(
+        `[deleteUserAccount] ❌ Unauthorized: User ${requestingUid} ` +
+        `attempted to delete account ${targetUid}`
+      );
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Users can only delete their own accounts"
+      );
+    }
+
+    try {
+      logger.log(
+        `[deleteUserAccount] 🚀 Starting deletion for UID: ${targetUid}`
+      );
+
+      // Track deletion statistics
+      const deletionStats = {
+        snapsDeleted: 0,
+        messagesDeleted: 0,
+        followersDeleted: 0,
+        followingDeleted: 0,
+        ragFeedbackDeleted: 0,
+        faqVectorsDeleted: 0,
+        broadcastsDeleted: 0,
+        storageFilesDeleted: 0,
+        profileDeleted: false,
+        errors: [] as string[],
+      };
+
+      // Step 1: Delete user's snaps and associated media
+      logger.log("[deleteUserAccount] 🖼️ Deleting user snaps...");
+      try {
+        // Query for user's snaps
+        const snapsQuery = await db.collection("snaps")
+          .where("vendorId", "==", targetUid)
+          .get();
+
+        if (!snapsQuery.empty) {
+          const batch = db.batch();
+
+          for (const snapDoc of snapsQuery.docs) {
+            const snapData = snapDoc.data();
+
+            // Delete associated media files from Storage
+            if (snapData.mediaUrl) {
+              try {
+                // Extract file path from URL and delete from Storage
+                const mediaRef = admin.storage().bucket().file(
+                  `vendors/${targetUid}/snaps/${snapDoc.id}`
+                );
+                await mediaRef.delete();
+                deletionStats.storageFilesDeleted++;
+                logger.log(
+                  `[deleteUserAccount] ✅ Deleted media for snap ${snapDoc.id}`
+                );
+              } catch (mediaError) {
+                logger.warn(
+                  "[deleteUserAccount] ⚠️ Failed to delete media " +
+                  `for snap ${snapDoc.id}: ${mediaError}`
+                );
+                deletionStats.errors.push(
+                  `Media deletion failed for snap ${snapDoc.id}`
+                );
+              }
+            }
+
+            // Add snap document to batch delete
+            batch.delete(snapDoc.ref);
+          }
+
+          await batch.commit();
+          deletionStats.snapsDeleted = snapsQuery.docs.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.snapsDeleted} snaps`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No snaps found for user");
+        }
+      } catch (snapError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting snaps: ${snapError}`
+        );
+        deletionStats.errors.push(`Snap deletion error: ${snapError}`);
+      }
+
+      // Step 2: Delete user's messages (both sent and received)
+      logger.log("[deleteUserAccount] 💬 Deleting user messages...");
+      try {
+        // Delete messages sent by user
+        const sentMessagesQuery = await db.collection("messages")
+          .where("fromUid", "==", targetUid)
+          .get();
+
+        // Delete messages received by user
+        const receivedMessagesQuery = await db.collection("messages")
+          .where("toUid", "==", targetUid)
+          .get();
+
+        const allMessages = [
+          ...sentMessagesQuery.docs,
+          ...receivedMessagesQuery.docs,
+        ];
+
+        if (allMessages.length > 0) {
+          // Process in batches of 500 (Firestore batch limit)
+          const batchSize = 500;
+          for (let i = 0; i < allMessages.length; i += batchSize) {
+            const batch = db.batch();
+            const batchMessages = allMessages.slice(i, i + batchSize);
+
+            batchMessages.forEach((doc) => batch.delete(doc.ref));
+            await batch.commit();
+          }
+
+          deletionStats.messagesDeleted = allMessages.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.messagesDeleted} messages`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No messages found for user");
+        }
+      } catch (messageError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting messages: ${messageError}`
+        );
+        deletionStats.errors.push(`Message deletion error: ${messageError}`);
+      }
+
+      // Step 3: Delete follow relationships
+      logger.log("[deleteUserAccount] 👥 Deleting follow relationships...");
+      try {
+        // Delete users this person is following
+        const followingQuery = await db.collection("followers")
+          .where("followerId", "==", targetUid)
+          .get();
+
+        // Delete followers of this user
+        const followersQuery = await db.collection("followers")
+          .where("followedId", "==", targetUid)
+          .get();
+
+        const allRelationships = [
+          ...followingQuery.docs,
+          ...followersQuery.docs,
+        ];
+
+        if (allRelationships.length > 0) {
+          const batch = db.batch();
+          allRelationships.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+
+          deletionStats.followingDeleted = followingQuery.docs.length;
+          deletionStats.followersDeleted = followersQuery.docs.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.followingDeleted} following ` +
+            `and ${deletionStats.followersDeleted} follower relationships`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No follow relationships found");
+        }
+      } catch (followError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting relationships: ${followError}`
+        );
+        deletionStats.errors.push(
+          `Follow relationship deletion error: ${followError}`
+        );
+      }
+
+      // Step 4: Delete RAG feedback
+      logger.log("[deleteUserAccount] 🤖 Deleting RAG feedback...");
+      try {
+        const ragFeedbackQuery = await db.collection("ragFeedback")
+          .where("userId", "==", targetUid)
+          .get();
+
+        if (!ragFeedbackQuery.empty) {
+          const batch = db.batch();
+          ragFeedbackQuery.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+
+          deletionStats.ragFeedbackDeleted = ragFeedbackQuery.docs.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.ragFeedbackDeleted} RAG feedback items`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No RAG feedback found");
+        }
+      } catch (ragError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting RAG feedback: ${ragError}`
+        );
+        deletionStats.errors.push(`RAG feedback deletion error: ${ragError}`);
+      }
+
+      // Step 5: Delete FAQ vectors (for vendors)
+      logger.log("[deleteUserAccount] 📚 Deleting FAQ vectors...");
+      try {
+        const faqVectorsQuery = await db.collection("faqVectors")
+          .where("vendorId", "==", targetUid)
+          .get();
+
+        if (!faqVectorsQuery.empty) {
+          const batch = db.batch();
+          faqVectorsQuery.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+
+          deletionStats.faqVectorsDeleted = faqVectorsQuery.docs.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.faqVectorsDeleted} FAQ vectors`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No FAQ vectors found");
+        }
+      } catch (faqError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting FAQ vectors: ${faqError}`
+        );
+        deletionStats.errors.push(`FAQ vectors deletion error: ${faqError}`);
+      }
+
+      // Step 6: Delete broadcasts (for vendors)
+      logger.log("[deleteUserAccount] 📢 Deleting broadcasts...");
+      try {
+        const broadcastsQuery = await db.collection("broadcasts")
+          .where("vendorId", "==", targetUid)
+          .get();
+
+        if (!broadcastsQuery.empty) {
+          const batch = db.batch();
+          broadcastsQuery.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+
+          deletionStats.broadcastsDeleted = broadcastsQuery.docs.length;
+          logger.log(
+            "[deleteUserAccount] ✅ Deleted " +
+            `${deletionStats.broadcastsDeleted} broadcasts`
+          );
+        } else {
+          logger.log("[deleteUserAccount] ℹ️ No broadcasts found");
+        }
+      } catch (broadcastError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting broadcasts: ${broadcastError}`
+        );
+        deletionStats.errors.push(
+          `Broadcast deletion error: ${broadcastError}`
+        );
+      }
+
+      // Step 7: Delete user profiles (vendor and regular user)
+      logger.log("[deleteUserAccount] 👤 Deleting user profiles...");
+      try {
+        // Try to delete vendor profile
+        const vendorDoc = db.collection("vendors").doc(targetUid);
+        const vendorSnapshot = await vendorDoc.get();
+
+        if (vendorSnapshot.exists) {
+          await vendorDoc.delete();
+          logger.log("[deleteUserAccount] ✅ Vendor profile deleted");
+          deletionStats.profileDeleted = true;
+        }
+
+        // Try to delete regular user profile
+        const regularUserDoc = db.collection("regularUsers").doc(targetUid);
+        const regularUserSnapshot = await regularUserDoc.get();
+
+        if (regularUserSnapshot.exists) {
+          await regularUserDoc.delete();
+          logger.log("[deleteUserAccount] ✅ Regular user profile deleted");
+          deletionStats.profileDeleted = true;
+        }
+
+        if (!deletionStats.profileDeleted) {
+          logger.log("[deleteUserAccount] ℹ️ No user profile found to delete");
+        }
+      } catch (profileError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting profiles: ${profileError}`
+        );
+        deletionStats.errors.push(`Profile deletion error: ${profileError}`);
+      }
+
+      // Step 8: Delete entire user storage folder
+      logger.log("[deleteUserAccount] 📁 Deleting user storage folder...");
+      try {
+        const bucket = admin.storage().bucket();
+
+        // Delete vendor folder
+        try {
+          const [vendorFiles] = await bucket.getFiles({
+            prefix: `vendors/${targetUid}/`,
+          });
+
+          if (vendorFiles.length > 0) {
+            await Promise.all(vendorFiles.map((file) => file.delete()));
+            deletionStats.storageFilesDeleted += vendorFiles.length;
+            logger.log(
+              `[deleteUserAccount] ✅ Deleted ${vendorFiles.length} ` +
+              "files from vendor folder"
+            );
+          }
+        } catch (vendorStorageError) {
+          logger.warn(
+            "[deleteUserAccount] ⚠️ Vendor storage deletion error: " +
+            `${vendorStorageError}`
+          );
+        }
+
+        // Delete regular user folder
+        try {
+          const [regularUserFiles] = await bucket.getFiles({
+            prefix: `regularUsers/${targetUid}/`,
+          });
+
+          if (regularUserFiles.length > 0) {
+            await Promise.all(regularUserFiles.map((file) => file.delete()));
+            deletionStats.storageFilesDeleted += regularUserFiles.length;
+            logger.log(
+              `[deleteUserAccount] ✅ Deleted ${regularUserFiles.length} ` +
+              "files from regular user folder"
+            );
+          }
+        } catch (regularStorageError) {
+          logger.warn(
+            "[deleteUserAccount] ⚠️ Regular user storage deletion error: " +
+            `${regularStorageError}`
+          );
+        }
+      } catch (storageError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting storage: ${storageError}`
+        );
+        deletionStats.errors.push(`Storage deletion error: ${storageError}`);
+      }
+
+      // Final step: Delete Firebase Auth user
+      logger.log("[deleteUserAccount] 🔐 Deleting Firebase Auth user...");
+      try {
+        await admin.auth().deleteUser(targetUid);
+        logger.log("[deleteUserAccount] ✅ Firebase Auth user deleted");
+      } catch (authError) {
+        logger.error(
+          `[deleteUserAccount] ❌ Error deleting auth user: ${authError}`
+        );
+        deletionStats.errors.push(`Auth deletion error: ${authError}`);
+        // Critical - if auth deletion fails, account isn't fully deleted
+      }
+
+      // Log final results
+      logger.log(
+        `[deleteUserAccount] 🎉 Account deletion completed for ${targetUid}:\n` +
+        `- Snaps deleted: ${deletionStats.snapsDeleted}\n` +
+        `- Messages deleted: ${deletionStats.messagesDeleted}\n` +
+        `- Following deleted: ${deletionStats.followingDeleted}\n` +
+        `- Followers deleted: ${deletionStats.followersDeleted}\n` +
+        `- RAG feedback deleted: ${deletionStats.ragFeedbackDeleted}\n` +
+        `- FAQ vectors deleted: ${deletionStats.faqVectorsDeleted}\n` +
+        `- Broadcasts deleted: ${deletionStats.broadcastsDeleted}\n` +
+        `- Storage files deleted: ${deletionStats.storageFilesDeleted}\n` +
+        `- Profile deleted: ${deletionStats.profileDeleted}\n` +
+        `- Errors: ${deletionStats.errors.length}`
+      );
+
+      if (deletionStats.errors.length > 0) {
+        logger.warn(
+          "[deleteUserAccount] ⚠️ Deletion completed with errors: " +
+            `${JSON.stringify(deletionStats.errors)}`
+        );
+      }
+
+      return {
+        success: true,
+        message: "Account successfully deleted",
+        stats: deletionStats,
+        timestamp: admin.firestore.Timestamp.now(),
+      };
+    } catch (error) {
+      logger.error(
+        `[deleteUserAccount] ❌ Critical error during deletion: ${error}`
+      );
+
+      const errorMessage = error instanceof Error ?
+        error.message : "Unknown error";
+
+      return {
+        success: false,
+        error: `Account deletion failed: ${errorMessage}`,
+        timestamp: admin.firestore.Timestamp.now(),
+      };
+    }
+  }
+);
