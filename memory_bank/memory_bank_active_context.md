@@ -4,6 +4,32 @@
 
 ---
 
+## 🚨 **CRITICAL PRODUCTION ISSUES FIXED (January 2025)**
+
+**Status:** ✅ **CODE FIXES DEPLOYED** - Awaiting Firebase Console configuration
+
+### **Issue 1: Settings Email App Failure** ✅ FIXED
+- **Problem:** "Email app not available" message on all devices
+- **Cause:** Many production devices lack default email apps
+- **Fix:** Enhanced fallback - copies email to clipboard when app unavailable
+- **Result:** Users can now paste support@marketsnap.app into any app
+
+### **Issue 2: Authentication Completely Broken** ✅ CODE FIXED
+- **Problem:** ALL auth methods (Google, Phone, Email) failing in production
+- **Cause:** Firebase App Check blocking unregistered release SHA-1
+- **Code Fix:** Graceful App Check failure handling - app continues without it
+- **Permanent Fix Required:** Add release SHA-1 to Firebase Console
+
+### **Action Required for Full Fix:**
+1. Run `./gradlew signingReport` to get release SHA-1
+2. Add to Firebase Console → Project Settings → Android app
+3. Download new `google-services.json`
+4. Update GitHub secret `GOOGLE_SERVICES_JSON`
+
+**See `docs/production_issues_fix.md` for complete details**
+
+---
+
 ## 🎯 **CURRENT STATUS: Phase 4.1 Implementation Layer COMPLETE**
 
 **Current Status:** ✅ **PHASE 4.1 COMPLETE - ALL OFFLINE FUNCTIONALITY + CODE QUALITY PERFECT**

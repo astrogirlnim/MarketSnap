@@ -156,13 +156,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final success = await widget.settingsService.openSupportEmail();
 
       if (!success && mounted) {
+        // Email app couldn't be opened, but email was copied to clipboard
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Could not open email app. Please email support@marketsnap.app directly.',
+              'Email app not available. support@marketsnap.app has been copied to your clipboard.',
             ),
             backgroundColor: AppColors.sunsetAmber,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
           ),
         );
       } else if (success && mounted) {
@@ -184,9 +190,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening support: $e'),
+            content: Text('Error: ${e.toString()}. Please email support@marketsnap.app directly.'),
             backgroundColor: AppColors.appleRed,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
           ),
         );
       }

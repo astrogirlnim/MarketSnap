@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/models/user_settings.dart';
 import '../../../core/services/hive_service.dart';
@@ -259,7 +260,13 @@ Thank you!
         name: 'SettingsService',
       );
 
+      // First try to check if we can launch the email URL
       final canLaunch = await canLaunchUrl(emailUri);
+      developer.log(
+        '[SettingsService] Can launch email URL: $canLaunch',
+        name: 'SettingsService',
+      );
+      
       if (canLaunch) {
         final launched = await launchUrl(
           emailUri,
@@ -272,16 +279,53 @@ Thank you!
         return launched;
       } else {
         developer.log(
-          '[SettingsService] Cannot launch email URL',
+          '[SettingsService] Cannot launch email URL - trying fallback',
           name: 'SettingsService',
         );
-        return false;
+        
+        // Fallback: Try to launch just the email address as a plain mailto
+        final simpleMail = Uri.parse('mailto:$supportEmail');
+        final canLaunchSimple = await canLaunchUrl(simpleMail);
+        
+        if (canLaunchSimple) {
+          developer.log(
+            '[SettingsService] Trying simple mailto launch',
+            name: 'SettingsService',
+          );
+          return await launchUrl(
+            simpleMail,
+            mode: LaunchMode.externalApplication,
+          );
+        }
+        
+        // If both methods fail, copy email to clipboard as last resort
+        developer.log(
+          '[SettingsService] All launch methods failed - copying email to clipboard',
+          name: 'SettingsService',
+        );
+        await Clipboard.setData(const ClipboardData(text: supportEmail));
+        return false; // Return false to trigger the fallback message in UI
       }
     } catch (e) {
       developer.log(
         '[SettingsService] Error launching email: $e',
         name: 'SettingsService',
       );
+      
+      // Copy email to clipboard as fallback
+      try {
+        await Clipboard.setData(const ClipboardData(text: supportEmail));
+        developer.log(
+          '[SettingsService] Copied email to clipboard as fallback',
+          name: 'SettingsService',
+        );
+      } catch (clipboardError) {
+        developer.log(
+          '[SettingsService] Failed to copy to clipboard: $clipboardError',
+          name: 'SettingsService',
+        );
+      }
+      
       return false;
     }
   }

@@ -140,24 +140,39 @@ Future<void> main() async {
     } else {
       // Use production providers for release builds
       debugPrint('[main] Initializing Firebase App Check for production...');
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.deviceCheck,
-      );
-      debugPrint(
-        '[main] Firebase App Check initialized with production providers.',
-      );
       
-      // Verify App Check is working by trying to get a token
+      // ⚠️ CRITICAL: App Check initialization with graceful fallback
+      // If App Check fails due to missing SHA-1, we still allow the app to function
       try {
-        final token = await FirebaseAppCheck.instance.getToken(true);
-        if (token != null) {
-          debugPrint('[main] Firebase App Check token obtained successfully.');
-        } else {
-          debugPrint('[main] Warning: Firebase App Check token is null.');
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.playIntegrity,
+          appleProvider: AppleProvider.deviceCheck,
+        );
+        debugPrint(
+          '[main] Firebase App Check initialized with production providers.',
+        );
+        
+        // Verify App Check is working by trying to get a token
+        try {
+          final token = await FirebaseAppCheck.instance.getToken(true);
+          if (token != null) {
+            debugPrint('[main] Firebase App Check token obtained successfully.');
+          } else {
+            debugPrint('[main] Warning: Firebase App Check token is null.');
+          }
+        } catch (tokenError) {
+          debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+          // Don't rethrow - allow app to continue
         }
-      } catch (tokenError) {
-        debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+      } catch (activationError) {
+        debugPrint('[main] ⚠️ Firebase App Check activation failed: $activationError');
+        debugPrint('[main] ⚠️ This may be due to missing release SHA-1 in Firebase Console.');
+        debugPrint('[main] ⚠️ Authentication may be limited but app will continue.');
+        
+        // Don't use debug provider in production - just continue without App Check
+        // This allows the app to function while maintaining security boundaries
+        debugPrint('[main] ⚠️ Continuing without App Check - please register release SHA-1 in Firebase Console.');
+        debugPrint('[main] ⚠️ To fix: Run "./gradlew signingReport" and add release SHA-1 to Firebase.');
       }
     }
   } catch (e) {
