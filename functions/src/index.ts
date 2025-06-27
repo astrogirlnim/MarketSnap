@@ -717,41 +717,47 @@ export const getRecipeSnippet = createAIHelper(
       const keywordList = (keywords || []).join(", ");
       const prompt = "You are a helpful cooking assistant for MarketSnap, " +
         "a farmers market app. Based on the following produce/product " +
-        "description, suggest a simple, delicious recipe that highlights " +
-        `the main ingredients.
+        "description, determine if this is food-related and suggest a recipe " +
+        `if appropriate.
 
 Product description: "${caption}"
 Detected keywords: ${keywordList}
 Media type: ${mediaType || "photo"}
 
-Please provide:
-1. A recipe name (under 35 characters)
-2. A brief description/snippet (under 120 characters) 
-3. Complete ingredients list (4-6 items max, each under 15 characters)
-4. Product category (produce, baked_goods, dairy, herbs, crafts, etc.)
+CRITICAL DECISION LOGIC:
+1. First determine: Is this describing FOOD, PRODUCE, or EDIBLE ITEMS?
+   - FOOD: fruits, vegetables, herbs, baked goods, dairy, meat, grains, etc.
+   - NOT FOOD: crafts, soaps, candles, flowers, decorative items, tools, etc.
 
-Focus on:
-- Simple, accessible recipes suitable for home cooking
-- Highlighting the freshness and quality of market ingredients
-- COMPLETE ingredient lists (include ALL necessary items like oil, salt, etc.)
-- CONCISE but COMPLETE responses for mobile display
-
-Return your response as JSON with this exact structure:
+2. If it's NOT FOOD, return:
 {
-  "recipeName": "Recipe Title",
-  "snippet": "Brief description of the recipe and why it's great",
+  "recipeName": null,
+  "snippet": null,
+  "ingredients": [],
+  "category": "non_food",
+  "relevanceScore": 0.0
+}
+
+3. If it IS FOOD, provide a complete recipe:
+{
+  "recipeName": "Recipe Title (under 35 characters)",
+  "snippet": "Brief description of the recipe and why it's great " +
+    "(under 120 characters)",
   "ingredients": ["ingredient1", "ingredient2", "ingredient3", "ingredient4"],
-  "category": "produce",
+  "category": "produce|baked_goods|dairy|herbs|etc",
   "relevanceScore": 0.85
 }
 
-IMPORTANT: Include ALL ingredients needed for the recipe, even basic ones ` +
-        "like olive oil, salt, pepper, lemon juice, etc. The ingredients " +
-        `array should be complete and contain 4-6 items.
+FOOD CATEGORIES: produce, baked_goods, dairy, herbs, meat, grains, beverages
+NON-FOOD CATEGORIES: crafts, soaps, candles, flowers, decorative, tools, " +
+  "clothing"
 
-If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
-        "return null for recipeName and snippet, but still provide the " +
-        "category and a relevanceScore of 0.1.";
+IMPORTANT RULES:
+- Only suggest recipes for actual FOOD items
+- Flowers, crafts, soaps, candles = NOT FOOD = null recipe
+- If unsure, err on the side of NOT FOOD
+- Include ALL ingredients needed for the recipe (oil, salt, pepper, etc.)
+- Keep responses concise but complete for mobile display`;
 
       logger.log("[getRecipeSnippet] Sending request to OpenAI GPT-4");
 

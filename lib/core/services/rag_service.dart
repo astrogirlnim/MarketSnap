@@ -103,7 +103,12 @@ class SnapEnhancementData {
     this.fromCache = false,
   });
 
-  bool get hasData => recipe != null || faqs.isNotEmpty;
+  bool get hasData => hasValidRecipe || faqs.isNotEmpty;
+  
+  bool get hasValidRecipe => recipe != null && 
+      recipe!.recipeName.isNotEmpty && 
+      recipe!.category != 'non_food' && 
+      recipe!.relevanceScore >= 0.3;
 }
 
 /// RAG service for recipe snippets and FAQ search

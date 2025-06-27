@@ -118,7 +118,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         });
 
         debugPrint('[FeedPostWidget] Enhancement data set in state - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}');
-        debugPrint('[FeedPostWidget] UI will display: Recipe card=${enhancementData.recipe != null}, FAQ card=${enhancementData.faqs.isNotEmpty}');
+        debugPrint('[FeedPostWidget] Valid recipe: ${enhancementData.hasValidRecipe}');
+        if (enhancementData.recipe != null) {
+          debugPrint('[FeedPostWidget] Recipe details - Name: "${enhancementData.recipe!.recipeName}", Category: ${enhancementData.recipe!.category}, Relevance: ${enhancementData.recipe!.relevanceScore}');
+        }
+        debugPrint('[FeedPostWidget] UI will display: Recipe card=${enhancementData.hasValidRecipe}, FAQ card=${enhancementData.faqs.isNotEmpty}');
       }
     } catch (e) {
       debugPrint('[FeedPostWidget] ========== RAG SERVICE ERROR ==========');
@@ -569,8 +573,16 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   Widget _buildRecipeCard() {
     final recipe = _enhancementData?.recipe;
     if (recipe == null) return const SizedBox.shrink();
+    
+    // Don't show recipe card for non-food items or empty recipes
+    if (recipe.recipeName.isEmpty || 
+        recipe.category == 'non_food' || 
+        recipe.relevanceScore < 0.3) {
+      debugPrint('[FeedPostWidget] Skipping recipe card - non-food item or low relevance: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
+      return const SizedBox.shrink();
+    }
 
-    debugPrint('[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}"');
+    debugPrint('[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
