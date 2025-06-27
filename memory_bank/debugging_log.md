@@ -746,3 +746,143 @@ The RAG (Recipe & FAQ Snippets) feature shows "Loading suggestions..." briefly, 
 
 ### Resolution Priority
 **Medium-High** - Core feature is implemented but not visible to users. Affects MVP completion and user experience testing. 
+```
+
+## Current Active Issue: Messages Loading Bug (Phase 4.7)
+**Status**: UNRESOLVED - Investigation Phase Complete
+**Priority**: HIGH
+**Date**: 2025-06-27
+
+### Problem Description
+Users experience perpetual loading state when navigating to the Messages section. This affects both new users (who should see "No conversations yet") and existing users with message history.
+
+### Current Analysis
+The root cause appears to be **authentication state management** rather than Firestore queries. Key findings:
+
+1. **Authentication Flow Works**: User successfully authenticates and creates profile
+2. **Firestore Queries Work**: Direct testing shows queries execute correctly
+3. **Auth State Issue**: ConversationListScreen shows `Auth state: ConnectionState.waiting, hasData: false`
+4. **Stream Hanging**: The FirebaseAuth.instance.authStateChanges() stream is not properly resolving in the Messages screen context
+
+### Fixes Attempted (Completed)
+1. ✅ **Firestore Indexes**: Added composite indexes for messages collection
+2. ✅ **Timeout Protection**: 10-second timeout with retry mechanism
+3. ✅ **Error Handling**: Comprehensive error states and fallbacks
+4. ✅ **Stream Enhancement**: MessagingService timeout and error recovery
+5. ✅ **Constructor Fix**: Corrected VendorProfile parameter names
+6. ✅ **Empty State Handling**: Proper UI for users with no messages
+
+### Current Codebase State
+- **ConversationListScreen**: Enhanced with timeout, error handling, debug logs
+- **MessagingService**: Stream timeout protection, comprehensive error recovery
+- **firestore.indexes.json**: Composite indexes for messages arrayContains + orderBy
+- **Firebase Emulators**: Running with production project ID (potential issue)
+
+### Technical Findings
+1. **Auth Stream Issue**: `StreamBuilder<User?>` on `FirebaseAuth.instance.authStateChanges()` never resolves to authenticated state in Messages screen
+2. **Timing Problem**: Auth works in other screens but hangs specifically in ConversationListScreen
+3. **Project ID Mismatch**: Emulators running with `marketsnap-app` instead of `demo-marketsnap-app`
+4. **State Management**: Auth state properly resolves in AuthWrapper but not in Messages screen
+
+### Recommendations for Next Investigation
+1. **Auth State Debug**: Add detailed logging to understand why auth stream hangs in Messages screen
+2. **Project Configuration**: Ensure consistent use of demo project ID across all components
+3. **State Management Review**: Investigate if BLoC/Riverpod state management needed for Messages screen
+4. **Navigator Context**: Check if navigation context affects auth stream resolution
+5. **Firebase SDK Version**: Verify Firebase SDK compatibility with current Flutter version
+
+### Code Locations
+- Messages Screen: `lib/features/messaging/presentation/screens/conversation_list_screen.dart`
+- Messaging Service: `lib/core/services/messaging_service.dart`
+- Firestore Indexes: `firestore.indexes.json`
+- Auth Wrapper: `lib/features/auth/presentation/widgets/auth_wrapper.dart`
+
+### Testing Environment
+- Firebase Emulators: ✅ Running
+- Project ID: `marketsnap-app` (should be `demo-marketsnap-app`)
+- User State: Authenticated vendor profile
+- Database: Clean state with proper indexes
+
+### Next Steps
+1. Deep dive into auth state management in Messages screen
+2. Implement proper state management pattern (BLoC/Riverpod)
+3. Add comprehensive auth debugging throughout the Messages flow
+4. Consider separating auth logic from UI components
+5. Test with consistent demo project configuration
+
+---
+
+# Previous Debugging Sessions
+
+## Session 1: Phase 4.6 RAG Recipe Implementation (RESOLVED)
+**Date**: 2025-06-25
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Recipe suggestions appearing for non-food items
+- OpenAI API integration bugs
+- Cache invalidation problems
+- Flutter UI display issues
+
+### Solutions Implemented
+- Enhanced food detection logic
+- Fixed OpenAI GPT-4o integration
+- Implemented 4-hour caching system
+- Added comprehensive error handling
+
+## Session 2: Camera Buffer Overflow (RESOLVED)  
+**Date**: 2025-06-20
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Camera preview buffer overflow on low-end devices
+- Memory leaks in camera service
+- Frame rate issues on Android emulators
+
+### Solutions Implemented
+- Smart buffer management
+- Memory cleanup routines
+- Frame rate optimization
+- Device capability detection
+
+## Session 3: Hive TypeID Conflicts (RESOLVED)
+**Date**: 2025-06-18  
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- TypeID conflicts between models
+- Hive adapter registration issues
+- Data persistence corruption
+
+### Solutions Implemented
+- Unique TypeID assignment system
+- Proper adapter registration order
+- Data migration utilities
+
+## Session 4: OTP Verification Bug (RESOLVED)
+**Date**: 2025-06-15
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- OTP codes not sending properly
+- Verification timeout handling
+- UI state management during verification
+
+### Solutions Implemented
+- Improved OTP service reliability
+- Better timeout handling
+- Enhanced UI feedback
+
+## Session 5: Video Filter Persistence (RESOLVED)
+**Date**: 2025-06-12
+**Status**: ✅ COMPLETED
+
+### Issues Resolved
+- Video filters not persisting after recording
+- Aspect ratio problems with filters
+- Memory leaks in filter processing
+
+### Solutions Implemented
+- Filter state persistence system
+- Aspect ratio preservation
+- Memory management optimization 
