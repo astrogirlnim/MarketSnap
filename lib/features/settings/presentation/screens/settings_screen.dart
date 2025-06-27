@@ -1025,6 +1025,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           '[SettingsScreen] User signed out, AuthWrapper will handle redirect',
           name: 'SettingsScreen',
         );
+
+        // Add debugging to monitor auth state changes
+        developer.log(
+          '[SettingsScreen] Current auth service user: ${main.authService.currentUser?.uid ?? 'null'}',
+          name: 'SettingsScreen',
+        );
+        developer.log(
+          '[SettingsScreen] Is authenticated: ${main.authService.isAuthenticated}',
+          name: 'SettingsScreen',
+        );
       }
     } catch (e) {
       developer.log(

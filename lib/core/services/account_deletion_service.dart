@@ -65,6 +65,10 @@ class AccountDeletionService {
       await _authService.signOut();
       developer.log('[AccountDeletionService] ✅ User signed out');
 
+      // Step 6: Add a small delay to ensure auth state change propagates
+      await Future.delayed(const Duration(milliseconds: 500));
+      developer.log('[AccountDeletionService] ✅ Auth state propagation delay completed');
+
       developer.log('[AccountDeletionService] 🎉 Account deletion completed successfully');
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Account deletion failed: $e');

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
@@ -459,18 +458,18 @@ class MarketSnapLoadingIndicator extends StatelessWidget {
 class BasketIcon extends StatelessWidget {
   final double size;
   final Color? color; // For tinting if needed
-  final bool enableFirstTimeAnimation;
+  final bool enableWelcomeAnimation;
 
   const BasketIcon({
     super.key, 
     this.size = 48, 
     this.color,
-    this.enableFirstTimeAnimation = false,
+    this.enableWelcomeAnimation = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (enableFirstTimeAnimation) {
+    if (enableWelcomeAnimation) {
       return _AnimatedBasketIcon(size: size, color: color);
     }
     
@@ -489,7 +488,7 @@ class BasketIcon extends StatelessWidget {
   }
 }
 
-/// Animated version of BasketIcon that blinks once on first app open
+/// Animated version of BasketIcon that blinks once when shown
 class _AnimatedBasketIcon extends StatefulWidget {
   final double size;
   final Color? color;
@@ -510,27 +509,19 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
   @override
   void initState() {
     super.initState();
-    _checkFirstTimeAndAnimate();
+    _startWelcomeAnimation();
   }
 
-  Future<void> _checkFirstTimeAndAnimate() async {
+  Future<void> _startWelcomeAnimation() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final hasSeenWelcome = prefs.getBool('has_seen_welcome_animation') ?? false;
+      // Start the blinking animation after a short delay
+      await Future.delayed(const Duration(milliseconds: 800));
       
-      if (!hasSeenWelcome && mounted) {
-        // Start the blinking animation after a short delay
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        if (mounted && !_hasAnimated) {
-          await _performBlinkAnimation();
-          
-          // Mark as seen so it doesn't happen again
-          await prefs.setBool('has_seen_welcome_animation', true);
-        }
+      if (mounted && !_hasAnimated) {
+        await _performBlinkAnimation();
       }
     } catch (e) {
-      debugPrint('[AnimatedBasketIcon] Error checking first time: $e');
+      debugPrint('[AnimatedBasketIcon] Error during welcome animation: $e');
     }
   }
 
@@ -541,26 +532,27 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
       _hasAnimated = true;
     });
 
-    // Blink sequence: normal -> blink -> normal
-    for (int i = 0; i < 2; i++) {
-      if (!mounted) break;
-      
-      // Switch to blinking
-      setState(() {
-        _isBlinking = true;
-      });
-      
-      await Future.delayed(const Duration(milliseconds: 150));
-      
-      if (!mounted) break;
-      
-      // Switch back to normal
-      setState(() {
-        _isBlinking = false;
-      });
-      
-      await Future.delayed(const Duration(milliseconds: 150));
-    }
+    debugPrint('[AnimatedBasketIcon] 👁️ Starting Wicker blink animation');
+
+    // Single blink sequence: normal -> blink -> normal
+    if (!mounted) return;
+    
+    // Switch to blinking
+    setState(() {
+      _isBlinking = true;
+    });
+    
+    debugPrint('[AnimatedBasketIcon] 😉 Wicker is blinking');
+    await Future.delayed(const Duration(milliseconds: 250));
+    
+    if (!mounted) return;
+    
+    // Switch back to normal
+    setState(() {
+      _isBlinking = false;
+    });
+    
+    debugPrint('[AnimatedBasketIcon] 😊 Wicker blink complete');
   }
 
   @override
@@ -570,7 +562,7 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
         : 'assets/images/icons/wicker_mascot.png';
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 150),
       child: Image.asset(
         assetPath,
         key: ValueKey(assetPath),
@@ -578,11 +570,14 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
         height: widget.size,
         fit: BoxFit.contain,
         color: widget.color,
-        errorBuilder: (context, error, stackTrace) => Icon(
-          Icons.shopping_basket_outlined,
-          size: widget.size,
-          color: widget.color ?? AppColors.harvestOrange,
-        ),
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('[AnimatedBasketIcon] ⚠️ Error loading image: $assetPath');
+          return Icon(
+            Icons.shopping_basket_outlined,
+            size: widget.size,
+            color: widget.color ?? AppColors.harvestOrange,
+          );
+        },
       ),
     );
   }
