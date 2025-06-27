@@ -15,34 +15,7 @@ class MessagingService {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
-  /// Validates that the current user has a valid Firebase Auth token
-  /// This is crucial for Firestore operations when using offline authentication
-  Future<bool> _validateAuthenticationToken(String userId) async {
-    debugPrint('[MessagingService] 🔐 Validating authentication token for user: $userId');
-    
-    try {
-      final currentUser = _firebaseAuth.currentUser;
-      
-      // Check if user exists and matches
-      if (currentUser == null || currentUser.uid != userId) {
-        debugPrint('[MessagingService] ❌ Authentication mismatch - Firebase user: ${currentUser?.uid}, requested: $userId');
-        return false;
-      }
-      
-      // Try to get a fresh ID token to verify authentication is valid
-      final idToken = await currentUser.getIdToken(true); // Force refresh
-      if (idToken == null || idToken.isEmpty) {
-        debugPrint('[MessagingService] ❌ Unable to get valid ID token');
-        return false;
-      }
-      
-      debugPrint('[MessagingService] ✅ Authentication token validated successfully');
-      return true;
-    } catch (e) {
-      debugPrint('[MessagingService] ❌ Authentication token validation failed: $e');
-      return false;
-    }
-  }
+
 
   /// Sends a new message between users
   /// Returns the message ID if successful
@@ -55,9 +28,10 @@ class MessagingService {
       '[MessagingService] Sending message from $fromUid to $toUid: "${text.length > 50 ? '${text.substring(0, 50)}...' : text}"',
     );
 
-    // Validate authentication token before attempting Firestore operations
-    if (!await _validateAuthenticationToken(fromUid)) {
-      throw Exception('Authentication validation failed. Please sign in again.');
+    // Quick authentication check to avoid token validation overhead
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null || currentUser.uid != fromUid) {
+      throw Exception('Authentication mismatch. Please sign in again.');
     }
 
     try {
@@ -145,13 +119,12 @@ class MessagingService {
   }) {
     debugPrint('[MessagingService] Getting conversations for user: $userId using participants field');
 
-    // Add authentication validation with async handling
-    return Stream.fromFuture(_validateAuthenticationToken(userId))
-        .asyncExpand((isValid) {
-      if (!isValid) {
-        debugPrint('[MessagingService] ❌ Authentication validation failed for getUserConversations');
-        return Stream.error('Authentication validation failed. Please sign in again.');
-      }
+    // Perform quick auth check without token validation to avoid hanging
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null || currentUser.uid != userId) {
+      debugPrint('[MessagingService] ❌ User authentication mismatch');
+      return Stream.value(<Message>[]);
+    }
 
     try {
       // Query for messages where the user is a participant
@@ -244,7 +217,6 @@ class MessagingService {
       // Return a stream that immediately emits an empty list
       return Stream.value(<Message>[]);
     }
-    }); // Close the asyncExpand method
   }
 
   /// Marks a message as read
