@@ -12,7 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/services/background_sync_service.dart';
-import 'queue_view_screen.dart';
+
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -588,19 +588,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           ),
           backgroundColor: Colors.blue.shade600,
           duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'View Queue',
-            textColor: Colors.white,
-            onPressed: () {
-              // Navigate to queue view screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const QueueViewScreen(),
-                ),
-              );
-            },
-          ),
         ),
       );
     } catch (e) {
@@ -617,18 +604,6 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           ),
           backgroundColor: Colors.blue.shade600,
           duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'View Queue',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const QueueViewScreen(),
-                ),
-              );
-            },
-          ),
         ),
       );
     }
