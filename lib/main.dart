@@ -384,6 +384,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         debugPrint('[AuthWrapper] Connection state: ${snapshot.connectionState}');
         debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
         debugPrint('[AuthWrapper] Data: ${snapshot.data}');
+        debugPrint('[AuthWrapper] Is offline mode: ${authService.isOfflineMode}');
 
         // Skip loading state check - auth service always emits initial state
         // Handle authentication state directly based on data
@@ -392,6 +393,30 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
 
+          // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
+          if (authService.isOfflineMode) {
+            debugPrint('[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow');
+            
+            // Go directly to profile check without network operations
+            if (profileService.hasCompleteProfile()) {
+              debugPrint('[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen');
+              return MainShellScreen(
+                profileService: profileService,
+                hiveService: hiveService,
+              );
+            } else {
+              debugPrint('[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen');
+              return VendorProfileScreen(
+                profileService: profileService,
+                onProfileComplete: () {
+                  debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                  setState(() {});
+                },
+              );
+            }
+          }
+
+          // ONLINE MODE: Run full post-authentication flow
           return FutureBuilder<bool>(
             future: _handlePostAuthenticationFlow(),
             builder: (context, authFuture) {
