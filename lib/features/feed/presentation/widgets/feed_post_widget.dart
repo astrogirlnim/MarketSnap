@@ -688,7 +688,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
-              _recordFeedback(
+              _trackAction(
                 contentType: 'recipe',
                 contentId: recipeHash,
                 contentTitle: recipe.recipeName,
@@ -827,9 +827,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
-              // Record expand action for first FAQ
+              // Track expand action for first FAQ
               if (faqs.isNotEmpty) {
-                _recordFeedback(
+                _trackAction(
                   contentType: 'faq',
                   contentId: faqs.first.vendorId, // Using vendorId as FAQ ID for now
                   contentTitle: faqs.first.question,
@@ -933,79 +933,111 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     required double relevanceScore,
     required bool hasFeedback,
   }) {
-    return Row(
-      children: [
-        Text(
-          'Was this helpful?',
-          style: AppTypography.caption.copyWith(
-            color: AppColors.soilTaupe,
-            fontWeight: FontWeight.w500,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.cornsilk.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.seedBrown.withValues(alpha: 0.2),
         ),
-        const SizedBox(width: AppSpacing.sm),
-        if (!hasFeedback) ...[
-          // Upvote Button
-          _buildFeedbackButton(
-            icon: Icons.thumb_up_outlined,
-            label: 'Yes',
-            color: AppColors.leafGreen,
-            onTap: () => _recordFeedback(
-              contentType: contentType,
-              contentId: contentId,
-              contentTitle: contentTitle,
-              action: RAGFeedbackAction.upvote,
-              relevanceScore: relevanceScore,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Was this helpful?',
+            style: AppTypography.body.copyWith(
+              color: AppColors.soilCharcoal,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
-          // Downvote Button
-          _buildFeedbackButton(
-            icon: Icons.thumb_down_outlined,
-            label: 'No',
-            color: AppColors.appleRed,
-            onTap: () => _recordFeedback(
-              contentType: contentType,
-              contentId: contentId,
-              contentTitle: contentTitle,
-              action: RAGFeedbackAction.downvote,
-              relevanceScore: relevanceScore,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          // Skip Button
-          _buildFeedbackButton(
-            icon: Icons.skip_next_outlined,
-            label: 'Skip',
-            color: AppColors.soilTaupe,
-            onTap: () => _recordFeedback(
-              contentType: contentType,
-              contentId: contentId,
-              contentTitle: contentTitle,
-              action: RAGFeedbackAction.skip,
-              relevanceScore: relevanceScore,
-            ),
-          ),
-        ] else ...[
-          // Feedback given state
-          Row(
-            children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 16,
-                color: AppColors.leafGreen,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Thanks for your feedback!',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.leafGreen,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(height: AppSpacing.sm),
+          if (!hasFeedback) ...[
+            Row(
+              children: [
+                // Upvote Button
+                Expanded(
+                  child: _buildFeedbackButton(
+                    icon: Icons.thumb_up,
+                    label: 'Helpful',
+                    color: AppColors.leafGreen,
+                    onTap: () => _recordFeedback(
+                      contentType: contentType,
+                      contentId: contentId,
+                      contentTitle: contentTitle,
+                      action: RAGFeedbackAction.upvote,
+                      relevanceScore: relevanceScore,
+                    ),
+                  ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                // Downvote Button
+                Expanded(
+                  child: _buildFeedbackButton(
+                    icon: Icons.thumb_down,
+                    label: 'Not useful',
+                    color: AppColors.appleRed,
+                    onTap: () => _recordFeedback(
+                      contentType: contentType,
+                      contentId: contentId,
+                      contentTitle: contentTitle,
+                      action: RAGFeedbackAction.downvote,
+                      relevanceScore: relevanceScore,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Center(
+              child: _buildFeedbackButton(
+                icon: Icons.skip_next,
+                label: 'Skip',
+                color: AppColors.soilTaupe,
+                onTap: () => _recordFeedback(
+                  contentType: contentType,
+                  contentId: contentId,
+                  contentTitle: contentTitle,
+                  action: RAGFeedbackAction.skip,
+                  relevanceScore: relevanceScore,
+                ),
+                isSecondary: true,
               ),
-            ],
-          ),
+            ),
+          ] else ...[
+            // Feedback given state
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.leafGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    size: 18,
+                    color: AppColors.leafGreen,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Thanks for your feedback!',
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.leafGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -1015,6 +1047,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     required String label,
     required Color color,
     required VoidCallback onTap,
+    bool isSecondary = false,
   }) {
     return GestureDetector(
       onTap: () {
@@ -1022,30 +1055,33 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
-          vertical: 4,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSecondary ? AppSpacing.md : AppSpacing.sm,
+          vertical: isSecondary ? AppSpacing.xs : AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
+          color: isSecondary 
+              ? Colors.transparent
+              : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(isSecondary ? 20 : 8),
           border: Border.all(
-            color: color.withValues(alpha: 0.3),
+            color: color.withValues(alpha: isSecondary ? 0.5 : 0.3),
             width: 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              size: 14,
+              size: isSecondary ? 16 : 18,
               color: color,
             ),
             const SizedBox(width: 4),
             Text(
               label,
-              style: AppTypography.caption.copyWith(
+              style: (isSecondary ? AppTypography.caption : AppTypography.body).copyWith(
                 color: color,
                 fontWeight: FontWeight.w600,
               ),
@@ -1053,6 +1089,30 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Track user actions (expand, view) without blocking feedback UI
+  void _trackAction({
+    required String contentType,
+    required String contentId,
+    required String contentTitle,
+    required RAGFeedbackAction action,
+    required double relevanceScore,
+  }) {
+    debugPrint(
+      '[FeedPostWidget] Tracking $action action for $contentType: $contentTitle',
+    );
+
+    // Record action via RAG service (non-blocking, no UI changes)
+    _ragService.recordFeedback(
+      snapId: widget.snap.id,
+      vendorId: widget.snap.vendorId,
+      action: action,
+      contentType: contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentId: contentId,
+      contentTitle: contentTitle,
+      relevanceScore: relevanceScore,
     );
   }
 
@@ -1079,40 +1139,51 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       relevanceScore: relevanceScore,
     );
 
-    // Update UI state to show feedback given
-    setState(() {
-      if (contentType == 'recipe') {
-        _recipeFeedbackGiven.add(contentId);
-      } else if (contentType == 'faq') {
-        _faqFeedbackGiven.add(contentId);
-      }
-    });
+    // Only update UI state for actual feedback actions (not tracking actions like expand/view)
+    final isActualFeedback = [
+      RAGFeedbackAction.upvote,
+      RAGFeedbackAction.downvote,
+      RAGFeedbackAction.skip,
+      RAGFeedbackAction.edit,
+    ].contains(action);
 
-    // Show brief feedback message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            action == RAGFeedbackAction.upvote
-                ? '👍 Thanks! This helps us improve suggestions'
+    if (isActualFeedback) {
+      setState(() {
+        if (contentType == 'recipe') {
+          _recipeFeedbackGiven.add(contentId);
+        } else if (contentType == 'faq') {
+          _faqFeedbackGiven.add(contentId);
+        }
+      });
+
+      // Show brief feedback message only for actual feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              action == RAGFeedbackAction.upvote
+                  ? '👍 Thanks! This helps us improve suggestions'
+                  : action == RAGFeedbackAction.downvote
+                      ? '👎 Thanks for the feedback'
+                      : action == RAGFeedbackAction.skip
+                          ? '⏭️ Suggestion skipped'
+                          : '✏️ Feedback noted',
+              style: AppTypography.body.copyWith(color: Colors.white),
+            ),
+            backgroundColor: action == RAGFeedbackAction.upvote
+                ? AppColors.leafGreen
                 : action == RAGFeedbackAction.downvote
-                    ? '👎 Thanks for the feedback'
-                    : '⏭️ Suggestion skipped',
-            style: AppTypography.body.copyWith(color: Colors.white),
+                    ? AppColors.appleRed
+                    : AppColors.soilTaupe,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          backgroundColor: action == RAGFeedbackAction.upvote
-              ? AppColors.leafGreen
-              : action == RAGFeedbackAction.downvote
-                  ? AppColors.appleRed
-                  : AppColors.soilTaupe,
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
+        );
+      }
     }
   }
 
