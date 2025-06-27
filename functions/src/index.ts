@@ -470,11 +470,12 @@ export const generateCaption = createAIHelper(
     
     try {
       // Extract parameters from request
-      const {mediaType, existingCaption, vendorProfile} = data;
+      const {mediaType, existingCaption, vendorProfile, imageBase64} = data;
       
       logger.log(`[generateCaption] MediaType: ${mediaType || 'photo'}`);
       logger.log(`[generateCaption] ExistingCaption: ${existingCaption || 'none'}`);
       logger.log(`[generateCaption] VendorProfile: ${JSON.stringify(vendorProfile || {})}`);
+      logger.log(`[generateCaption] ImageBase64 length: ${imageBase64?.length || 0} characters`);
 
       // Import OpenAI (dynamic import to handle potential missing dependency)
       let OpenAI: any;
@@ -497,7 +498,7 @@ export const generateCaption = createAIHelper(
       const vendorName = vendorProfile?.stallName || "vendor";
       const marketCity = vendorProfile?.marketCity || "local market";
       
-      const prompt = `You are an expert at writing engaging social media captions for farmers market vendors.
+      const basePrompt = `You are Wicker, the friendly AI mascot for MarketSnap! 🧺 You help farmers market vendors create engaging social media captions.
 
 Context:
 - Vendor: ${vendorName}
@@ -519,17 +520,42 @@ ${existingCaption
 
 Return only the caption text, no quotes or extra formatting.`;
 
+      // Prepare messages array
+      const messages: any[] = [];
+      
+      // If we have image data, use vision model for better context
+      if (imageBase64 && mediaType === 'photo') {
+        logger.log("[generateCaption] Using GPT-4 Vision for image analysis");
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: basePrompt + "\n\nBased on the image provided, create a caption that describes what you see in the produce or market scene.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+                detail: "low" // Use low detail for faster processing
+              },
+            },
+          ],
+        });
+      } else {
+        // Text-only prompt when no image
+        messages.push({
+          role: "user",
+          content: basePrompt,
+        });
+      }
+
       logger.log("[generateCaption] Sending request to OpenAI GPT-4");
       
-      // Call OpenAI API
+      // Call OpenAI API with appropriate model
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+        model: imageBase64 && mediaType === 'photo' ? "gpt-4-vision-preview" : "gpt-4",
+        messages: messages,
         max_tokens: 100,
         temperature: 0.7,
         top_p: 1,

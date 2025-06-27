@@ -129,6 +129,33 @@ class AICaptionService {
     }
   }
 
+  /// Encode image to base64 for API transmission
+  Future<String?> _encodeImageToBase64(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        developer.log('[AICaptionService] Image file does not exist: $filePath', name: 'AICaptionService');
+        return null;
+      }
+
+      final bytes = await file.readAsBytes();
+      
+      // Limit image size to 2MB for API efficiency
+      const maxSizeBytes = 2 * 1024 * 1024; // 2MB
+      if (bytes.length > maxSizeBytes) {
+        developer.log('[AICaptionService] Image too large (${bytes.length} bytes), skipping image analysis', name: 'AICaptionService');
+        return null;
+      }
+
+      final base64Image = base64Encode(bytes);
+      developer.log('[AICaptionService] Encoded image to base64: ${base64Image.length} characters', name: 'AICaptionService');
+      return base64Image;
+    } catch (e) {
+      developer.log('[AICaptionService] Error encoding image: $e', name: 'AICaptionService');
+      return null;
+    }
+  }
+
   /// Generate caption using AI or return cached version
   Future<AICaptionResponse> generateCaption({
     required String mediaPath,
@@ -152,9 +179,15 @@ class AICaptionService {
       return cachedResponse;
     }
 
+    // Encode image for AI analysis (photos only)
+    String? imageBase64;
+    if (mediaType == 'photo' || mediaType == null) {
+      imageBase64 = await _encodeImageToBase64(mediaPath);
+    }
+
     // Call Cloud Function with timeout
     try {
-      developer.log('[AICaptionService] Calling generateCaption Cloud Function', name: 'AICaptionService');
+      developer.log('[AICaptionService] Calling generateCaption Cloud Function with image data: ${imageBase64 != null}', name: 'AICaptionService');
       
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('generateCaption');
@@ -163,6 +196,7 @@ class AICaptionService {
         'mediaType': mediaType ?? 'photo',
         'existingCaption': existingCaption,
         'vendorProfile': vendorProfile,
+        'imageBase64': imageBase64, // Send image data to Wicker!
       }).timeout(_requestTimeout);
 
       developer.log('[AICaptionService] Cloud Function response: ${result.data}', name: 'AICaptionService');
@@ -174,7 +208,7 @@ class AICaptionService {
       // Cache the response
       await _cacheCaption(hash, response);
 
-      developer.log('[AICaptionService] Generated caption: "${response.caption}" (confidence: ${response.confidence})', name: 'AICaptionService');
+      developer.log('[AICaptionService] Wicker generated caption: "${response.caption}" (confidence: ${response.confidence})', name: 'AICaptionService');
       return response;
 
     } catch (e) {
@@ -184,7 +218,7 @@ class AICaptionService {
       return AICaptionResponse(
         caption: _getFallbackCaption(mediaType),
         confidence: 0.5,
-        model: 'fallback',
+        model: 'wicker-fallback',
         timestamp: DateTime.now(),
       );
     }

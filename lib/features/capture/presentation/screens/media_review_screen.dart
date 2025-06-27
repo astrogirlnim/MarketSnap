@@ -262,15 +262,15 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
         // Show feedback about the caption
         if (response.fromCache) {
-          _showCaptionFeedback('✨ Caption from cache (${(response.confidence * 100).toInt()}% confidence)');
+          _showCaptionFeedback('🧺 Wicker remembers: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
         } else {
-          _showCaptionFeedback('🤖 AI generated caption (${(response.confidence * 100).toInt()}% confidence)');
+          _showCaptionFeedback('🧺 Wicker says: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
         }
       }
     } catch (e) {
       debugPrint('[MediaReviewScreen] Error generating AI caption: $e');
       if (mounted) {
-        _showCaptionFeedback('💭 AI caption unavailable, try again later');
+        _showCaptionFeedback('🧺 Wicker is taking a break, try again later');
       }
     } finally {
       if (mounted) {
@@ -287,7 +287,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 2),
-        backgroundColor: Colors.deepPurple.shade600,
+        backgroundColor: Colors.orange.shade600,
       ),
     );
   }
@@ -562,33 +562,50 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               if (_aiCaptionAvailable)
                 ScaleTransition(
                   scale: _aiButtonAnimation,
-                  child: IconButton(
-                    onPressed: _isGeneratingCaption ? null : _generateAICaption,
-                    icon: _isGeneratingCaption
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.deepPurple.shade400,
-                              ),
+                  child: RotationTransition(
+                    turns: _isGeneratingCaption 
+                        ? Tween(begin: 0.0, end: 1.0).animate(
+                            CurvedAnimation(
+                              parent: _aiButtonAnimationController,
+                              curve: Curves.linear,
                             ),
                           )
-                        : Icon(
-                            Icons.auto_fix_high,
-                            color: Colors.deepPurple.shade400,
-                            size: 20,
-                          ),
-                    tooltip: _isGeneratingCaption
-                        ? 'Generating AI caption...'
-                        : 'Generate AI caption',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.deepPurple.shade50,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        : const AlwaysStoppedAnimation<double>(0),
+                    child: IconButton(
+                      onPressed: _isGeneratingCaption ? null : _generateAICaption,
+                      icon: _isGeneratingCaption
+                          ? Container(
+                              width: 24,
+                              height: 24,
+                              padding: const EdgeInsets.all(2),
+                              child: Image.asset(
+                                'assets/images/icons/wicker_mascot.png',
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
+                              ),
+                            )
+                          : Container(
+                              width: 24,
+                              height: 24,
+                              padding: const EdgeInsets.all(2),
+                              child: Image.asset(
+                                'assets/images/icons/wicker_mascot.png',
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                      tooltip: _isGeneratingCaption
+                          ? 'Wicker is crafting your caption...'
+                          : 'Ask Wicker for a caption suggestion',
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.orange.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.all(8),
                       ),
-                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                 ),
@@ -601,7 +618,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             maxLength: 200,
             decoration: InputDecoration(
               hintText: _isGeneratingCaption
-                  ? 'AI is crafting your caption...'
+                  ? 'Wicker is crafting your caption...'
                   : 'What\'s the story behind this ${widget.mediaType.name}?',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -622,14 +639,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         setState(() {
                           _captionController.text = _lastGeneratedCaption!;
                         });
-                        _showCaptionFeedback('✨ Restored AI caption');
+                        _showCaptionFeedback('✨ Restored Wicker\'s caption');
                       },
                       icon: Icon(
                         Icons.restore,
                         color: Colors.deepPurple.shade400,
                         size: 20,
                       ),
-                      tooltip: 'Restore AI caption',
+                      tooltip: 'Restore Wicker\'s caption',
                     )
                   : null,
             ),
@@ -638,10 +655,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '🤖 AI suggestion available • Caption is editable',
+                '🧺 Wicker\'s suggestion available • Caption is editable',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.deepPurple.shade600,
+                  color: Colors.orange.shade700,
                   fontWeight: FontWeight.w500,
                 ),
               ),
