@@ -453,7 +453,7 @@ class MarketSnapLoadingIndicator extends StatelessWidget {
   }
 }
 
-/// Basket Icon Widget (using the asset image)
+/// Basket Icon Widget (using the wicker mascot)
 class BasketIcon extends StatelessWidget {
   final double size;
   final Color? color; // For tinting if needed
@@ -463,7 +463,7 @@ class BasketIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/images/icons/basket_icon.png',
+      'assets/images/icons/wicker_mascot.png',
       width: size,
       height: size,
       fit: BoxFit.contain,

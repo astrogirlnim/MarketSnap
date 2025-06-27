@@ -69,14 +69,9 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
           child: Container(
             height: screenHeight - MediaQuery.of(context).padding.top,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.cornsilk,
-                  Color(0xFFFFFBF0), // Slightly lighter variation
-                ],
-                stops: [0.0, 1.0],
+              image: DecorationImage(
+                image: AssetImage('assets/images/login_background.png'),
+                fit: BoxFit.cover,
               ),
             ),
             child: Padding(
@@ -104,13 +99,13 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
 
                   const SizedBox(height: AppSpacing.xl),
 
-                  // Main CTA Button - "Sign Up as Vendor"
+                  // Main CTA Button - "Sign Up"
                   MarketSnapPrimaryButton(
-                    text: 'Sign Up as Vendor',
+                    text: 'Sign Up',
                     icon: Icons.storefront_outlined,
                     onPressed: () {
                       debugPrint(
-                        '[AuthWelcomeScreen] Sign Up as Vendor tapped',
+                        '[AuthWelcomeScreen] Sign Up tapped',
                       );
                       _navigateToAuth(context, isIOSEmulator, true);
                     },
