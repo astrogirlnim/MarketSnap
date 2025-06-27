@@ -34,9 +34,9 @@ class MarketSnapPrimaryButton extends StatelessWidget {
           backgroundColor: AppColors.marketBlue,
           foregroundColor: Colors.white,
           elevation: AppSpacing.elevationSm,
-          shadowColor: AppColors.marketBlue.withValues(alpha: 0.3),
+          shadowColor: AppColors.marketBlue.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
           ),
         ),
         child: isLoading
@@ -90,9 +90,10 @@ class MarketSnapSecondaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.soilCharcoal,
-          side: const BorderSide(color: AppColors.seedBrown, width: 2),
+          backgroundColor: AppColors.eggshell,
+          side: const BorderSide(color: AppColors.seedBrown, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
           ),
         ),
         child: isLoading

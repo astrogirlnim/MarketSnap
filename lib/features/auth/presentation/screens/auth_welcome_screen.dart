@@ -80,8 +80,8 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Spacer to push content down
-                  const Spacer(flex: 1),
+                  // Spacer to push content down less (more compact)
+                  const Spacer(flex: 2),
 
                   // Offline status indicator
                   if (_isOffline) ...[
@@ -91,13 +91,13 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                       type: StatusType.warning,
                       showIcon: true,
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.md),
                   ],
 
-                  // Basket Character Icon - Center of the design
-                  const Center(child: BasketIcon(size: 120)),
+                  // Wicker Mascot - Bigger and more prominent
+                  const Center(child: BasketIcon(size: 200)),
 
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Main CTA Button - "Sign Up"
                   MarketSnapPrimaryButton(
@@ -111,7 +111,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     },
                   ),
 
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
 
                   // Subtitle for vendors
                   Text(
@@ -120,7 +120,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xxl),
+                  const SizedBox(height: AppSpacing.xl),
 
                   // Secondary Action - "Log In"
                   MarketSnapSecondaryButton(
@@ -132,7 +132,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     },
                   ),
 
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
 
                   // Subtitle for existing users
                   Text(
@@ -143,7 +143,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // "What is MarketSnap?" link
                   Center(
@@ -190,7 +190,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     ),
                   ],
 
-                  const Spacer(flex: 1),
+                  const Spacer(flex: 3),
 
                   // Terms and Privacy - Bottom of screen
                   Text(
@@ -201,7 +201,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
 
                   // App version display
                   const VersionDisplayWidget(
@@ -209,7 +209,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     alignment: Alignment.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: AppSpacing.sm),
                 ],
               ),
             ),
