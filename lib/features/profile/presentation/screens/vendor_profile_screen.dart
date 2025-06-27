@@ -9,6 +9,7 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../settings/application/settings_service.dart';
+import '../../../auth/application/auth_service.dart';
 import '../../../../main.dart' as main;
 
 /// Vendor Profile Form Screen
@@ -34,6 +35,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   final _displayNameController = TextEditingController();
   final _stallNameController = TextEditingController();
   final _marketCityController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   // Note: Location setting now managed in Settings & Help screen
   String? _localAvatarPath;
@@ -333,6 +335,110 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     );
   }
 
+  /// Sign out the current user
+  Future<void> _signOut() async {
+    debugPrint('[VendorProfileScreen] User sign out requested');
+
+    // Show confirmation dialog
+    final bool? shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.eggshell,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        ),
+        title: Text(
+          'Sign Out',
+          style: AppTypography.h2,
+        ),
+        content: Text(
+          'Are you sure you want to sign out?',
+          style: AppTypography.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.appleRed),
+            child: Text(
+              'Sign Out',
+              style: AppTypography.body.copyWith(
+                color: AppColors.appleRed,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSignOut != true) return;
+
+    // Show loading dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.eggshell,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                'Signing out...',
+                style: AppTypography.body,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    try {
+      await _authService.signOut();
+      debugPrint('[VendorProfileScreen] User signed out successfully');
+
+      // Close loading dialog and navigate to auth
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
+      }
+    } catch (e) {
+      debugPrint('[VendorProfileScreen] Error signing out: $e');
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: MarketSnapStatusMessage(
+              message: 'Error signing out: $e',
+              type: StatusType.error,
+              showIcon: true,
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -362,6 +468,12 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             icon: const Icon(Icons.settings, color: AppColors.soilCharcoal),
             onPressed: () => _navigateToSettings(context),
             tooltip: 'Settings & Help',
+          ),
+          // Sign out button
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.appleRed),
+            onPressed: _signOut,
+            tooltip: 'Sign Out',
           ),
         ],
       ),

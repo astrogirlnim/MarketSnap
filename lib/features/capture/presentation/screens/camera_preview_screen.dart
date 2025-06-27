@@ -6,7 +6,6 @@ import '../../application/camera_service.dart';
 import 'media_review_screen.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
-import '../../../auth/application/auth_service.dart';
 
 /// Custom painter for drawing viewfinder grid overlay
 class ViewfinderGridPainter extends CustomPainter {
@@ -64,7 +63,6 @@ class CameraPreviewScreen extends StatefulWidget {
 class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     with WidgetsBindingObserver {
   final CameraService _cameraService = CameraService.instance;
-  final AuthService _authService = AuthService();
 
   bool _isInitializing = true;
   bool _isTakingPhoto = false;
@@ -538,75 +536,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     }
   }
 
-  /// Sign out the current user
-  Future<void> _signOut() async {
-    // Show confirmation dialog
-    final bool? shouldSignOut = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
 
-    if (shouldSignOut != true) return;
-
-    // Show loading dialog
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Signing out...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    try {
-      await _authService.signOut();
-
-      // Close loading dialog and navigate to auth
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).popUntil((route) => route.isFirst); // Go to auth
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Error signing out: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    }
-  }
 
   /// Build camera preview widget
   Widget _buildCameraPreview() {
@@ -1132,18 +1062,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                   ),
                 ),
 
-              // Sign out button
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-                child: IconButton(
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                  tooltip: 'Sign Out',
-                ),
-              ),
+
             ],
           ),
         ),
