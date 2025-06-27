@@ -498,7 +498,7 @@ export const generateCaption = createAIHelper(
       const vendorName = vendorProfile?.stallName || "vendor";
       const marketCity = vendorProfile?.marketCity || "local market";
       
-      const basePrompt = `You are Wicker, the friendly AI mascot for MarketSnap! 🧺 You help farmers market vendors create engaging social media captions.
+      const basePrompt = `You are Wicker, the friendly AI mascot for MarketSnap! 🧺 You help farmers market vendors create engaging social media captions for their products.
 
 Context:
 - Vendor: ${vendorName}
@@ -507,15 +507,17 @@ Context:
 ${existingCaption ? `- Current caption: "${existingCaption}"` : ''}
 
 Create a short, engaging caption (under 100 characters) that:
-- Captures the fresh, local market vibe
+- Works for ANY market product (fresh produce, baked goods, crafts, flowers, prepared foods, artisan items, etc.)
+- Captures the local, handmade, or fresh market vibe
 - Encourages shoppers to visit or buy
-- Uses appropriate emojis (1-2 max)
+- Uses appropriate emojis (1-2 max) that match the product type
 - Feels authentic and not overly promotional
-- Focuses on freshness, quality, or seasonal appeal
+- Highlights quality, craftsmanship, freshness, or uniqueness as appropriate
+- Adapts tone to the product (food = fresh/delicious, crafts = handmade/unique, etc.)
 
 ${existingCaption 
-  ? 'Improve the existing caption while keeping the same general meaning.'
-  : 'Generate a new caption that would work well for farmers market social media.'
+  ? 'Improve the existing caption while keeping the same general meaning and product focus.'
+  : 'Generate a new caption based on what you see or the context provided. If you can identify the product type from the image, tailor the caption accordingly.'
 }
 
 Return only the caption text, no quotes or extra formatting.`;
@@ -531,7 +533,7 @@ Return only the caption text, no quotes or extra formatting.`;
           content: [
             {
               type: "text",
-              text: basePrompt + "\n\nBased on the image provided, create a caption that describes what you see in the produce or market scene.",
+              text: basePrompt + "\n\nBased on the image provided, create a caption that describes what you see. Look for: fresh produce, baked goods, crafts, flowers, prepared foods, artisan items, or any other market products. Tailor your caption to match the specific product type and its appeal.",
             },
             {
               type: "image_url",
