@@ -371,17 +371,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     final fallbackProfile = VendorProfile(
       uid: otherUserId,
       displayName: 'User ${otherUserId.substring(0, 8)}...',
-      vendorName: 'Unknown Vendor',
-      email: '',
-      phoneNumber: '',
-      profilePicture: null,
-      location: '',
-      operatingHours: {},
-      categories: [],
-      description: '',
-      isActive: true,
-      followers: [],
-      accountLinkedEmail: null,
+      stallName: 'Unknown Stall',
+      marketCity: 'Unknown City',
     );
 
     Navigator.of(context).push(
