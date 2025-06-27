@@ -24,6 +24,9 @@ import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'features/auth/presentation/screens/user_type_selection_screen.dart';
+import 'features/profile/presentation/screens/regular_user_profile_screen.dart';
+import 'core/models/user_type.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -55,7 +58,9 @@ Future<void> main() async {
       // ✅ CRITICAL FIX: Clear any existing authentication state before connecting to emulators
       try {
         await FirebaseAuth.instance.signOut();
-        debugPrint('[main] Cleared existing authentication state for emulator setup.');
+        debugPrint(
+          '[main] Cleared existing authentication state for emulator setup.',
+        );
       } catch (signOutError) {
         debugPrint('[main] No existing auth to clear: $signOutError');
       }
@@ -98,9 +103,11 @@ Future<void> main() async {
         // ✅ FIX: Android configuration with proper host mapping
         const firestoreHost = '10.0.2.2';
         FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
-        debugPrint('Mapping Firestore Emulator host "localhost" to "$firestoreHost".');
+        debugPrint(
+          'Mapping Firestore Emulator host "localhost" to "$firestoreHost".',
+        );
         debugPrint('[main] Firestore emulator configured.');
-        
+
         // ✅ Additional configuration to ensure emulator persistence is disabled
         FirebaseFirestore.instance.settings = const Settings(
           persistenceEnabled: false,
@@ -115,7 +122,9 @@ Future<void> main() async {
         // ✅ FIX: Android configuration with proper host mapping
         const storageHost = '10.0.2.2';
         await FirebaseStorage.instance.useStorageEmulator(storageHost, 9199);
-        debugPrint('Mapping Storage Emulator host "localhost" to "$storageHost".');
+        debugPrint(
+          'Mapping Storage Emulator host "localhost" to "$storageHost".',
+        );
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
@@ -124,7 +133,9 @@ Future<void> main() async {
         // ✅ FIX: Configure Firebase Functions emulator
         const functionsHost = '10.0.2.2';
         FirebaseFunctions.instance.useFunctionsEmulator(functionsHost, 5001);
-        debugPrint('Mapping Functions Emulator host "localhost" to "$functionsHost".');
+        debugPrint(
+          'Mapping Functions Emulator host "localhost" to "$functionsHost".',
+        );
       } catch (e) {
         debugPrint('[main] Functions emulator configuration failed: $e');
       }
@@ -145,7 +156,9 @@ Future<void> main() async {
     // ./gradlew signingReport
     if (kDebugMode) {
       // ✅ FIX: Disable App Check entirely in debug mode to prevent authentication issues
-      debugPrint('[main] Debug mode: Skipping App Check initialization to prevent auth issues.');
+      debugPrint(
+        '[main] Debug mode: Skipping App Check initialization to prevent auth issues.',
+      );
       debugPrint('[main] App Check will be enabled in production builds only.');
     } else {
       // Use production providers for release builds
@@ -157,7 +170,7 @@ Future<void> main() async {
       debugPrint(
         '[main] Firebase App Check initialized with production providers.',
       );
-      
+
       // Verify App Check is working by trying to get a token
       try {
         final token = await FirebaseAppCheck.instance.getToken(true);
@@ -167,7 +180,9 @@ Future<void> main() async {
           debugPrint('[main] Warning: Firebase App Check token is null.');
         }
       } catch (tokenError) {
-        debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+        debugPrint(
+          '[main] Warning: Could not get App Check token: $tokenError',
+        );
       }
     }
   } catch (e) {
@@ -188,7 +203,9 @@ Future<void> main() async {
     // Create minimal fallback Hive service
     try {
       hiveService = HiveService(SecureStorageService());
-      debugPrint('[main] Fallback Hive service created (may have limited functionality).');
+      debugPrint(
+        '[main] Fallback Hive service created (may have limited functionality).',
+      );
     } catch (fallbackError) {
       debugPrint('[main] CRITICAL: Cannot create Hive service: $fallbackError');
       rethrow;
@@ -206,7 +223,9 @@ Future<void> main() async {
       authService = AuthService();
       debugPrint('[main] Fallback auth service created without cached data.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Fallback auth service failed: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Fallback auth service failed: $fallbackError',
+      );
       // This should never happen, but if it does, we need to exit gracefully
       rethrow;
     }
@@ -223,7 +242,9 @@ Future<void> main() async {
       profileService = ProfileService(hiveService: hiveService);
       debugPrint('[main] Fallback profile service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create profile service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create profile service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -239,7 +260,9 @@ Future<void> main() async {
       backgroundSyncService = BackgroundSyncService(hiveService: hiveService);
       debugPrint('[main] Basic background sync service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create background sync service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create background sync service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -256,7 +279,9 @@ Future<void> main() async {
       lutFilterService = LutFilterService.instance;
       debugPrint('[main] Basic LUT filter service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create LUT filter service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create LUT filter service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -270,7 +295,9 @@ Future<void> main() async {
     debugPrint('[main] Account linking service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing account linking service: $e');
-    debugPrint('[main] Account linking will be limited without proper initialization.');
+    debugPrint(
+      '[main] Account linking will be limited without proper initialization.',
+    );
     // We'll continue without account linking service - it's not critical for basic auth
     // Create a minimal fallback that won't cause late initialization errors
     try {
@@ -278,42 +305,56 @@ Future<void> main() async {
         authService: authService,
         profileService: profileService,
       );
-      debugPrint('[main] Account linking service created despite initial error.');
+      debugPrint(
+        '[main] Account linking service created despite initial error.',
+      );
     } catch (finalError) {
-      debugPrint('[main] CRITICAL: Cannot initialize account linking service: $finalError');
+      debugPrint(
+        '[main] CRITICAL: Cannot initialize account linking service: $finalError',
+      );
       rethrow;
     }
   }
 
   // Initialize messaging service
   try {
-    messagingService = MessagingService();
+    messagingService = MessagingService(firebaseAuth: FirebaseAuth.instance);
     debugPrint('[main] Messaging service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing messaging service: $e');
     // Create basic messaging service
     try {
-      messagingService = MessagingService();
+      messagingService = MessagingService(firebaseAuth: FirebaseAuth.instance);
       debugPrint('[main] Basic messaging service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create messaging service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create messaging service: $fallbackError',
+      );
       rethrow;
     }
   }
 
   // Initialize push notification service
   try {
-    pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+    pushNotificationService = PushNotificationService(
+      navigatorKey: navigatorKey,
+      profileService: profileService,
+    );
     await pushNotificationService.initialize();
     debugPrint('[main] Push notification service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing push notification service: $e');
     // Create basic push notification service
     try {
-      pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+      pushNotificationService = PushNotificationService(
+        navigatorKey: navigatorKey,
+        profileService: profileService,
+      );
       debugPrint('[main] Basic push notification service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create push notification service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create push notification service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -322,42 +363,54 @@ Future<void> main() async {
   try {
     // Monitor connectivity changes globally to trigger sync when coming back online
     bool wasOffline = false;
-    
+
     // Check initial connectivity state
     final initialConnectivity = await Connectivity().checkConnectivity();
     wasOffline = initialConnectivity.contains(ConnectivityResult.none);
-    debugPrint('[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}');
-    
+    debugPrint(
+      '[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}',
+    );
+
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
-      final isOnline = results.any((result) => result != ConnectivityResult.none);
-      
-      debugPrint('[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}');
-      
+    Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) async {
+      final isOnline = results.any(
+        (result) => result != ConnectivityResult.none,
+      );
+
+      debugPrint(
+        '[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}',
+      );
+
       // If we just came back online from being offline, trigger sync
       if (isOnline && wasOffline) {
-        debugPrint('[main] 🌐 Back online! Triggering background sync for queued items...');
-        
+        debugPrint(
+          '[main] 🌐 Back online! Triggering background sync for queued items...',
+        );
+
         try {
           await backgroundSyncService.triggerImmediateSync();
           debugPrint('[main] ✅ Background sync completed successfully');
         } catch (e) {
           debugPrint('[main] ❌ Background sync failed: $e');
-          
+
           // Fallback: Schedule a one-time task for more reliable sync
           try {
             await backgroundSyncService.scheduleOneTimeSyncTask();
             debugPrint('[main] 📅 Scheduled one-time sync task as fallback');
           } catch (scheduleError) {
-            debugPrint('[main] ❌ Failed to schedule fallback sync: $scheduleError');
+            debugPrint(
+              '[main] ❌ Failed to schedule fallback sync: $scheduleError',
+            );
           }
         }
       }
-      
+
       // Update offline state
       wasOffline = !isOnline;
     });
-    
+
     debugPrint('[main] Global connectivity monitoring initialized.');
   } catch (e) {
     debugPrint('[main] Error setting up global connectivity monitoring: $e');
@@ -396,88 +449,142 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  @override
-  void dispose() {
-    // Dispose auth service resources with null safety
-    try {
-      authService.dispose();
-    } catch (e) {
-      debugPrint('[AuthWrapper] Error disposing auth service: $e');
-    }
-    super.dispose();
-  }
+  // ✅ FIX: Cache the post-auth future to prevent rebuild cycles
+  Future<bool>? _postAuthFuture;
+  String? _currentUserId;
 
   /// Handles post-authentication flow including account linking
   Future<bool> _handlePostAuthenticationFlow() async {
-    debugPrint('[AuthWrapper] Handling post-authentication flow');
+    debugPrint('[AuthWrapper] 🚀 Starting post-authentication flow');
+    final currentUser = authService.currentUser;
+    debugPrint('[AuthWrapper] 👤 Current user: ${currentUser?.uid}');
+    debugPrint('[AuthWrapper] 📧 Current user email: ${currentUser?.email}');
+    debugPrint('[AuthWrapper] 📱 Current user phone: ${currentUser?.phoneNumber}');
 
     try {
+      debugPrint('[AuthWrapper] 🔗 Starting account linking process');
+      
       // Handle account linking after sign-in
-      final hasExistingProfile = await accountLinkingService.handleSignInAccountLinking();
-      debugPrint('[AuthWrapper] Account linking flow completed. Has existing profile: $hasExistingProfile');
+      final hasExistingProfile = await accountLinkingService
+          .handleSignInAccountLinking();
+      debugPrint(
+        '[AuthWrapper] ✅ Account linking completed. Has existing profile: $hasExistingProfile',
+      );
 
+      debugPrint('[AuthWrapper] 🔔 Saving FCM token');
       // Save FCM token
       final token = await pushNotificationService.getFCMToken();
       if (token != null) {
+        debugPrint('[AuthWrapper] 📱 FCM token obtained: ${token.substring(0, 20)}...');
         await profileService.saveFCMToken(token);
+        debugPrint('[AuthWrapper] ✅ FCM token saved successfully');
+      } else {
+        debugPrint('[AuthWrapper] ⚠️ No FCM token available');
       }
 
+      debugPrint('[AuthWrapper] 🏁 Post-authentication flow completed successfully');
       return hasExistingProfile;
-    } catch (e) {
-      debugPrint('[AuthWrapper] Account linking failed: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[AuthWrapper] ❌ Account linking failed: $e');
+      debugPrint('[AuthWrapper] 📚 Stack trace: $stackTrace');
       // Don't block the flow if account linking fails
+      debugPrint('[AuthWrapper] 🔄 Continuing with default flow despite error');
       return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[AuthWrapper] 🔄 Building AuthWrapper widget');
+    
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
+        debugPrint('[AuthWrapper] 📡 StreamBuilder triggered');
         debugPrint(
           '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
         );
-        debugPrint('[AuthWrapper] Connection state: ${snapshot.connectionState}');
+        debugPrint(
+          '[AuthWrapper] Connection state: ${snapshot.connectionState}',
+        );
         debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
         debugPrint('[AuthWrapper] Data: ${snapshot.data}');
-        debugPrint('[AuthWrapper] Is offline mode: ${authService.isOfflineMode}');
+        debugPrint('[AuthWrapper] User UID: ${snapshot.data?.uid}');
+        debugPrint(
+          '[AuthWrapper] Is offline mode: ${authService.isOfflineMode}',
+        );
 
         // Skip loading state check - auth service always emits initial state
         // Handle authentication state directly based on data
 
         // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
+          final user = snapshot.data!;
+          debugPrint('[AuthWrapper] ✅ User authenticated: ${user.uid}');
+          debugPrint('[AuthWrapper] User email: ${user.email}');
+          debugPrint('[AuthWrapper] User phone: ${user.phoneNumber}');
+
+          // ✅ FIX: Check if user changed to reset cached future
+          final newUserId = user.uid;
+          if (_currentUserId != newUserId) {
+            debugPrint('[AuthWrapper] 🔄 User changed from $_currentUserId to $newUserId, resetting post-auth future');
+            _currentUserId = newUserId;
+            _postAuthFuture = null; // Reset future for new user
+          } else {
+            debugPrint('[AuthWrapper] ✅ Same user, keeping cached future');
+          }
 
           // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
           if (authService.isOfflineMode) {
-            debugPrint('[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow');
-            
+            debugPrint(
+              '[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow',
+            );
+
             // Go directly to profile check without network operations
             if (profileService.hasCompleteProfile()) {
-              debugPrint('[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen');
+              debugPrint(
+                '[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen',
+              );
               return MainShellScreen(
                 profileService: profileService,
                 hiveService: hiveService,
               );
             } else {
-              debugPrint('[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen');
+              debugPrint(
+                '[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen',
+              );
               return VendorProfileScreen(
                 profileService: profileService,
                 onProfileComplete: () {
-                  debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                  debugPrint(
+                    '[AuthWrapper] Profile completed, triggering rebuild',
+                  );
                   setState(() {});
                 },
               );
             }
           }
 
+          // ✅ FIX: Cache the future to prevent rebuild cycles
+          if (_postAuthFuture == null) {
+            debugPrint('[AuthWrapper] 🚀 Creating new post-auth future for user: ${user.uid}');
+            _postAuthFuture = _handlePostAuthenticationFlow();
+          } else {
+            debugPrint('[AuthWrapper] ♻️ Using cached post-auth future');
+          }
+
           // ONLINE MODE: Run full post-authentication flow
+          debugPrint('[AuthWrapper] 🔄 Building FutureBuilder for post-auth flow');
           return FutureBuilder<bool>(
-            future: _handlePostAuthenticationFlow(),
+            future: _postAuthFuture, // ✅ Use cached future
             builder: (context, authFuture) {
+              debugPrint('[AuthWrapper] 📊 FutureBuilder state: ${authFuture.connectionState}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder hasData: ${authFuture.hasData}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder data: ${authFuture.data}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder error: ${authFuture.error}');
+              
               if (authFuture.connectionState == ConnectionState.waiting) {
+                debugPrint('[AuthWrapper] ⏳ Showing loading screen for post-auth flow');
                 return const Scaffold(
                   body: Center(
                     child: Column(
@@ -492,21 +599,36 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 );
               }
 
+              if (authFuture.hasError) {
+                debugPrint('[AuthWrapper] ❌ FutureBuilder error: ${authFuture.error}');
+                // Continue with default flow on error
+              }
+
               // Account linking completed - check if existing profile was found
               final hasExistingProfile = authFuture.data ?? false;
-              
+              debugPrint('[AuthWrapper] 📋 Has existing profile: $hasExistingProfile');
+
               if (hasExistingProfile) {
                 // User has an existing profile - go directly to main app
-                debugPrint('[AuthWrapper] User has existing profile - going to main app');
+                debugPrint(
+                  '[AuthWrapper] ✅ User has existing profile - going to main app',
+                );
                 return MainShellScreen(
                   profileService: profileService,
                   hiveService: hiveService,
                 );
               } else {
-                // No existing profile found - check if user needs to create one
-                if (profileService.hasCompleteProfile()) {
+                // No existing profile found - check if user has any profile (vendor or regular)
+                final hasVendorProfile = profileService.hasCompleteProfile();
+                final hasRegularProfile = profileService
+                    .hasCompleteRegularUserProfile();
+                    
+                debugPrint('[AuthWrapper] 📋 Has vendor profile: $hasVendorProfile');
+                debugPrint('[AuthWrapper] 📋 Has regular profile: $hasRegularProfile');
+
+                if (hasVendorProfile || hasRegularProfile) {
                   debugPrint(
-                    '[AuthWrapper] Profile complete, navigating to MainShellScreen',
+                    '[AuthWrapper] ✅ User has complete profile, navigating to MainShellScreen',
                   );
                   return MainShellScreen(
                     profileService: profileService,
@@ -514,16 +636,60 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   );
                 } else {
                   debugPrint(
-                    '[AuthWrapper] Profile incomplete, navigating to VendorProfileScreen',
+                    '[AuthWrapper] ❌ No profile found, navigating to UserTypeSelectionScreen',
                   );
-                  return VendorProfileScreen(
-                    profileService: profileService,
-                    onProfileComplete: () {
+
+                  // Import the UserTypeSelectionScreen
+                  return UserTypeSelectionScreen(
+                    onUserTypeSelected: (userType) {
                       debugPrint(
-                        '[AuthWrapper] Profile completed, triggering rebuild',
+                        '[AuthWrapper] User selected type: ${userType.displayName}',
                       );
-                      // Trigger a rebuild of the AuthWrapper to check profile status again
-                      setState(() {});
+
+                      // Navigate to appropriate profile screen
+                      if (userType == UserType.vendor) {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => VendorProfileScreen(
+                              profileService: profileService,
+                              onProfileComplete: () {
+                                debugPrint(
+                                  '[AuthWrapper] Vendor profile completed',
+                                );
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => MainShellScreen(
+                                      profileService: profileService,
+                                      hiveService: hiveService,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      } else {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => RegularUserProfileScreen(
+                              profileService: profileService,
+                              onProfileComplete: () {
+                                debugPrint(
+                                  '[AuthWrapper] Regular user profile completed',
+                                );
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => MainShellScreen(
+                                      profileService: profileService,
+                                      hiveService: hiveService,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      }
                     },
                   );
                 }
@@ -532,9 +698,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
+        // ✅ FIX: Reset cached future when user signs out
+        if (!snapshot.hasData && _postAuthFuture != null) {
+          debugPrint('[AuthWrapper] 🚪 User signed out, clearing post-auth future');
+          _postAuthFuture = null;
+          _currentUserId = null;
+        }
+
         // User is not authenticated - show auth screen with demo option in debug mode
         debugPrint(
-          '[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen',
+          '[AuthWrapper] ❌ User not authenticated, navigating to AuthWelcomeScreen',
         );
         return const AuthWelcomeScreen();
       },
@@ -1129,7 +1302,8 @@ class ProfileCompletionWrapper extends StatefulWidget {
   final HiveService hiveService;
 
   @override
-  State<ProfileCompletionWrapper> createState() => _ProfileCompletionWrapperState();
+  State<ProfileCompletionWrapper> createState() =>
+      _ProfileCompletionWrapperState();
 }
 
 class _ProfileCompletionWrapperState extends State<ProfileCompletionWrapper> {

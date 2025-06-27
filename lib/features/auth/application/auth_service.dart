@@ -51,16 +51,16 @@ class CachedUser {
 class _CachedFirebaseUser implements User {
   @override
   final String uid;
-  
+
   @override
   final String? email;
-  
+
   @override
   final String? phoneNumber;
-  
+
   @override
   final String? displayName;
-  
+
   @override
   final String? photoURL;
 
@@ -75,110 +75,143 @@ class _CachedFirebaseUser implements User {
   // Implement required User interface methods with sensible defaults
   @override
   bool get emailVerified => true; // Assume verified for cached users
-  
+
   @override
   bool get isAnonymous => false;
-  
+
   @override
-  UserMetadata get metadata => throw UnimplementedError('Metadata not available for cached users');
-  
+  UserMetadata get metadata =>
+      throw UnimplementedError('Metadata not available for cached users');
+
   @override
-  MultiFactor get multiFactor => throw UnimplementedError('MultiFactor not available for cached users');
-  
+  MultiFactor get multiFactor =>
+      throw UnimplementedError('MultiFactor not available for cached users');
+
   @override
   List<UserInfo> get providerData => [];
-  
+
   @override
   String? get refreshToken => null;
-  
+
   @override
   String? get tenantId => null;
-  
+
   @override
-  Future<void> delete() => throw UnimplementedError('Delete not available for cached users');
-  
+  Future<void> delete() =>
+      throw UnimplementedError('Delete not available for cached users');
+
   @override
-  Future<String> getIdToken([bool forceRefresh = false]) => 
-    throw UnimplementedError('ID token not available for cached users');
-  
+  Future<String> getIdToken([bool forceRefresh = false]) =>
+      throw UnimplementedError('ID token not available for cached users');
+
   @override
-  Future<IdTokenResult> getIdTokenResult([bool forceRefresh = false]) => 
-    throw UnimplementedError('ID token result not available for cached users');
-  
+  Future<IdTokenResult> getIdTokenResult([bool forceRefresh = false]) =>
+      throw UnimplementedError(
+        'ID token result not available for cached users',
+      );
+
   @override
-  Future<UserCredential> linkWithCredential(AuthCredential credential) => 
-    throw UnimplementedError('Link credential not available for cached users');
-  
+  Future<UserCredential> linkWithCredential(AuthCredential credential) =>
+      throw UnimplementedError(
+        'Link credential not available for cached users',
+      );
+
   @override
-  Future<UserCredential> linkWithProvider(AuthProvider provider) => 
-    throw UnimplementedError('Link provider not available for cached users');
-  
+  Future<UserCredential> linkWithProvider(AuthProvider provider) =>
+      throw UnimplementedError('Link provider not available for cached users');
+
   @override
-  Future<ConfirmationResult> linkWithPhoneNumber(String phoneNumber, [RecaptchaVerifier? verifier]) => 
-    throw UnimplementedError('Link phone number not available for cached users');
-  
+  Future<ConfirmationResult> linkWithPhoneNumber(
+    String phoneNumber, [
+    RecaptchaVerifier? verifier,
+  ]) => throw UnimplementedError(
+    'Link phone number not available for cached users',
+  );
+
   @override
-  Future<UserCredential> linkWithPopup(AuthProvider provider) => 
-    throw UnimplementedError('Link popup not available for cached users');
-  
+  Future<UserCredential> linkWithPopup(AuthProvider provider) =>
+      throw UnimplementedError('Link popup not available for cached users');
+
   @override
-  Future<void> linkWithRedirect(AuthProvider provider) => 
-    throw UnimplementedError('Link redirect not available for cached users');
-  
+  Future<void> linkWithRedirect(AuthProvider provider) =>
+      throw UnimplementedError('Link redirect not available for cached users');
+
   @override
-  Future<UserCredential> reauthenticateWithCredential(AuthCredential credential) => 
-    throw UnimplementedError('Reauthenticate not available for cached users');
-  
+  Future<UserCredential> reauthenticateWithCredential(
+    AuthCredential credential,
+  ) =>
+      throw UnimplementedError('Reauthenticate not available for cached users');
+
   @override
-  Future<UserCredential> reauthenticateWithProvider(AuthProvider provider) => 
-    throw UnimplementedError('Reauthenticate provider not available for cached users');
-  
+  Future<UserCredential> reauthenticateWithProvider(AuthProvider provider) =>
+      throw UnimplementedError(
+        'Reauthenticate provider not available for cached users',
+      );
+
   @override
-  Future<UserCredential> reauthenticateWithPopup(AuthProvider provider) => 
-    throw UnimplementedError('Reauthenticate popup not available for cached users');
-  
+  Future<UserCredential> reauthenticateWithPopup(AuthProvider provider) =>
+      throw UnimplementedError(
+        'Reauthenticate popup not available for cached users',
+      );
+
   @override
-  Future<void> reauthenticateWithRedirect(AuthProvider provider) => 
-    throw UnimplementedError('Reauthenticate redirect not available for cached users');
-  
+  Future<void> reauthenticateWithRedirect(AuthProvider provider) =>
+      throw UnimplementedError(
+        'Reauthenticate redirect not available for cached users',
+      );
+
   @override
-  Future<void> reload() => throw UnimplementedError('Reload not available for cached users');
-  
+  Future<void> reload() =>
+      throw UnimplementedError('Reload not available for cached users');
+
   @override
-  Future<void> sendEmailVerification([ActionCodeSettings? actionCodeSettings]) => 
-    throw UnimplementedError('Send email verification not available for cached users');
-  
+  Future<void> sendEmailVerification([
+    ActionCodeSettings? actionCodeSettings,
+  ]) => throw UnimplementedError(
+    'Send email verification not available for cached users',
+  );
+
   @override
-  Future<User> unlink(String providerId) => 
-    throw UnimplementedError('Unlink not available for cached users');
-  
+  Future<User> unlink(String providerId) =>
+      throw UnimplementedError('Unlink not available for cached users');
+
   @override
-  Future<void> updateDisplayName(String? displayName) => 
-    throw UnimplementedError('Update display name not available for cached users');
-  
+  Future<void> updateDisplayName(String? displayName) =>
+      throw UnimplementedError(
+        'Update display name not available for cached users',
+      );
+
   @override
-  Future<void> updateEmail(String newEmail) => 
-    throw UnimplementedError('Update email not available for cached users');
-  
+  Future<void> updateEmail(String newEmail) =>
+      throw UnimplementedError('Update email not available for cached users');
+
   @override
-  Future<void> updatePassword(String newPassword) => 
-    throw UnimplementedError('Update password not available for cached users');
-  
+  Future<void> updatePassword(String newPassword) => throw UnimplementedError(
+    'Update password not available for cached users',
+  );
+
   @override
-  Future<void> updatePhoneNumber(PhoneAuthCredential phoneCredential) => 
-    throw UnimplementedError('Update phone number not available for cached users');
-  
+  Future<void> updatePhoneNumber(PhoneAuthCredential phoneCredential) =>
+      throw UnimplementedError(
+        'Update phone number not available for cached users',
+      );
+
   @override
-  Future<void> updatePhotoURL(String? photoURL) => 
-    throw UnimplementedError('Update photo URL not available for cached users');
-  
+  Future<void> updatePhotoURL(String? photoURL) => throw UnimplementedError(
+    'Update photo URL not available for cached users',
+  );
+
   @override
-  Future<void> updateProfile({String? displayName, String? photoURL}) => 
-    throw UnimplementedError('Update profile not available for cached users');
-  
+  Future<void> updateProfile({String? displayName, String? photoURL}) =>
+      throw UnimplementedError('Update profile not available for cached users');
+
   @override
-  Future<void> verifyBeforeUpdateEmail(String newEmail, [ActionCodeSettings? actionCodeSettings]) => 
-    throw UnimplementedError('Verify before update email not available for cached users');
+  Future<void> verifyBeforeUpdateEmail(
+    String newEmail, [
+    ActionCodeSettings? actionCodeSettings,
+  ]) => throw UnimplementedError(
+    'Verify before update email not available for cached users',
+  );
 }
 
 /// Authentication service handling Firebase Auth operations
@@ -187,107 +220,142 @@ class _CachedFirebaseUser implements User {
 class AuthService {
   final FirebaseAuth _firebaseAuth;
   final HiveService? _hiveService;
-  
+
   // Offline authentication state management
   StreamController<User?>? _offlineAuthController;
   User? _cachedUser;
   User? _lastEmittedUser; // Track last emitted state
   bool _isOfflineMode = false;
 
-  AuthService({
-    FirebaseAuth? firebaseAuth,
-    HiveService? hiveService,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-       _hiveService = hiveService {
+  // Stream subscriptions for proper cleanup
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<User?>? _firebaseAuthSubscription;
+
+  AuthService({FirebaseAuth? firebaseAuth, HiveService? hiveService})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+      _hiveService = hiveService {
     _initializeOfflineAuthSync();
     _startAsyncInitialization();
   }
 
   /// Initialize offline authentication synchronously (constructor-safe)
   void _initializeOfflineAuthSync() {
-    debugPrint('[AuthService] 🔧 Initializing offline authentication system (sync)');
-    
+    debugPrint(
+      '[AuthService] 🔧 Initializing offline authentication system (sync)',
+    );
+
     _offlineAuthController = StreamController<User?>.broadcast();
-    
+
     // Check for cached user first (for offline persistence) - SYNCHRONOUS with error handling
     try {
-      if (_hiveService != null && _hiveService.hasAuthenticationCache() && _hiveService.isCachedAuthenticationValid()) {
+      if (_hiveService != null &&
+          _hiveService.hasAuthenticationCache() &&
+          _hiveService.isCachedAuthenticationValid()) {
         final cachedUserData = _hiveService.getCachedAuthenticatedUser();
         if (cachedUserData != null) {
           // Safely cast and validate the cached data
-          final Map<String, dynamic> userData = Map<String, dynamic>.from(cachedUserData);
+          final Map<String, dynamic> userData = Map<String, dynamic>.from(
+            cachedUserData,
+          );
           final cachedUser = CachedUser.fromMap(userData);
           _cachedUser = cachedUser.toFirebaseUserLike();
-          debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser?.uid}');
+          debugPrint(
+            '[AuthService] 💾 Restored cached user from Hive: ${_cachedUser?.uid}',
+          );
         }
       }
     } catch (e) {
-      debugPrint('[AuthService] ⚠️ Failed to load cached user (clearing corrupted cache): $e');
+      debugPrint(
+        '[AuthService] ⚠️ Failed to load cached user (clearing corrupted cache): $e',
+      );
       // Clear corrupted cache data
       try {
         _hiveService?.clearAuthenticationCache();
         debugPrint('[AuthService] 🗑️ Corrupted authentication cache cleared');
       } catch (clearError) {
-        debugPrint('[AuthService] ❌ Failed to clear corrupted cache: $clearError');
+        debugPrint(
+          '[AuthService] ❌ Failed to clear corrupted cache: $clearError',
+        );
       }
     }
-    
+
     // Initialize with current Firebase user if available (and no cached user)
     if (_cachedUser == null) {
       _cachedUser = _firebaseAuth.currentUser;
       if (_cachedUser != null) {
-        debugPrint('[AuthService] 🔥 Using current Firebase user: ${_cachedUser?.uid}');
+        debugPrint(
+          '[AuthService] 🔥 Using current Firebase user: ${_cachedUser?.uid}',
+        );
         // Cache this user for offline persistence (async operation)
         _cacheCurrentUser(_cachedUser!);
       }
     }
-    
+
     // Emit initial auth state immediately to prevent loading state
     _lastEmittedUser = _cachedUser;
     _offlineAuthController?.add(_cachedUser);
-    debugPrint('[AuthService] 🚀 Initial auth state emitted synchronously: ${_cachedUser?.uid ?? 'null'}');
+    debugPrint(
+      '[AuthService] 🚀 Initial auth state emitted synchronously: ${_cachedUser?.uid ?? 'null'}',
+    );
   }
 
   /// Start async initialization after constructor completes
   void _startAsyncInitialization() async {
     debugPrint('[AuthService] 🔄 Starting async initialization');
-    
+
     // Check initial connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
     _isOfflineMode = connectivityResult.contains(ConnectivityResult.none);
-    
-    debugPrint('[AuthService] 📡 Initial connectivity: ${_isOfflineMode ? 'OFFLINE' : 'ONLINE'}');
-    
+
+    debugPrint(
+      '[AuthService] 📡 Initial connectivity: ${_isOfflineMode ? 'OFFLINE' : 'ONLINE'}',
+    );
+
     // Re-emit auth state with correct offline mode
     if (_isOfflineMode && _cachedUser != null) {
       _lastEmittedUser = _cachedUser;
       _offlineAuthController?.add(_cachedUser);
-      debugPrint('[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser?.uid}');
+      debugPrint(
+        '[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser?.uid}',
+      );
     }
-    
+
     // Monitor connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       final isOffline = results.contains(ConnectivityResult.none);
       _handleConnectivityChange(isOffline);
     });
-    
+
     // Monitor Firebase auth state changes when online
-    _firebaseAuth.authStateChanges().listen((User? user) {
-      debugPrint('[AuthService] 🔥 Firebase auth state changed: ${user?.uid ?? 'null'}');
-      
-      if (!_isOfflineMode) {
-        // Online: Cache the user and forward the state
-        _cachedUser = user;
-        _lastEmittedUser = user;
-        _offlineAuthController?.add(user);
-        debugPrint('[AuthService] ✅ Cached user state updated (online)');
-        
-        // Cache for offline persistence
-        if (user != null) {
-          _cacheCurrentUser(user);
-        } else {
-          _clearUserCache();
+    _firebaseAuthSubscription = _firebaseAuth.authStateChanges().listen((
+      User? user,
+    ) {
+      debugPrint(
+        '[AuthService] 🔥 Firebase auth state changed: ${user?.uid ?? 'null'}',
+      );
+
+      // Check if controller is still active before adding events
+      if (_offlineAuthController?.isClosed == false) {
+        if (!_isOfflineMode) {
+          // Online: Cache the user and forward the state
+          _cachedUser = user;
+          _lastEmittedUser = user;
+          _offlineAuthController?.add(user);
+          debugPrint('[AuthService] ✅ Cached user state updated (online)');
+
+          // Cache for offline persistence
+          if (user != null) {
+            _cacheCurrentUser(user);
+          } else {
+            _clearUserCache();
+          }
         }
+      } else {
+        debugPrint(
+          '[AuthService] ⚠️ Skipping auth state update - controller is closed',
+        );
       }
     });
   }
@@ -295,26 +363,30 @@ class AuthService {
   /// Cache the current user for offline persistence
   void _cacheCurrentUser(User user) {
     if (_hiveService == null) return;
-    
-    debugPrint('[AuthService] 💾 Caching user for offline persistence: ${user.uid}');
-    
-    _hiveService.cacheAuthenticatedUser(
-      uid: user.uid,
-      email: user.email ?? '',
-      phoneNumber: user.phoneNumber,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-    ).catchError((error) {
-      debugPrint('[AuthService] ❌ Failed to cache user: $error');
-    });
+
+    debugPrint(
+      '[AuthService] 💾 Caching user for offline persistence: ${user.uid}',
+    );
+
+    _hiveService
+        .cacheAuthenticatedUser(
+          uid: user.uid,
+          email: user.email ?? '',
+          phoneNumber: user.phoneNumber,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        )
+        .catchError((error) {
+          debugPrint('[AuthService] ❌ Failed to cache user: $error');
+        });
   }
 
   /// Clear cached user data
   void _clearUserCache() {
     if (_hiveService == null) return;
-    
+
     debugPrint('[AuthService] 🗑️ Clearing cached user data');
-    
+
     _hiveService.clearAuthenticationCache().catchError((error) {
       debugPrint('[AuthService] ❌ Failed to clear user cache: $error');
     });
@@ -322,31 +394,44 @@ class AuthService {
 
   /// Handle connectivity changes
   void _handleConnectivityChange(bool isOffline) {
-    debugPrint('[AuthService] 📡 Connectivity changed: ${isOffline ? 'OFFLINE' : 'ONLINE'}');
-    
-    if (_isOfflineMode != isOffline) {
+    debugPrint(
+      '[AuthService] 📡 Connectivity changed: ${isOffline ? 'OFFLINE' : 'ONLINE'}',
+    );
+
+    if (_isOfflineMode != isOffline &&
+        _offlineAuthController?.isClosed == false) {
       _isOfflineMode = isOffline;
-      
+
       if (isOffline) {
         // Going offline: Use cached user state
-        debugPrint('[AuthService] 📱 Switching to offline mode with cached user: ${_cachedUser?.uid ?? 'none'}');
+        debugPrint(
+          '[AuthService] 📱 Switching to offline mode with cached user: ${_cachedUser?.uid ?? 'none'}',
+        );
         _lastEmittedUser = _cachedUser;
         _offlineAuthController?.add(_cachedUser);
       } else {
         // Going online: Sync with Firebase
-        debugPrint('[AuthService] 🌐 Switching to online mode, syncing with Firebase');
+        debugPrint(
+          '[AuthService] 🌐 Switching to online mode, syncing with Firebase',
+        );
         final firebaseUser = _firebaseAuth.currentUser;
         _cachedUser = firebaseUser;
         _lastEmittedUser = firebaseUser;
         _offlineAuthController?.add(firebaseUser);
       }
+    } else if (_offlineAuthController?.isClosed == true) {
+      debugPrint(
+        '[AuthService] ⚠️ Skipping connectivity change - controller is closed',
+      );
     }
   }
 
   /// Current authenticated user (works offline with cached state)
   User? get currentUser {
     if (_isOfflineMode && _cachedUser != null) {
-      debugPrint('[AuthService] 📱 Returning cached user (offline): ${_cachedUser?.uid}');
+      debugPrint(
+        '[AuthService] 📱 Returning cached user (offline): ${_cachedUser?.uid}',
+      );
       return _cachedUser;
     }
     return _firebaseAuth.currentUser;
@@ -354,14 +439,18 @@ class AuthService {
 
   /// Stream of authentication state changes (works offline)
   Stream<User?> get authStateChanges {
+    // Always use the offline controller as it maintains sync with Firebase
+    // and provides offline capabilities
     if (_offlineAuthController != null) {
       // Fix: Emit current state to new subscribers using a BehaviorSubject-like pattern
       return Stream<User?>.multi((controller) {
         // Emit current state immediately for new subscribers
         final currentState = _lastEmittedUser;
-        debugPrint('[AuthService] 🔄 New subscriber - emitting last state: ${currentState?.uid ?? 'null'}');
+        debugPrint(
+          '[AuthService] 🔄 New subscriber - emitting last state: ${currentState?.uid ?? 'null'}',
+        );
         controller.add(currentState);
-        
+
         // Listen to future changes
         final subscription = _offlineAuthController!.stream.listen(
           (user) {
@@ -371,20 +460,28 @@ class AuthService {
           onError: (error) => controller.addError(error),
           onDone: () => controller.close(),
         );
-        
+
         // Clean up subscription when stream is cancelled
         controller.onCancel = () {
           subscription.cancel();
         };
       });
     }
+
+    // Fallback to Firebase stream if offline controller is not initialized
+    // This should rarely happen as _initializeOfflineAuthSync runs in constructor
+    debugPrint(
+      '[AuthService] ⚠️ Warning: Offline controller not initialized, falling back to Firebase stream',
+    );
     return _firebaseAuth.authStateChanges();
   }
 
   /// Authentication state - true if user is signed in (works offline)
   bool get isAuthenticated {
     if (_isOfflineMode && _cachedUser != null) {
-      debugPrint('[AuthService] 📱 User authenticated (offline cached): ${_cachedUser?.uid}');
+      debugPrint(
+        '[AuthService] 📱 User authenticated (offline cached): ${_cachedUser?.uid}',
+      );
       return true;
     }
     return currentUser != null;
@@ -396,22 +493,32 @@ class AuthService {
   /// Sign out (clears both Firebase and cached state)
   Future<void> signOut() async {
     debugPrint('[AuthService] 🚪 Signing out user');
-    
+
     try {
       // Clear cached state immediately
       _cachedUser = null;
       _lastEmittedUser = null;
-      _offlineAuthController?.add(null);
-      
+
+      // Only add to controller if it's still active
+      if (_offlineAuthController?.isClosed == false) {
+        _offlineAuthController?.add(null);
+      } else {
+        debugPrint(
+          '[AuthService] ⚠️ Skipping sign out state emission - controller is closed',
+        );
+      }
+
       // Clear persistent authentication cache
       _clearUserCache();
-      
+
       // Sign out from Firebase if online
       if (!_isOfflineMode) {
         await _firebaseAuth.signOut();
         debugPrint('[AuthService] ✅ Firebase sign out completed');
       } else {
-        debugPrint('[AuthService] 📱 Offline sign out completed (cached state cleared)');
+        debugPrint(
+          '[AuthService] 📱 Offline sign out completed (cached state cleared)',
+        );
       }
     } catch (e) {
       debugPrint('[AuthService] ❌ Sign out error: $e');
@@ -421,7 +528,25 @@ class AuthService {
 
   /// Dispose resources
   void dispose() {
+    debugPrint(
+      '[AuthService] 🛑 Disposing AuthService and cleaning up resources',
+    );
+
+    // Cancel all stream subscriptions first
+    _connectivitySubscription?.cancel();
+    _firebaseAuthSubscription?.cancel();
+
+    // Then close the stream controller
     _offlineAuthController?.close();
+
+    // Clear references
+    _connectivitySubscription = null;
+    _firebaseAuthSubscription = null;
+    _offlineAuthController = null;
+    _cachedUser = null;
+    _lastEmittedUser = null;
+
+    debugPrint('[AuthService] ✅ AuthService disposal completed');
   }
 
   // ================================
@@ -438,11 +563,13 @@ class AuthService {
     Function(String verificationId)? onCodeAutoRetrievalTimeout,
   }) async {
     debugPrint('[AuthService] Starting phone verification for: $phoneNumber');
-    
+
     // Check if offline
     if (_isOfflineMode) {
       debugPrint('[AuthService] ❌ Cannot verify phone number while offline');
-      onVerificationFailed('Cannot verify phone number while offline. Please connect to the internet and try again.');
+      onVerificationFailed(
+        'Cannot verify phone number while offline. Please connect to the internet and try again.',
+      );
       return '';
     }
 
@@ -546,7 +673,9 @@ class AuthService {
       _cachedUser = result.user;
       _lastEmittedUser = result.user;
       _offlineAuthController?.add(result.user);
-      debugPrint('[AuthService] ✅ Phone sign-in successful, cached user updated');
+      debugPrint(
+        '[AuthService] ✅ Phone sign-in successful, cached user updated',
+      );
       return result;
     } catch (e) {
       debugPrint('[AuthService] Phone sign-in failed: $e');
@@ -1141,13 +1270,15 @@ class AuthService {
   /// Signs in with Google account
   Future<UserCredential> signInWithGoogle() async {
     debugPrint('[AuthService] Initiating Google Sign-In');
-    
+
     // Check if offline
     if (_isOfflineMode) {
       debugPrint('[AuthService] ❌ Cannot sign in with Google while offline');
-      throw Exception('Cannot sign in with Google while offline. Please connect to the internet and try again.');
+      throw Exception(
+        'Cannot sign in with Google while offline. Please connect to the internet and try again.',
+      );
     }
-    
+
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
@@ -1164,13 +1295,15 @@ class AuthService {
 
       debugPrint('[AuthService] Google credential obtained, signing in...');
       final result = await _signInWithCredentialWrapper(credential);
-      
+
       // Update cached user after successful sign-in
       _cachedUser = result.user;
       _lastEmittedUser = result.user;
       _offlineAuthController?.add(result.user);
-      debugPrint('[AuthService] ✅ Google sign-in successful, cached user updated');
-      
+      debugPrint(
+        '[AuthService] ✅ Google sign-in successful, cached user updated',
+      );
+
       return result;
     } on PlatformException catch (e) {
       debugPrint('[AuthService] Google Sign-In PlatformException: ${e.code}');

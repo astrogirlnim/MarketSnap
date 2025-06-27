@@ -40,17 +40,23 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _currentUserId = user.uid;
-    debugPrint('[ChatScreen] Initialized for user: $_currentUserId, chatting with: ${widget.otherUser.uid}');
+    debugPrint(
+      '[ChatScreen] Initialized for user: $_currentUserId, chatting with: ${widget.otherUser.uid}',
+    );
 
     // Mark conversation as read when entering the screen
     if (_currentUserId != null) {
-      _messagingService.markConversationAsRead(
-        userId1: _currentUserId!,
-        userId2: widget.otherUser.uid,
-        currentUserId: _currentUserId!,
-      ).catchError((error) {
-        debugPrint('[ChatScreen] Error marking conversation as read: $error');
-      });
+      _messagingService
+          .markConversationAsRead(
+            userId1: _currentUserId!,
+            userId2: widget.otherUser.uid,
+            currentUserId: _currentUserId!,
+          )
+          .catchError((error) {
+            debugPrint(
+              '[ChatScreen] Error marking conversation as read: $error',
+            );
+          });
     }
   }
 
@@ -65,7 +71,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty) return;
 
     try {
-      debugPrint('[ChatScreen] Sending message from $_currentUserId to ${widget.otherUser.uid}: $text');
+      debugPrint(
+        '[ChatScreen] Sending message from $_currentUserId to ${widget.otherUser.uid}: $text',
+      );
       await _messagingService.sendMessage(
         fromUid: _currentUserId!,
         toUid: widget.otherUser.uid,
@@ -99,7 +107,9 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 16),
               Text(
                 'Authentication Error',
-                style: AppTypography.bodyLG.copyWith(fontWeight: FontWeight.bold),
+                style: AppTypography.bodyLG.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -146,23 +156,33 @@ class _ChatScreenState extends State<ChatScreen> {
                 userId2: widget.otherUser.uid,
               ),
               builder: (context, snapshot) {
-                debugPrint('[ChatScreen] StreamBuilder state: ${snapshot.connectionState}');
-                
+                debugPrint(
+                  '[ChatScreen] StreamBuilder state: ${snapshot.connectionState}',
+                );
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 if (snapshot.hasError) {
-                  debugPrint('[ChatScreen] StreamBuilder error: ${snapshot.error}');
+                  debugPrint(
+                    '[ChatScreen] StreamBuilder error: ${snapshot.error}',
+                  );
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Error loading messages',
-                          style: AppTypography.bodyLG.copyWith(fontWeight: FontWeight.bold),
+                          style: AppTypography.bodyLG.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -179,25 +199,28 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   );
                 }
-                
+
                 final messages = snapshot.data ?? [];
                 debugPrint('[ChatScreen] Loaded ${messages.length} messages');
-                
+
                 if (messages.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No messages yet',
-                          style: AppTypography.bodyLG,
+                        const Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
                         ),
+                        const SizedBox(height: 16),
+                        Text('No messages yet', style: AppTypography.bodyLG),
                         const SizedBox(height: 8),
                         Text(
                           'Say hello to ${widget.otherUser.displayName}!',
-                          style: AppTypography.body.copyWith(color: Colors.grey),
+                          style: AppTypography.body.copyWith(
+                            color: Colors.grey,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -212,10 +235,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final bool isMe = message.fromUid == _currentUserId;
-                    
+
                     // Debug logging to help diagnose bubble alignment
-                    debugPrint('[ChatScreen] Message $index: fromUid=${message.fromUid}, currentUserId=$_currentUserId, isMe=$isMe, text="${message.text}"');
-                    
+                    debugPrint(
+                      '[ChatScreen] Message $index: fromUid=${message.fromUid}, currentUserId=$_currentUserId, isMe=$isMe, text="${message.text}"',
+                    );
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ChatBubble(message: message, isMe: isMe),

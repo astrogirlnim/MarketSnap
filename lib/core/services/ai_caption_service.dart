@@ -56,40 +56,57 @@ class AICaptionService {
   static const String _cacheBoxName = 'aiCaptionCache';
   static const Duration _cacheExpiry = Duration(hours: 24);
   static const Duration _requestTimeout = Duration(seconds: 2);
-  
+
   late Box<Map> _cacheBox;
   bool _isInitialized = false;
 
   /// Initialize the AI caption service
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     try {
-      developer.log('[AICaptionService] Initializing cache box', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Initializing cache box',
+        name: 'AICaptionService',
+      );
       _cacheBox = await Hive.openBox<Map>(_cacheBoxName);
       _isInitialized = true;
-      developer.log('[AICaptionService] Initialized successfully with ${_cacheBox.length} cached captions', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Initialized successfully with ${_cacheBox.length} cached captions',
+        name: 'AICaptionService',
+      );
     } catch (e) {
-      developer.log('[AICaptionService] Failed to initialize: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Failed to initialize: $e',
+        name: 'AICaptionService',
+      );
       rethrow;
     }
   }
 
   /// Generate a media hash for caching
-  String _generateMediaHash(String filePath, String? existingCaption, Map<String, dynamic>? vendorProfile) {
+  String _generateMediaHash(
+    String filePath,
+    String? existingCaption,
+    Map<String, dynamic>? vendorProfile,
+  ) {
     try {
       final file = File(filePath);
       final fileSize = file.lengthSync();
       final lastModified = file.lastModifiedSync().millisecondsSinceEpoch;
-      
+
       // Create a unique hash based on file properties and context
-      final hashInput = '$filePath:$fileSize:$lastModified:${existingCaption ?? ''}:${jsonEncode(vendorProfile ?? {})}';
+      final hashInput =
+          '$filePath:$fileSize:$lastModified:${existingCaption ?? ''}:${jsonEncode(vendorProfile ?? {})}';
       final bytes = utf8.encode(hashInput);
       final digest = sha1.convert(bytes);
-      
+
       return digest.toString();
     } catch (e) {
-      developer.log('[AICaptionService] Error generating hash: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Error generating hash: $e',
+        name: 'AICaptionService',
+      );
       // Fallback to simple hash
       return filePath.hashCode.toString();
     }
@@ -101,20 +118,31 @@ class AICaptionService {
       final cachedData = _cacheBox.get(hash);
       if (cachedData == null) return null;
 
-      final response = AICaptionResponse.fromJson(Map<String, dynamic>.from(cachedData));
-      
+      final response = AICaptionResponse.fromJson(
+        Map<String, dynamic>.from(cachedData),
+      );
+
       // Check if cache is expired
       final age = DateTime.now().difference(response.timestamp);
       if (age > _cacheExpiry) {
-        developer.log('[AICaptionService] Cache expired for hash: $hash', name: 'AICaptionService');
+        developer.log(
+          '[AICaptionService] Cache expired for hash: $hash',
+          name: 'AICaptionService',
+        );
         _cacheBox.delete(hash);
         return null;
       }
 
-      developer.log('[AICaptionService] Cache hit for hash: $hash', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Cache hit for hash: $hash',
+        name: 'AICaptionService',
+      );
       return response.copyWithCache();
     } catch (e) {
-      developer.log('[AICaptionService] Error reading cache: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Error reading cache: $e',
+        name: 'AICaptionService',
+      );
       return null;
     }
   }
@@ -123,9 +151,15 @@ class AICaptionService {
   Future<void> _cacheCaption(String hash, AICaptionResponse response) async {
     try {
       await _cacheBox.put(hash, response.toJson());
-      developer.log('[AICaptionService] Cached caption for hash: $hash', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Cached caption for hash: $hash',
+        name: 'AICaptionService',
+      );
     } catch (e) {
-      developer.log('[AICaptionService] Error caching caption: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Error caching caption: $e',
+        name: 'AICaptionService',
+      );
     }
   }
 
@@ -134,24 +168,36 @@ class AICaptionService {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        developer.log('[AICaptionService] Image file does not exist: $filePath', name: 'AICaptionService');
+        developer.log(
+          '[AICaptionService] Image file does not exist: $filePath',
+          name: 'AICaptionService',
+        );
         return null;
       }
 
       final bytes = await file.readAsBytes();
-      
+
       // Limit image size to 2MB for API efficiency
       const maxSizeBytes = 2 * 1024 * 1024; // 2MB
       if (bytes.length > maxSizeBytes) {
-        developer.log('[AICaptionService] Image too large (${bytes.length} bytes), skipping image analysis', name: 'AICaptionService');
+        developer.log(
+          '[AICaptionService] Image too large (${bytes.length} bytes), skipping image analysis',
+          name: 'AICaptionService',
+        );
         return null;
       }
 
       final base64Image = base64Encode(bytes);
-      developer.log('[AICaptionService] Encoded image to base64: ${base64Image.length} characters', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Encoded image to base64: ${base64Image.length} characters',
+        name: 'AICaptionService',
+      );
       return base64Image;
     } catch (e) {
-      developer.log('[AICaptionService] Error encoding image: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Error encoding image: $e',
+        name: 'AICaptionService',
+      );
       return null;
     }
   }
@@ -164,18 +210,26 @@ class AICaptionService {
     Map<String, dynamic>? vendorProfile,
   }) async {
     if (!_isInitialized) {
-      throw Exception('AICaptionService not initialized. Call initialize() first.');
+      throw Exception(
+        'AICaptionService not initialized. Call initialize() first.',
+      );
     }
 
-    developer.log('[AICaptionService] Generating caption for media: $mediaPath', name: 'AICaptionService');
-    
+    developer.log(
+      '[AICaptionService] Generating caption for media: $mediaPath',
+      name: 'AICaptionService',
+    );
+
     // Generate cache key
     final hash = _generateMediaHash(mediaPath, existingCaption, vendorProfile);
-    
+
     // Check cache first
     final cachedResponse = _getCachedCaption(hash);
     if (cachedResponse != null) {
-      developer.log('[AICaptionService] Returning cached caption', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Returning cached caption',
+        name: 'AICaptionService',
+      );
       return cachedResponse;
     }
 
@@ -187,19 +241,27 @@ class AICaptionService {
 
     // Call Cloud Function with timeout
     try {
-      developer.log('[AICaptionService] Calling generateCaption Cloud Function with image data: ${imageBase64 != null}', name: 'AICaptionService');
-      
+      developer.log(
+        '[AICaptionService] Calling generateCaption Cloud Function with image data: ${imageBase64 != null}',
+        name: 'AICaptionService',
+      );
+
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('generateCaption');
-      
-      final result = await callable.call({
-        'mediaType': mediaType ?? 'photo',
-        'existingCaption': existingCaption,
-        'vendorProfile': vendorProfile,
-        'imageBase64': imageBase64, // Send image data to Wicker!
-      }).timeout(_requestTimeout);
 
-      developer.log('[AICaptionService] Cloud Function response: ${result.data}', name: 'AICaptionService');
+      final result = await callable
+          .call({
+            'mediaType': mediaType ?? 'photo',
+            'existingCaption': existingCaption,
+            'vendorProfile': vendorProfile,
+            'imageBase64': imageBase64, // Send image data to Wicker!
+          })
+          .timeout(_requestTimeout);
+
+      developer.log(
+        '[AICaptionService] Cloud Function response: ${result.data}',
+        name: 'AICaptionService',
+      );
 
       // Parse response
       final data = result.data as Map<String, dynamic>;
@@ -208,12 +270,17 @@ class AICaptionService {
       // Cache the response
       await _cacheCaption(hash, response);
 
-      developer.log('[AICaptionService] Wicker generated caption: "${response.caption}" (confidence: ${response.confidence})', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Wicker generated caption: "${response.caption}" (confidence: ${response.confidence})',
+        name: 'AICaptionService',
+      );
       return response;
-
     } catch (e) {
-      developer.log('[AICaptionService] Error calling Cloud Function: $e', name: 'AICaptionService');
-      
+      developer.log(
+        '[AICaptionService] Error calling Cloud Function: $e',
+        name: 'AICaptionService',
+      );
+
       // Return fallback response for better UX
       return AICaptionResponse(
         caption: _getFallbackCaption(mediaType),
@@ -233,7 +300,7 @@ class AICaptionService {
       'Local and delicious! 🥬',
       'Straight from our fields 🌱',
     ];
-    
+
     final random = DateTime.now().millisecond % fallbacks.length;
     return fallbacks[random];
   }
@@ -250,7 +317,9 @@ class AICaptionService {
         try {
           final cachedData = _cacheBox.get(key);
           if (cachedData != null) {
-            final response = AICaptionResponse.fromJson(Map<String, dynamic>.from(cachedData));
+            final response = AICaptionResponse.fromJson(
+              Map<String, dynamic>.from(cachedData),
+            );
             final age = now.difference(response.timestamp);
             if (age > _cacheExpiry) {
               keysToDelete.add(key.toString());
@@ -267,10 +336,16 @@ class AICaptionService {
       }
 
       if (keysToDelete.isNotEmpty) {
-        developer.log('[AICaptionService] Cleared ${keysToDelete.length} expired cache entries', name: 'AICaptionService');
+        developer.log(
+          '[AICaptionService] Cleared ${keysToDelete.length} expired cache entries',
+          name: 'AICaptionService',
+        );
       }
     } catch (e) {
-      developer.log('[AICaptionService] Error clearing expired cache: $e', name: 'AICaptionService');
+      developer.log(
+        '[AICaptionService] Error clearing expired cache: $e',
+        name: 'AICaptionService',
+      );
     }
   }
 
@@ -286,7 +361,9 @@ class AICaptionService {
 
       for (final value in _cacheBox.values) {
         try {
-          final response = AICaptionResponse.fromJson(Map<String, dynamic>.from(value));
+          final response = AICaptionResponse.fromJson(
+            Map<String, dynamic>.from(value),
+          );
           final age = now.difference(response.timestamp);
           if (age <= _cacheExpiry) {
             validEntries++;
@@ -303,7 +380,9 @@ class AICaptionService {
         'totalEntries': totalEntries,
         'validEntries': validEntries,
         'expiredEntries': expiredEntries,
-        'cacheHitRate': totalEntries > 0 ? (validEntries / totalEntries * 100).toStringAsFixed(1) : '0.0',
+        'cacheHitRate': totalEntries > 0
+            ? (validEntries / totalEntries * 100).toStringAsFixed(1)
+            : '0.0',
       };
     } catch (e) {
       return {'initialized': true, 'error': e.toString()};
@@ -318,4 +397,4 @@ class AICaptionService {
       developer.log('[AICaptionService] Disposed', name: 'AICaptionService');
     }
   }
-} 
+}

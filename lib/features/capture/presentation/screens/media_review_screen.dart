@@ -244,7 +244,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final response = await _aiCaptionService.generateCaption(
         mediaPath: widget.mediaPath,
         mediaType: widget.mediaType.name,
-        existingCaption: _captionController.text.isNotEmpty ? _captionController.text : null,
+        existingCaption: _captionController.text.isNotEmpty
+            ? _captionController.text
+            : null,
         vendorProfile: vendorProfile,
       );
 
@@ -256,9 +258,13 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
         // Show feedback about the caption
         if (response.fromCache) {
-          _showCaptionFeedback('🧺 Wicker remembers: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
+          _showCaptionFeedback(
+            '🧺 Wicker remembers: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}',
+          );
         } else {
-          _showCaptionFeedback('🧺 Wicker says: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
+          _showCaptionFeedback(
+            '🧺 Wicker says: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}',
+          );
         }
       }
     } catch (e) {
@@ -312,25 +318,34 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         filterType: _selectedFilter.name,
       );
 
-      debugPrint('[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})');
+      debugPrint(
+        '[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})',
+      );
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
       // Show different behavior based on connectivity
       if (_hasConnectivity) {
         // Online: Try immediate sync with timeout
-        debugPrint('[MediaReviewScreen] Online - attempting immediate sync with timeout');
-        
+        debugPrint(
+          '[MediaReviewScreen] Online - attempting immediate sync with timeout',
+        );
+
         try {
           // Set a reasonable timeout for online posting
           await backgroundSyncService.triggerImmediateSync().timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              debugPrint('[MediaReviewScreen] Immediate sync timed out - will continue in background');
-              throw TimeoutException('Upload timed out', const Duration(seconds: 10));
+              debugPrint(
+                '[MediaReviewScreen] Immediate sync timed out - will continue in background',
+              );
+              throw TimeoutException(
+                'Upload timed out',
+                const Duration(seconds: 10),
+              );
             },
           );
-          
+
           // Success - immediate upload completed
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -356,8 +371,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         }
       } else {
         // Offline: Add to queue and show offline message with queue count
-        debugPrint('[MediaReviewScreen] Offline - added to queue for later upload');
-        
+        debugPrint(
+          '[MediaReviewScreen] Offline - added to queue for later upload',
+        );
+
         if (mounted) {
           // Get current queue count for better user feedback
           _showOfflineQueueMessage();
@@ -543,7 +560,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-                        children: [
+            children: [
               const Text(
                 'Add a caption',
                 style: TextStyle(
@@ -554,8 +571,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               ),
               const Spacer(),
               // Placeholder to maintain layout spacing
-              if (_aiCaptionAvailable)
-                const SizedBox(width: 48, height: 24),
+              if (_aiCaptionAvailable) const SizedBox(width: 48, height: 24),
             ],
           ),
           const SizedBox(height: 8),
@@ -579,7 +595,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ),
               ),
               contentPadding: const EdgeInsets.all(16),
-              suffixIcon: _lastGeneratedCaption != null &&
+              suffixIcon:
+                  _lastGeneratedCaption != null &&
                       _captionController.text != _lastGeneratedCaption
                   ? IconButton(
                       onPressed: () {
@@ -598,7 +615,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                   : null,
             ),
           ),
-          if (_lastGeneratedCaption != null && _lastGeneratedCaption!.isNotEmpty)
+          if (_lastGeneratedCaption != null &&
+              _lastGeneratedCaption!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
@@ -647,7 +665,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ],
               ),
             ),
-          
+
           // Post button
           SizedBox(
             width: double.infinity,
@@ -655,9 +673,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             child: ElevatedButton(
               onPressed: _isPosting ? null : _postMedia,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _hasConnectivity 
-                  ? Colors.deepPurple 
-                  : Colors.blue.shade600,
+                backgroundColor: _hasConnectivity
+                    ? Colors.deepPurple
+                    : Colors.blue.shade600,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -673,12 +691,16 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          _hasConnectivity ? 'Posting...' : 'Adding to queue...',
+                          _hasConnectivity
+                              ? 'Posting...'
+                              : 'Adding to queue...',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -711,9 +733,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   Future<void> _showOfflineQueueMessage() async {
     try {
       // Get current queue count
-      final pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final pendingBox = await Hive.openBox<PendingMediaItem>(
+        'pendingMediaQueue',
+      );
       final queueCount = pendingBox.length;
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -723,9 +747,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  queueCount == 1 
-                    ? '📱 1 post queued for upload'
-                    : '📱 $queueCount posts queued for upload',
+                  queueCount == 1
+                      ? '📱 1 post queued for upload'
+                      : '📱 $queueCount posts queued for upload',
                 ),
               ),
             ],
@@ -768,17 +792,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Update connectivity status
   void _updateConnectivityStatus(List<ConnectivityResult> result) {
-    final bool hasConnection = result.any((connectivity) => 
-      connectivity != ConnectivityResult.none
+    final bool hasConnection = result.any(
+      (connectivity) => connectivity != ConnectivityResult.none,
     );
-    
+
     if (mounted && _hasConnectivity != hasConnection) {
       setState(() {
         _hasConnectivity = hasConnection;
       });
-      
+
       // Log connectivity change for debugging
-      debugPrint('[MediaReviewScreen] Connectivity changed: ${hasConnection ? 'ONLINE' : 'OFFLINE'}');
+      debugPrint(
+        '[MediaReviewScreen] Connectivity changed: ${hasConnection ? 'ONLINE' : 'OFFLINE'}',
+      );
     }
   }
 
@@ -863,25 +889,29 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             ),
           ),
         ),
-        
+
         // Wicker overlay - positioned in the foreground
         if (_aiCaptionAvailable)
           Positioned(
             right: 8,
-            bottom: MediaQuery.of(context).size.height * 0.32, // Position near the caption area
+            bottom:
+                MediaQuery.of(context).size.height *
+                0.32, // Position near the caption area
             child: AnimatedBuilder(
               animation: _aiButtonAnimationController,
               builder: (context, child) {
                 // Friendly breathing animation when idle
-                final breathingScale = _isGeneratingCaption 
-                    ? 1.0 
-                    : 1.0 + (sin(_aiButtonAnimationController.value * 2 * pi) * 0.08);
-                
+                final breathingScale = _isGeneratingCaption
+                    ? 1.0
+                    : 1.0 +
+                          (sin(_aiButtonAnimationController.value * 2 * pi) *
+                              0.08);
+
                 // Gentle shake when generating
                 final shakeOffset = _isGeneratingCaption
                     ? sin(_aiButtonAnimationController.value * 8 * pi) * 3.0
                     : 0.0;
-                
+
                 return Transform.translate(
                   offset: Offset(shakeOffset, 0),
                   child: Transform.scale(

@@ -8,8 +8,8 @@ import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../../../shared/presentation/widgets/version_display_widget.dart';
-import '../../application/auth_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../../../main.dart' as main;
 
 /// MarketSnap Welcome Screen - Redesigned to match login_page.png reference
 /// Features the basket character icon and farmers-market aesthetic
@@ -23,14 +23,16 @@ class AuthWelcomeScreen extends StatefulWidget {
 
 class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
   bool _isOffline = false;
-  
+
   @override
   void initState() {
     super.initState();
     _checkConnectivity();
-    
+
     // Monitor connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       final isOffline = results.contains(ConnectivityResult.none);
       if (mounted && _isOffline != isOffline) {
         setState(() {
@@ -39,7 +41,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
       }
     });
   }
-  
+
   Future<void> _checkConnectivity() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     final isOffline = connectivityResult.contains(ConnectivityResult.none);
@@ -52,7 +54,9 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[AuthWelcomeScreen] Building MarketSnap welcome screen (offline: $_isOffline)');
+    debugPrint(
+      '[AuthWelcomeScreen] Building MarketSnap welcome screen (offline: $_isOffline)',
+    );
 
     // Check if phone auth should be disabled on iOS emulator
     final bool isIOSEmulator = Platform.isIOS && kDebugMode;
@@ -87,7 +91,8 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                   // Offline status indicator
                   if (_isOffline) ...[
                     MarketSnapStatusMessage(
-                      message: 'You\'re offline - Sign in to access your account once connected',
+                      message:
+                          'You\'re offline - Sign in to access your account once connected',
                       type: StatusType.warning,
                       showIcon: true,
                     ),
@@ -385,7 +390,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
       _error = null;
     });
     try {
-      await AuthService().signInWithGoogle();
+      await main.authService.signInWithGoogle();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() {

@@ -30,14 +30,14 @@ class FAQVector {
   /// Create FAQVector from Firestore document
   factory FAQVector.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return FAQVector(
       id: doc.id,
       vendorId: data['vendorId'] ?? '',
       question: data['question'] ?? '',
       answer: data['answer'] ?? '',
       chunkText: data['chunkText'] ?? '',
-      embedding: data['embedding'] != null 
+      embedding: data['embedding'] != null
           ? List<double>.from(data['embedding'])
           : null,
       keywords: List<String>.from(data['keywords'] ?? []),
@@ -88,4 +88,4 @@ class FAQVector {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-} 
+}

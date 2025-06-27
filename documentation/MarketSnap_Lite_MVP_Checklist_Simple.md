@@ -77,6 +77,9 @@ Legend:
 **Criteria:** All user‑facing widgets & navigation. *Depends on Phases 1 & 2.*
 
 - [X] **1. Auth & Profile Screens**
+  - [X] User type selection during sign-up (vendor or regular user) ✅ **COMPLETED** - Full post-authentication flow with vendor/regular user choice
+  - [X] Regular user profile page ✅ **COMPLETED** - Complete profile system with avatar upload, local storage, and Firebase sync
+  - [X] "Follow" button on vendor profile for regular users ✅ **COMPLETED** - Full follow/unfollow system with real-time updates and FCM integration
   - [X] Phone/email OTP flow using `firebase_auth`. ✅ **COMPLETED** - Full cross-platform authentication implemented with Firebase emulator support.
   - [X] Profile form: stall name, market city, avatar upload. ✅ **COMPLETED** - Full vendor profile form with MarketSnap design system, avatar upload via camera/gallery, offline-first storage, and Firebase sync.
   - [X] Validate offline caching of profile in Hive. ✅ **COMPLETED** - Comprehensive test suite validates profile persistence, sync status tracking, completeness validation, and cross-restart data integrity.
@@ -115,7 +118,10 @@ Legend:
   - [X] **CRITICAL FIX**: Offline authentication persistence ✅ **RESOLVED** - LateInitializationError fixed with robust error handling
 
 - [ ] **2. Push Notification Flow**
-  - [ ] Request FCM permissions; save token in `followers` sub‑coll.
+  - [ ] Request FCM permissions on app start/login
+  - [ ] On "Follow" action, save FCM token in `/vendors/{vendorId}/followers/{userId}`
+  - [ ] Handle FCM token refresh
+  - [ ] Update Firestore rules for followers sub-collection
   - [ ] On message click, deep‑link to snap/story.
   - [ ] Fallback in‑app banner if system push disabled.
 

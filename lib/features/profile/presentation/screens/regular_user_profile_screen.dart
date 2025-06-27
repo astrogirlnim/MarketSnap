@@ -1,25 +1,27 @@
 import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
+
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../settings/application/settings_service.dart';
 import '../../../auth/application/auth_service.dart';
 import '../../../../main.dart' as main;
 
-/// Vendor Profile Form Screen
-/// Allows vendors to create/edit their profile with stall name, market city, and avatar upload
-class VendorProfileScreen extends StatefulWidget {
+/// Regular User Profile Form Screen
+/// Simplified profile for regular users (no stall info, just basic profile)
+class RegularUserProfileScreen extends StatefulWidget {
   final ProfileService profileService;
   final VoidCallback? onProfileComplete;
   final bool isInTabNavigation;
 
-  const VendorProfileScreen({
+  const RegularUserProfileScreen({
     super.key,
     required this.profileService,
     this.onProfileComplete,
@@ -27,17 +29,16 @@ class VendorProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<VendorProfileScreen> createState() => _VendorProfileScreenState();
+  State<RegularUserProfileScreen> createState() =>
+      _RegularUserProfileScreenState();
 }
 
-class _VendorProfileScreenState extends State<VendorProfileScreen> {
+class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _displayNameController = TextEditingController();
-  final _stallNameController = TextEditingController();
-  final _marketCityController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
   final AuthService _authService = AuthService();
 
-  // Note: Location setting now managed in Settings & Help screen
   String? _localAvatarPath;
   String? _errorMessage;
   bool _isLoading = false;
@@ -52,14 +53,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   @override
   void dispose() {
     _displayNameController.dispose();
-    _stallNameController.dispose();
-    _marketCityController.dispose();
     super.dispose();
   }
 
   /// Loads existing profile data if available
   Future<void> _loadExistingProfile() async {
-    debugPrint('[VendorProfileScreen] Loading existing profile data');
+    developer.log(
+      '[RegularUserProfileScreen] Loading existing profile data',
+      name: 'RegularUserProfileScreen',
+    );
 
     setState(() {
       _isLoading = true;
@@ -67,22 +69,28 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     });
 
     try {
-      final profile = widget.profileService.getCurrentUserProfile();
-      if (profile != null) {
-        debugPrint(
-          '[VendorProfileScreen] Found existing profile: ${profile.stallName}',
+      final regularProfile = widget.profileService
+          .getCurrentRegularUserProfile();
+      if (regularProfile != null) {
+        developer.log(
+          '[RegularUserProfileScreen] Found existing regular profile: ${regularProfile.displayName}',
+          name: 'RegularUserProfileScreen',
         );
         setState(() {
-          _displayNameController.text = profile.displayName;
-          _stallNameController.text = profile.stallName;
-          _marketCityController.text = profile.marketCity;
-          _localAvatarPath = profile.localAvatarPath;
+          _displayNameController.text = regularProfile.displayName;
+          _localAvatarPath = regularProfile.localAvatarPath;
         });
       } else {
-        debugPrint('[VendorProfileScreen] No existing profile found');
+        developer.log(
+          '[RegularUserProfileScreen] No existing regular profile found',
+          name: 'RegularUserProfileScreen',
+        );
       }
     } catch (e) {
-      debugPrint('[VendorProfileScreen] Error loading profile: $e');
+      developer.log(
+        '[RegularUserProfileScreen] Error loading profile: $e',
+        name: 'RegularUserProfileScreen',
+      );
       setState(() {
         _errorMessage = 'Failed to load profile data';
       });
@@ -94,23 +102,34 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   }
 
   /// Handles avatar image selection
-  Future<void> _pickAvatar({bool fromCamera = false}) async {
-    debugPrint(
-      '[VendorProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}',
+  Future<void> _pickAvatar({required bool fromCamera}) async {
+    developer.log(
+      '[RegularUserProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}',
+      name: 'RegularUserProfileScreen',
     );
 
     try {
-      final imagePath = await widget.profileService.pickAvatarImage(
-        fromCamera: fromCamera,
+      final XFile? image = await _imagePicker.pickImage(
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
       );
-      if (imagePath != null) {
+
+      if (image != null) {
         setState(() {
-          _localAvatarPath = imagePath;
+          _localAvatarPath = image.path;
         });
-        debugPrint('[VendorProfileScreen] Avatar selected: $imagePath');
+        developer.log(
+          '[RegularUserProfileScreen] Avatar selected: ${image.path}',
+          name: 'RegularUserProfileScreen',
+        );
       }
     } catch (e) {
-      debugPrint('[VendorProfileScreen] Error picking avatar: $e');
+      developer.log(
+        '[RegularUserProfileScreen] Error picking avatar: $e',
+        name: 'RegularUserProfileScreen',
+      );
       _showErrorMessage('Failed to select avatar: $e');
     }
   }
@@ -121,8 +140,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       context: context,
       backgroundColor: AppColors.eggshell,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppSpacing.radiusLg),
+          topRight: Radius.circular(AppSpacing.radiusLg),
         ),
       ),
       builder: (BuildContext context) {
@@ -171,7 +191,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     );
   }
 
-  /// Validates form data
+  /// Validates display name
   String? _validateDisplayName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Display name is required';
@@ -182,33 +202,16 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     return null;
   }
 
-  String? _validateStallName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Stall name is required';
-    }
-    if (value.trim().length < 3) {
-      return 'Stall name must be at least 3 characters';
-    }
-    return null;
-  }
-
-  String? _validateMarketCity(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Market city is required';
-    }
-    if (value.trim().length < 2) {
-      return 'Market city must be at least 2 characters';
-    }
-    return null;
-  }
-
   /// Saves the profile
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    debugPrint('[VendorProfileScreen] Saving profile');
+    developer.log(
+      '[RegularUserProfileScreen] Saving regular user profile',
+      name: 'RegularUserProfileScreen',
+    );
 
     setState(() {
       _isSaving = true;
@@ -216,15 +219,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     });
 
     try {
-      await widget.profileService.saveProfile(
+      await widget.profileService.saveRegularUserProfile(
         displayName: _displayNameController.text,
-        stallName: _stallNameController.text,
-        marketCity: _marketCityController.text,
-        allowLocation: false, // Default - managed in Settings
         localAvatarPath: _localAvatarPath,
       );
 
-      debugPrint('[VendorProfileScreen] Profile saved successfully');
+      developer.log(
+        '[RegularUserProfileScreen] Regular profile saved successfully',
+        name: 'RegularUserProfileScreen',
+      );
 
       // Show success message
       if (mounted) {
@@ -245,7 +248,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         widget.onProfileComplete?.call();
       }
     } catch (e) {
-      debugPrint('[VendorProfileScreen] Error saving profile: $e');
+      developer.log(
+        '[RegularUserProfileScreen] Error saving profile: $e',
+        name: 'RegularUserProfileScreen',
+      );
       _showErrorMessage('Failed to save profile: $e');
     } finally {
       if (mounted) {
@@ -311,7 +317,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Optional - helps customers recognize your stall',
+          'Optional - helps vendors recognize you',
           style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           textAlign: TextAlign.center,
         ),
@@ -320,13 +326,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   }
 
   /// Navigate to settings screen
-  void _navigateToSettings(BuildContext context) {
-    developer.log(
-      '[VendorProfileScreen] Navigating to settings screen',
-      name: 'VendorProfileScreen',
-    );
-
-    Navigator.of(context).push(
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
       MaterialPageRoute(
         builder: (context) => SettingsScreen(
           settingsService: SettingsService(hiveService: main.hiveService),
@@ -337,7 +339,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   /// Sign out the current user
   Future<void> _signOut() async {
-    debugPrint('[VendorProfileScreen] User sign out requested');
+    debugPrint('[RegularUserProfileScreen] User sign out requested');
 
     // Show confirmation dialog
     final bool? shouldSignOut = await showDialog<bool>(
@@ -402,7 +404,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
     try {
       await _authService.signOut();
-      debugPrint('[VendorProfileScreen] User signed out successfully');
+      debugPrint('[RegularUserProfileScreen] User signed out successfully');
 
       // Close loading dialog and navigate to auth
       if (mounted) {
@@ -412,7 +414,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         ).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
       }
     } catch (e) {
-      debugPrint('[VendorProfileScreen] Error signing out: $e');
+      debugPrint('[RegularUserProfileScreen] Error signing out: $e');
 
       // Close loading dialog
       if (mounted) {
@@ -439,40 +441,48 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cornsilk,
-      appBar: AppBar(
-        title: Text('Vendor Profile', style: AppTypography.h1),
-        backgroundColor: AppColors.cornsilk,
-        elevation: 0,
-        // Hide back button in these cases:
-        // 1. During initial profile setup (when onProfileComplete is provided)
-        // 2. When used in tab navigation (nowhere to go back to)
-        leading: (widget.onProfileComplete != null || widget.isInTabNavigation)
-            ? null
-            : IconButton(
+      appBar: widget.isInTabNavigation
+          ? AppBar(
+              backgroundColor: AppColors.cornsilk,
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              title: Text(
+                'My Profile',
+                style: AppTypography.h1.copyWith(color: AppColors.soilCharcoal),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.settings,
+                    color: AppColors.soilCharcoal,
+                  ),
+                  onPressed: _navigateToSettings,
+                  tooltip: 'Settings',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: AppColors.appleRed),
+                  onPressed: _signOut,
+                  tooltip: 'Sign Out',
+                ),
+              ],
+            )
+          : AppBar(
+              backgroundColor: AppColors.cornsilk,
+              elevation: 0,
+              leading: IconButton(
                 icon: const Icon(
                   Icons.arrow_back,
                   color: AppColors.soilCharcoal,
                 ),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.pop(context),
               ),
-        // Disable automatic back button during initial setup or tab navigation
-        automaticallyImplyLeading:
-            widget.onProfileComplete == null && !widget.isInTabNavigation,
-        actions: [
-          // Settings button for navigation to settings screen
-          IconButton(
-            icon: const Icon(Icons.settings, color: AppColors.soilCharcoal),
-            onPressed: () => _navigateToSettings(context),
-            tooltip: 'Settings & Help',
-          ),
-          // Sign out button
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.appleRed),
-            onPressed: _signOut,
-            tooltip: 'Sign Out',
-          ),
-        ],
-      ),
+              title: Text(
+                'Set up your profile',
+                style: AppTypography.h1.copyWith(color: AppColors.soilCharcoal),
+              ),
+              centerTitle: true,
+            ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
@@ -488,18 +498,20 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header
-                      Text(
-                        'Set up your market stall profile',
-                        style: AppTypography.h2,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'This information helps customers find and recognize your stall at the farmers market.',
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.soilTaupe,
+                      if (!widget.isInTabNavigation) ...[
+                        Text(
+                          'Welcome to the community!',
+                          style: AppTypography.h2,
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Set up your profile to connect with vendors and discover fresh finds.',
+                          style: AppTypography.body.copyWith(
+                            color: AppColors.soilTaupe,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
 
                       // Avatar Section
                       Center(child: _buildAvatarSection()),
@@ -519,33 +531,12 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                       // Form Fields
                       MarketSnapTextField(
                         labelText: 'Display Name',
-                        hintText: 'Your name as customers will see it',
+                        hintText: 'Your name as it appears to vendors',
                         controller: _displayNameController,
                         prefixIcon: Icons.person,
                         validator: _validateDisplayName,
                       ),
                       const SizedBox(height: AppSpacing.lg),
-
-                      MarketSnapTextField(
-                        labelText: 'Stall Name',
-                        hintText: 'e.g., "Fresh Valley Produce"',
-                        controller: _stallNameController,
-                        prefixIcon: Icons.store,
-                        validator: _validateStallName,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      MarketSnapTextField(
-                        labelText: 'Market City',
-                        hintText: 'e.g., "Springfield"',
-                        controller: _marketCityController,
-                        prefixIcon: Icons.location_city,
-                        validator: _validateMarketCity,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      // Note: Location setting moved to Settings & Help screen
-                      const SizedBox(height: AppSpacing.md),
 
                       // Save Button
                       MarketSnapPrimaryButton(
@@ -559,7 +550,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                       // Offline Notice
                       MarketSnapStatusMessage(
                         message:
-                            'Your profile is saved locally and will sync when you\'re online',
+                            'Profile saved locally and will sync when connected to internet',
                         type: StatusType.info,
                         showIcon: true,
                       ),

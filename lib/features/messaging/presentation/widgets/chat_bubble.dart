@@ -8,17 +8,15 @@ class ChatBubble extends StatelessWidget {
   final Message message;
   final bool isMe;
 
-  const ChatBubble({
-    super.key,
-    required this.message,
-    required this.isMe,
-  });
+  const ChatBubble({super.key, required this.message, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
     // Debug logging
-    debugPrint('[ChatBubble] Building bubble: isMe=$isMe, text="${message.text}"');
-    
+    debugPrint(
+      '[ChatBubble] Building bubble: isMe=$isMe, text="${message.text}"',
+    );
+
     final alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
     final color = isMe ? AppColors.marketBlue : AppColors.surface;
     final textColor = isMe ? Colors.white : AppColors.textPrimary;
@@ -43,7 +41,8 @@ class ChatBubble extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(AppSpacing.md),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7, // Limit bubble width
+          maxWidth:
+              MediaQuery.of(context).size.width * 0.7, // Limit bubble width
         ),
         decoration: BoxDecoration(
           color: color,

@@ -8,7 +8,10 @@ class PushNotificationService {
   final GlobalKey<NavigatorState> navigatorKey;
   final ProfileService profileService;
 
-  PushNotificationService({required this.navigatorKey, required this.profileService});
+  PushNotificationService({
+    required this.navigatorKey,
+    required this.profileService,
+  });
 
   Future<void> initialize() async {
     // Request permission
@@ -34,7 +37,7 @@ class PushNotificationService {
     if (type == 'new_message') {
       final fromUid = data['fromUid'];
       // Fetch the user profile to navigate to the chat screen
-      final fromUser = await profileService.loadProfileFromFirestore(fromUid);
+      final fromUser = await profileService.loadAnyUserProfileFromFirestore(fromUid);
 
       if (fromUser != null) {
         navigatorKey.currentState?.push(
@@ -56,4 +59,3 @@ class PushNotificationService {
     }
   }
 }
-

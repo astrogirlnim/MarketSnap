@@ -1,14 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message.dart';
 
 /// Service for handling ephemeral messaging between vendors and shoppers.
 /// Manages 24-hour auto-expiring messages with proper security.
 class MessagingService {
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _firebaseAuth;
 
-  MessagingService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  MessagingService({FirebaseFirestore? firestore, FirebaseAuth? firebaseAuth})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   /// Sends a new message between users
   /// Returns the message ID if successful
@@ -20,6 +23,12 @@ class MessagingService {
     debugPrint(
       '[MessagingService] Sending message from $fromUid to $toUid: "${text.length > 50 ? '${text.substring(0, 50)}...' : text}"',
     );
+
+    // Quick authentication check to avoid token validation overhead
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null || currentUser.uid != fromUid) {
+      throw Exception('Authentication mismatch. Please sign in again.');
+    }
 
     try {
       // Validate input
@@ -76,7 +85,9 @@ class MessagingService {
     // Create a sorted list of participants to match the stored array
     final participants = [userId1, userId2]..sort();
 
-    debugPrint('[MessagingService] Using participants for query: $participants');
+    debugPrint(
+      '[MessagingService] Using participants for query: $participants',
+    );
 
     return _firestore
         .collection('messages')
@@ -85,17 +96,17 @@ class MessagingService {
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-      debugPrint(
-        '[MessagingService] Received ${snapshot.docs.length} messages for participants $participants',
-      );
+          debugPrint(
+            '[MessagingService] Received ${snapshot.docs.length} messages for participants $participants',
+          );
 
-      return snapshot.docs
-          .map((doc) => Message.fromFirestore(doc))
-          .where(
-            (message) => !message.hasExpired,
-          ) // Filter out expired messages
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => Message.fromFirestore(doc))
+              .where(
+                (message) => !message.hasExpired,
+              ) // Filter out expired messages
+              .toList();
+        });
   }
 
   /// Gets all conversations for a user
@@ -104,7 +115,16 @@ class MessagingService {
     required String userId,
     int limit = 20,
   }) {
-    debugPrint('[MessagingService] Getting conversations for user: $userId using participants field');
+    debugPrint(
+      '[MessagingService] Getting conversations for user: $userId using participants field',
+    );
+
+    // Perform quick auth check without token validation to avoid hanging
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null || currentUser.uid != userId) {
+      debugPrint('[MessagingService] ❌ User authentication mismatch');
+      return Stream.value(<Message>[]);
+    }
 
     try {
       // Query for messages where the user is a participant
@@ -114,19 +134,27 @@ class MessagingService {
           .orderBy('createdAt', descending: true)
           .limit(limit * 5); // Get more to account for filtering and grouping
 
-      debugPrint('[MessagingService] Created Firestore query for getUserConversations');
+      debugPrint(
+        '[MessagingService] Created Firestore query for getUserConversations',
+      );
 
       return query
           .snapshots(includeMetadataChanges: false)
           .timeout(
             const Duration(seconds: 8),
             onTimeout: (sink) {
-              debugPrint('[MessagingService] Query timed out for user $userId - likely missing index');
-              sink.addError('Query timed out - this usually indicates missing Firestore indexes for the messages collection');
+              debugPrint(
+                '[MessagingService] Query timed out for user $userId - likely missing index',
+              );
+              sink.addError(
+                'Query timed out - this usually indicates missing Firestore indexes for the messages collection',
+              );
             },
           )
           .handleError((error, stackTrace) {
-            debugPrint('[MessagingService] Stream error for getUserConversations: $error');
+            debugPrint(
+              '[MessagingService] Stream error for getUserConversations: $error',
+            );
             debugPrint('[MessagingService] Stack trace: $stackTrace');
             // Re-throw to be handled by UI
             throw error;
@@ -137,7 +165,9 @@ class MessagingService {
             );
 
             if (snapshot.docs.isEmpty) {
-              debugPrint('[MessagingService] No messages found for user $userId - returning empty list');
+              debugPrint(
+                '[MessagingService] No messages found for user $userId - returning empty list',
+              );
               return <Message>[];
             }
 
@@ -148,7 +178,9 @@ class MessagingService {
                     try {
                       return Message.fromFirestore(doc);
                     } catch (e) {
-                      debugPrint('[MessagingService] Error parsing message ${doc.id}: $e');
+                      debugPrint(
+                        '[MessagingService] Error parsing message ${doc.id}: $e',
+                      );
                       return null;
                     }
                   })
@@ -157,7 +189,9 @@ class MessagingService {
                   .where((message) => !message.hasExpired)
                   .toList();
 
-              debugPrint('[MessagingService] Parsed ${allMessages.length} valid, non-expired messages');
+              debugPrint(
+                '[MessagingService] Parsed ${allMessages.length} valid, non-expired messages',
+              );
 
               // Group by conversation and get the latest message from each
               final conversationMap = <String, Message>{};
@@ -178,22 +212,30 @@ class MessagingService {
               );
 
               final result = conversations.take(limit).toList();
-              debugPrint('[MessagingService] Returning ${result.length} conversations after limit');
-              
+              debugPrint(
+                '[MessagingService] Returning ${result.length} conversations after limit',
+              );
+
               return result;
             } catch (e) {
-              debugPrint('[MessagingService] Error processing conversation data: $e');
+              debugPrint(
+                '[MessagingService] Error processing conversation data: $e',
+              );
               // Return empty list rather than crashing
               return <Message>[];
             }
           })
           .handleError((error) {
-            debugPrint('[MessagingService] Final error handler in getUserConversations: $error');
+            debugPrint(
+              '[MessagingService] Final error handler in getUserConversations: $error',
+            );
             // Emit empty list on error to prevent infinite loading
             return Stream.value(<Message>[]);
           });
     } catch (e) {
-      debugPrint('[MessagingService] Error creating getUserConversations stream: $e');
+      debugPrint(
+        '[MessagingService] Error creating getUserConversations stream: $e',
+      );
       // Return a stream that immediately emits an empty list
       return Stream.value(<Message>[]);
     }

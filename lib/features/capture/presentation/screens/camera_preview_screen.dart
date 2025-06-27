@@ -6,7 +6,6 @@ import '../../application/camera_service.dart';
 import 'media_review_screen.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
-import '../../../auth/application/auth_service.dart';
 
 /// Custom painter for drawing viewfinder grid overlay
 class ViewfinderGridPainter extends CustomPainter {
@@ -64,7 +63,6 @@ class CameraPreviewScreen extends StatefulWidget {
 class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     with WidgetsBindingObserver {
   final CameraService _cameraService = CameraService.instance;
-  final AuthService _authService = AuthService();
 
   bool _isInitializing = true;
   bool _isTakingPhoto = false;
@@ -386,8 +384,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   void _handleVideoRecordingComplete({String? videoPath}) {
     debugPrint('[CameraPreviewScreen] _handleVideoRecordingComplete called');
     debugPrint('[CameraPreviewScreen] Passed videoPath: $videoPath');
-    debugPrint('[CameraPreviewScreen] Service lastVideoPath: ${_cameraService.lastVideoPath}');
-    
+    debugPrint(
+      '[CameraPreviewScreen] Service lastVideoPath: ${_cameraService.lastVideoPath}',
+    );
+
     // Cancel countdown subscription
     _countdownSubscription?.cancel();
     _countdownSubscription = null;
@@ -403,18 +403,22 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     // ✅ FIX: Navigate to review screen if a path is available.
     // This handles both manual stops (path passed directly) and automatic stops (path from service).
     final finalVideoPath = videoPath ?? _cameraService.lastVideoPath;
-    
-    debugPrint('[CameraPreviewScreen] Final video path to use: $finalVideoPath');
+
+    debugPrint(
+      '[CameraPreviewScreen] Final video path to use: $finalVideoPath',
+    );
 
     if (finalVideoPath != null) {
-      debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath');
+      debugPrint(
+        '[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath',
+      );
       // Use a post-frame callback to avoid navigation during build
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return; // Early return if widget is not mounted
-        
+
         // Capture context before async operations
         final navigator = Navigator.of(context);
-        
+
         // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
         await _cameraService.pauseCamera();
 
@@ -435,7 +439,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         await _cameraService.resumeCamera();
       });
     } else {
-      debugPrint('[CameraPreviewScreen] ERROR: No video path available for navigation');
+      debugPrint(
+        '[CameraPreviewScreen] ERROR: No video path available for navigation',
+      );
     }
   }
 
@@ -535,76 +541,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         return Icons.flash_on;
       default:
         return Icons.flash_off;
-    }
-  }
-
-  /// Sign out the current user
-  Future<void> _signOut() async {
-    // Show confirmation dialog
-    final bool? shouldSignOut = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldSignOut != true) return;
-
-    // Show loading dialog
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Signing out...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    try {
-      await _authService.signOut();
-
-      // Close loading dialog and navigate to auth
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).popUntil((route) => route.isFirst); // Go to auth
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Error signing out: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
     }
   }
 
@@ -1131,19 +1067,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     ),
                   ),
                 ),
-
-              // Sign out button
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-                child: IconButton(
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                  tooltip: 'Sign Out',
-                ),
-              ),
             ],
           ),
         ),

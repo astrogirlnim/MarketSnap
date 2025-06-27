@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import '../models/pending_media.dart';
 import '../models/user_settings.dart';
 import '../models/vendor_profile.dart';
+import '../models/regular_user_profile.dart';
 import 'secure_storage_service.dart';
 
 /// Service responsible for initializing and managing the Hive local database.
@@ -19,12 +20,14 @@ class HiveService {
   late final Box<PendingMediaItem> pendingMediaQueueBox;
   late final Box<UserSettings> userSettingsBox;
   late final Box<VendorProfile> vendorProfileBox;
+  late final Box<RegularUserProfile> regularUserProfileBox;
   late final Box<Map<String, dynamic>> authCacheBox;
 
   // Box names
   static const String pendingMediaQueueBoxName = 'pendingMediaQueue';
   static const String userSettingsBoxName = 'userSettings';
   static const String vendorProfileBoxName = 'vendorProfile';
+  static const String regularUserProfileBoxName = 'regularUserProfile';
   static const String authCacheBoxName = 'authCache';
 
   // Directory for quarantined media files
@@ -58,6 +61,10 @@ class HiveService {
     if (!Hive.isAdapterRegistered(3)) {
       Hive.registerAdapter(PendingMediaItemAdapter());
     }
+
+    if (!Hive.isAdapterRegistered(4)) {
+      Hive.registerAdapter(RegularUserProfileAdapter());
+    }
   }
 
   Future<HiveAesCipher> _getEncryptionCipher() async {
@@ -83,6 +90,12 @@ class HiveService {
         vendorProfileBoxName,
         cipher,
         (box) => vendorProfileBox = box,
+      );
+
+      await _openBoxWithRecovery<RegularUserProfile>(
+        regularUserProfileBoxName,
+        cipher,
+        (box) => regularUserProfileBox = box,
       );
 
       await _openBoxWithRecovery<Map<String, dynamic>>(
@@ -162,7 +175,7 @@ class HiveService {
     debugPrint('[HiveService] - FilterType: "${item.filterType}"');
     debugPrint('[HiveService] - FilePath: ${item.filePath}');
     debugPrint('[HiveService] - Caption: ${item.caption}');
-    
+
     try {
       final File originalFile = File(item.filePath);
       if (!await originalFile.exists()) {
@@ -182,7 +195,8 @@ class HiveService {
         caption: item.caption,
         location: item.location,
         vendorId: item.vendorId,
-        filterType: item.filterType, // ✅ FIX: Include filterType in quarantined item
+        filterType:
+            item.filterType, // ✅ FIX: Include filterType in quarantined item
         id: item.id,
         createdAt: item.createdAt,
       );
@@ -194,17 +208,23 @@ class HiveService {
       final storedItem = pendingMediaQueueBox.get(quarantinedItem.id);
       debugPrint('[HiveService] ✅ FIX VERIFICATION:');
       debugPrint('[HiveService] - Original filterType: "${item.filterType}"');
-      debugPrint('[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"');
-      debugPrint('[HiveService] - Stored filterType: "${storedItem?.filterType}"');
-      
+      debugPrint(
+        '[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"',
+      );
+      debugPrint(
+        '[HiveService] - Stored filterType: "${storedItem?.filterType}"',
+      );
+
       // Additional validation
       if (item.filterType != storedItem?.filterType) {
         debugPrint('[HiveService] ❌ ERROR: FilterType mismatch detected!');
       } else {
         debugPrint('[HiveService] ✅ SUCCESS: FilterType preserved correctly');
       }
-      
-      debugPrint('[HiveService] Added pending media item: ${quarantinedItem.id}');
+
+      debugPrint(
+        '[HiveService] Added pending media item: ${quarantinedItem.id}',
+      );
     } catch (e) {
       rethrow;
     }
@@ -272,6 +292,27 @@ class HiveService {
     return profile?.isComplete ?? false;
   }
 
+  /// Get regular user profile for the given UID
+  RegularUserProfile? getRegularUserProfile(String uid) {
+    return regularUserProfileBox.get(uid);
+  }
+
+  /// Save or update regular user profile
+  Future<void> saveRegularUserProfile(RegularUserProfile profile) async {
+    await regularUserProfileBox.put(profile.uid, profile);
+  }
+
+  /// Delete regular user profile
+  Future<void> deleteRegularUserProfile(String uid) async {
+    await regularUserProfileBox.delete(uid);
+  }
+
+  /// Check if regular user profile exists and is complete
+  bool hasCompleteRegularUserProfile(String uid) {
+    final profile = getRegularUserProfile(uid);
+    return profile?.isComplete ?? false;
+  }
+
   // ================================
   // AUTH CACHE METHODS
   // ================================
@@ -285,7 +326,7 @@ class HiveService {
     String? photoURL,
   }) async {
     debugPrint('[HiveService] Caching authenticated user: $uid');
-    
+
     final userData = {
       'uid': uid,
       'email': email,
@@ -294,7 +335,7 @@ class HiveService {
       'photoURL': photoURL,
       'cachedAt': DateTime.now().millisecondsSinceEpoch,
     };
-    
+
     await authCacheBox.put('current_user', userData);
     debugPrint('[HiveService] ✅ User authentication cached successfully');
   }
@@ -323,17 +364,19 @@ class HiveService {
   bool isCachedAuthenticationValid() {
     final userData = getCachedAuthenticatedUser();
     if (userData == null) return false;
-    
+
     final cachedAt = userData['cachedAt'] as int?;
     if (cachedAt == null) return false;
-    
+
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(cachedAt);
     final now = DateTime.now();
     final daysSinceCached = now.difference(cacheTime).inDays;
-    
+
     final isValid = daysSinceCached <= 30; // 30 day expiry
-    debugPrint('[HiveService] 📅 Cached auth validity: $isValid ($daysSinceCached days old)');
-    
+    debugPrint(
+      '[HiveService] 📅 Cached auth validity: $isValid ($daysSinceCached days old)',
+    );
+
     return isValid;
   }
 

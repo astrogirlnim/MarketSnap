@@ -4,6 +4,7 @@ import 'package:marketsnap/features/capture/application/camera_service.dart';
 import 'package:marketsnap/features/feed/presentation/screens/feed_screen.dart';
 import 'package:marketsnap/features/messaging/presentation/screens/conversation_list_screen.dart';
 import 'package:marketsnap/features/profile/presentation/screens/vendor_profile_screen.dart';
+import 'package:marketsnap/features/profile/presentation/screens/regular_user_profile_screen.dart';
 import 'package:marketsnap/features/profile/application/profile_service.dart';
 import 'package:marketsnap/core/services/hive_service.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
@@ -26,20 +27,66 @@ class _MainShellScreenState extends State<MainShellScreen> {
   int _selectedIndex = 0;
   final CameraService _cameraService = CameraService.instance;
   late final List<Widget> _widgetOptions;
+  late final List<BottomNavigationBarItem> _navigationItems;
+  late final bool _isVendor;
 
   @override
   void initState() {
     super.initState();
-    _widgetOptions = <Widget>[
-      const FeedScreen(),
-      CameraPreviewScreen(hiveService: widget.hiveService),
-      const ConversationListScreen(),
-      VendorProfileScreen(
-        profileService: widget.profileService,
-        isInTabNavigation: true, // This prevents back button from showing
-        // No onProfileComplete callback means this is a view/edit mode, not initial setup
-      ),
-    ];
+    _determineUserType();
+    _setupNavigationForUserType();
+  }
+
+  /// Determines if the current user is a vendor or regular user
+  void _determineUserType() {
+    // Check if user has a vendor profile
+    final vendorProfile = widget.profileService.getCurrentUserProfile();
+
+    // User is a vendor if they have a vendor profile
+    _isVendor = vendorProfile != null;
+
+    debugPrint(
+      '[MainShellScreen] User type detected: ${_isVendor ? 'Vendor' : 'Regular User'}',
+    );
+  }
+
+  /// Sets up navigation tabs based on user type
+  void _setupNavigationForUserType() {
+    if (_isVendor) {
+      // Vendor navigation: Feed, Camera, Messages, Profile
+      _widgetOptions = <Widget>[
+        const FeedScreen(),
+        CameraPreviewScreen(hiveService: widget.hiveService),
+        const ConversationListScreen(),
+        VendorProfileScreen(
+          profileService: widget.profileService,
+          isInTabNavigation: true,
+        ),
+      ];
+
+      _navigationItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Feed'),
+        BottomNavigationBarItem(icon: Icon(Icons.camera_alt), label: 'Capture'),
+        BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else {
+      // Regular user navigation: Feed, Messages, Profile (no camera)
+      _widgetOptions = <Widget>[
+        const FeedScreen(),
+        const ConversationListScreen(),
+        RegularUserProfileScreen(
+          profileService: widget.profileService,
+          isInTabNavigation: true,
+        ),
+      ];
+
+      _navigationItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Feed'),
+        BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+      ];
+    }
   }
 
   /// ✅ BUFFER OVERFLOW FIX: Handle tab navigation with camera lifecycle management
@@ -50,13 +97,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _selectedIndex = index;
     });
 
-    // ✅ BUFFER OVERFLOW FIX: Manage camera lifecycle based on tab visibility
-    _handleCameraVisibilityChange(previousIndex, index);
+    // ✅ BUFFER OVERFLOW FIX: Only manage camera lifecycle for vendors
+    if (_isVendor) {
+      _handleCameraVisibilityChange(previousIndex, index);
+    }
   }
 
   /// ✅ BUFFER OVERFLOW FIX: Pause/resume camera based on tab visibility
   void _handleCameraVisibilityChange(int previousIndex, int currentIndex) {
-    const int cameraTabIndex = 1; // Camera is at index 1
+    const int cameraTabIndex = 1; // Camera is at index 1 for vendors
 
     // If navigating away from camera tab, pause camera to free resources
     if (previousIndex == cameraTabIndex && currentIndex != cameraTabIndex) {
@@ -99,15 +148,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Scaffold(
       body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Feed'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.camera_alt),
-            label: 'Capture',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+        items: _navigationItems,
         currentIndex: _selectedIndex,
         selectedItemColor: AppColors.marketBlue,
         unselectedItemColor: AppColors.soilTaupe,
