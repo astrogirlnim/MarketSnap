@@ -6,12 +6,13 @@ import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
+import '../../../../core/services/ai_caption_service.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/services/background_sync_service.dart';
-
+import '../../../../features/profile/application/profile_service.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -38,12 +39,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   final LutFilterService _lutFilterService = LutFilterService.instance;
   final TextEditingController _captionController = TextEditingController();
   late final BackgroundSyncService backgroundSyncService;
+  final AICaptionService _aiCaptionService = AICaptionService();
+  late final ProfileService _profileService;
 
   // Filter state
   LutFilterType _selectedFilter = LutFilterType.none;
   String? _filteredImagePath;
   bool _isApplyingFilter = false;
   bool _isPosting = false;
+
+  // AI Caption state
+  bool _isGeneratingCaption = false;
+  bool _aiCaptionAvailable = false;
+  String? _lastGeneratedCaption;
 
   // Video player (if media is video)
   late bool _isPhoto;
@@ -53,6 +61,8 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   // Animation controllers
   late AnimationController _filterAnimationController;
   late Animation<double> _filterAnimation;
+  late AnimationController _aiButtonAnimationController;
+  late Animation<double> _aiButtonAnimation;
 
   // Posting state
   bool _hasConnectivity = true;
@@ -71,7 +81,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       _initializeVideoPlayer();
     }
 
-    // Initialize animation controller
+    // Initialize animation controllers
     _filterAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -83,11 +93,26 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
 
-    // Initialize LUT filter service
+    _aiButtonAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _aiButtonAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _aiButtonAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    // Initialize services
     _initializeLutService();
+    _initializeAIService();
 
     // Initialize background sync service
     backgroundSyncService = BackgroundSyncService();
+
+    // Initialize profile service
+    _profileService = ProfileService(hiveService: widget.hiveService);
 
     // Initialize connectivity monitoring
     _initializeConnectivity();
@@ -98,8 +123,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     _videoController?.dispose();
     _captionController.dispose();
     _filterAnimationController.dispose();
+    _aiButtonAnimationController.dispose();
     _lutFilterService.clearPreviewCache();
     _connectivitySubscription?.cancel();
+    _aiCaptionService.dispose();
     super.dispose();
   }
 
@@ -109,6 +136,21 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       await _lutFilterService.initialize();
     } catch (e) {
       // Handle error
+    }
+  }
+
+  /// Initialize AI Caption service
+  Future<void> _initializeAIService() async {
+    try {
+      await _aiCaptionService.initialize();
+      if (mounted) {
+        setState(() {
+          _aiCaptionAvailable = true;
+        });
+        _aiButtonAnimationController.forward();
+      }
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Failed to initialize AI service: $e');
     }
   }
 
@@ -178,6 +220,76 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         });
       }
     }
+  }
+
+  /// Generate AI caption with 2-second timeout
+  Future<void> _generateAICaption() async {
+    if (_isGeneratingCaption || !_aiCaptionAvailable) return;
+
+    setState(() {
+      _isGeneratingCaption = true;
+    });
+
+    try {
+      // Get vendor profile for context
+      Map<String, dynamic>? vendorProfile;
+      try {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          final profile = _profileService.getCurrentUserProfile();
+          vendorProfile = {
+            'stallName': profile?.stallName,
+            'marketCity': profile?.marketCity,
+          };
+        }
+      } catch (e) {
+        debugPrint('[MediaReviewScreen] Error getting vendor profile: $e');
+      }
+
+      // Generate caption
+      final response = await _aiCaptionService.generateCaption(
+        mediaPath: widget.mediaPath,
+        mediaType: widget.mediaType.name,
+        existingCaption: _captionController.text.isNotEmpty ? _captionController.text : null,
+        vendorProfile: vendorProfile,
+      );
+
+      if (mounted) {
+        setState(() {
+          _lastGeneratedCaption = response.caption;
+          _captionController.text = response.caption;
+        });
+
+        // Show feedback about the caption
+        if (response.fromCache) {
+          _showCaptionFeedback('✨ Caption from cache (${(response.confidence * 100).toInt()}% confidence)');
+        } else {
+          _showCaptionFeedback('🤖 AI generated caption (${(response.confidence * 100).toInt()}% confidence)');
+        }
+      }
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Error generating AI caption: $e');
+      if (mounted) {
+        _showCaptionFeedback('💭 AI caption unavailable, try again later');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingCaption = false;
+        });
+      }
+    }
+  }
+
+  /// Show caption feedback message
+  void _showCaptionFeedback(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.deepPurple.shade600,
+      ),
+    );
   }
 
   /// Post the media with applied filters and caption
@@ -429,20 +541,58 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build caption input section
+  /// Build caption input section with AI helper
   Widget _buildCaptionInput() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Add a caption',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
+          Row(
+            children: [
+              const Text(
+                'Add a caption',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const Spacer(),
+              if (_aiCaptionAvailable)
+                ScaleTransition(
+                  scale: _aiButtonAnimation,
+                  child: IconButton(
+                    onPressed: _isGeneratingCaption ? null : _generateAICaption,
+                    icon: _isGeneratingCaption
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.deepPurple.shade400,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.auto_fix_high,
+                            color: Colors.deepPurple.shade400,
+                            size: 20,
+                          ),
+                    tooltip: _isGeneratingCaption
+                        ? 'Generating AI caption...'
+                        : 'Generate AI caption',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.deepPurple.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           TextField(
@@ -450,8 +600,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             maxLines: 2,
             maxLength: 200,
             decoration: InputDecoration(
-              hintText:
-                  'What\'s the story behind this ${widget.mediaType.name}?',
+              hintText: _isGeneratingCaption
+                  ? 'AI is crafting your caption...'
+                  : 'What\'s the story behind this ${widget.mediaType.name}?',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -464,8 +615,37 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ),
               ),
               contentPadding: const EdgeInsets.all(16),
+              suffixIcon: _lastGeneratedCaption != null &&
+                      _captionController.text != _lastGeneratedCaption
+                  ? IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _captionController.text = _lastGeneratedCaption!;
+                        });
+                        _showCaptionFeedback('✨ Restored AI caption');
+                      },
+                      icon: Icon(
+                        Icons.restore,
+                        color: Colors.deepPurple.shade400,
+                        size: 20,
+                      ),
+                      tooltip: 'Restore AI caption',
+                    )
+                  : null,
             ),
           ),
+          if (_lastGeneratedCaption != null && _lastGeneratedCaption!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '🤖 AI suggestion available • Caption is editable',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.deepPurple.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -461,20 +461,119 @@ const createAIHelper = (
 
 /**
  * Generates a caption for an image.
- * [Phase 2: Scaffolded]
+ * [Phase 4: Fully Implemented]
  */
 export const generateCaption = createAIHelper(
   "generateCaption",
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (data, context) => {
-    logger.log(
-      "[generateCaption] TODO: Implement actual caption generation logic."
-    );
-    // Dummy response for now
-    return {
-      caption: "A vibrant photo of fresh market produce.",
-      confidence: 0.95,
-    };
+  async (data, context) => {
+    logger.log("[generateCaption] Processing caption generation request");
+    
+    try {
+      // Extract parameters from request
+      const {mediaType, existingCaption, vendorProfile} = data;
+      
+      logger.log(`[generateCaption] MediaType: ${mediaType || 'photo'}`);
+      logger.log(`[generateCaption] ExistingCaption: ${existingCaption || 'none'}`);
+      logger.log(`[generateCaption] VendorProfile: ${JSON.stringify(vendorProfile || {})}`);
+
+      // Import OpenAI (dynamic import to handle potential missing dependency)
+      let OpenAI: any;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error("[generateCaption] OpenAI package not installed:", importError);
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI package is not installed in the functions environment."
+        );
+      }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+      });
+
+      // Build context-aware prompt for marketplace content
+      const vendorName = vendorProfile?.stallName || "vendor";
+      const marketCity = vendorProfile?.marketCity || "local market";
+      
+      const prompt = `You are an expert at writing engaging social media captions for farmers market vendors.
+
+Context:
+- Vendor: ${vendorName}
+- Market: ${marketCity}
+- Media type: ${mediaType || 'photo'}
+${existingCaption ? `- Current caption: "${existingCaption}"` : ''}
+
+Create a short, engaging caption (under 100 characters) that:
+- Captures the fresh, local market vibe
+- Encourages shoppers to visit or buy
+- Uses appropriate emojis (1-2 max)
+- Feels authentic and not overly promotional
+- Focuses on freshness, quality, or seasonal appeal
+
+${existingCaption 
+  ? 'Improve the existing caption while keeping the same general meaning.'
+  : 'Generate a new caption that would work well for farmers market social media.'
+}
+
+Return only the caption text, no quotes or extra formatting.`;
+
+      logger.log("[generateCaption] Sending request to OpenAI GPT-4");
+      
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 100,
+        temperature: 0.7,
+        top_p: 1,
+        frequency_penalty: 0.2,
+        presence_penalty: 0.1,
+      });
+
+      const generatedCaption = completion.choices[0]?.message?.content?.trim();
+      
+      if (!generatedCaption) {
+        throw new Error("OpenAI returned empty response");
+      }
+
+      logger.log(`[generateCaption] Generated caption: "${generatedCaption}"`);
+
+      // Calculate confidence based on response quality metrics
+      const confidence = Math.min(0.95, Math.max(0.7, 
+        0.8 + (generatedCaption.length > 20 ? 0.1 : 0) + 
+        (generatedCaption.includes('🍅') || generatedCaption.includes('🥬') || generatedCaption.includes('🌽') ? 0.05 : 0)
+      ));
+
+      const response = {
+        caption: generatedCaption,
+        confidence: confidence,
+        model: "gpt-4",
+        timestamp: new Date().toISOString(),
+      };
+
+      logger.log(`[generateCaption] Success! Confidence: ${confidence}`);
+      return response;
+
+    } catch (error) {
+      logger.error("[generateCaption] Error generating caption:", error);
+      
+      // Return appropriate error
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to generate caption: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 );
 
