@@ -462,7 +462,7 @@ class BasketIcon extends StatelessWidget {
 
   const BasketIcon({
     super.key, 
-    this.size = 48, 
+    this.size = 64, // Increased from 48 to 64 for better visibility 
     this.color,
     this.enableWelcomeAnimation = false,
   });

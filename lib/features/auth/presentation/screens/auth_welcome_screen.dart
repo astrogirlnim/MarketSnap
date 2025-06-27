@@ -97,7 +97,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                   // Wicker Mascot - Bigger and more prominent with welcome blink animation
                   const Center(
                     child: BasketIcon(
-                      size: 200, 
+                      size: 240,
                       enableWelcomeAnimation: true,
                     ),
                   ),
@@ -338,7 +338,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const BasketIcon(size: 60),
+                const BasketIcon(size: 80),
 
                 const SizedBox(height: AppSpacing.md),
 
