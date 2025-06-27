@@ -5,6 +5,7 @@ import 'package:marketsnap/core/services/messaging_service.dart';
 import 'package:marketsnap/features/auth/application/auth_service.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
 import 'package:marketsnap/shared/presentation/theme/app_typography.dart';
+import 'package:marketsnap/core/services/profile_update_notifier.dart';
 import 'package:marketsnap/main.dart';
 import 'package:marketsnap/features/messaging/presentation/widgets/chat_bubble.dart';
 import 'package:marketsnap/features/messaging/presentation/widgets/message_input_bar.dart';
@@ -21,13 +22,48 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final MessagingService _messagingService = messagingService;
   final AuthService _authService = authService;
+  final ProfileUpdateNotifier _profileUpdateNotifier = ProfileUpdateNotifier();
   String? _currentUserId;
   String? _authError;
+  VendorProfile _otherUser; // Keep a mutable copy to update when profile changes
+
+  _ChatScreenState() : _otherUser = VendorProfile(
+    uid: '',
+    displayName: '',
+    stallName: '',
+    marketCity: '',
+  );
 
   @override
   void initState() {
     super.initState();
+    _otherUser = widget.otherUser; // Initialize with the passed user
     _initializeUser();
+    _listenToProfileUpdates();
+  }
+
+  /// Listen to profile updates for the other user
+  void _listenToProfileUpdates() {
+    _profileUpdateNotifier.allProfileUpdates.listen((update) {
+      final uid = update['uid'] as String;
+      
+      // Check if this update is for the user we're chatting with
+      if (uid == _otherUser.uid) {
+        if (update['type'] == 'delete') {
+          // Handle user deletion (maybe show a message that user is no longer available)
+          debugPrint('[ChatScreen] Other user profile deleted: $uid');
+        } else {
+          // Update the displayed user information
+          setState(() {
+            _otherUser = _otherUser.copyWith(
+              displayName: update['displayName'] as String,
+              avatarURL: (update['avatarURL'] as String?) ?? _otherUser.avatarURL,
+            );
+          });
+          debugPrint('[ChatScreen] 🔄 Updated other user profile: ${_otherUser.displayName}');
+        }
+      }
+    });
   }
 
   void _initializeUser() {
@@ -41,23 +77,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _currentUserId = user.uid;
     debugPrint(
-      '[ChatScreen] Initialized for user: $_currentUserId, chatting with: ${widget.otherUser.uid}',
+      '[ChatScreen] Initialized for user: $_currentUserId, chatting with: ${_otherUser.uid}',
     );
 
-    // Mark conversation as read when entering the screen
-    if (_currentUserId != null) {
-      _messagingService
-          .markConversationAsRead(
-            userId1: _currentUserId!,
-            userId2: widget.otherUser.uid,
-            currentUserId: _currentUserId!,
-          )
-          .catchError((error) {
-            debugPrint(
-              '[ChatScreen] Error marking conversation as read: $error',
-            );
-          });
-    }
+          // Mark conversation as read when entering the screen
+      if (_currentUserId != null) {
+        _messagingService
+            .markConversationAsRead(
+              userId1: _currentUserId!,
+              userId2: _otherUser.uid,
+              currentUserId: _currentUserId!,
+            )
+            .catchError((error) {
+              debugPrint(
+                '[ChatScreen] Error marking conversation as read: $error',
+              );
+            });
+      }
   }
 
   void _sendMessage(String text) async {
@@ -72,11 +108,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       debugPrint(
-        '[ChatScreen] Sending message from $_currentUserId to ${widget.otherUser.uid}: $text',
+        '[ChatScreen] Sending message from $_currentUserId to ${_otherUser.uid}: $text',
       );
       await _messagingService.sendMessage(
         fromUid: _currentUserId!,
-        toUid: widget.otherUser.uid,
+        toUid: _otherUser.uid,
         text: text.trim(),
       );
       debugPrint('[ChatScreen] Message sent successfully');
@@ -95,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_authError != null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.otherUser.displayName),
+          title: Text(_otherUser.displayName),
           backgroundColor: AppColors.eggshell,
           foregroundColor: AppColors.soilCharcoal,
         ),
@@ -131,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentUserId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.otherUser.displayName),
+          title: Text(_otherUser.displayName),
           backgroundColor: AppColors.eggshell,
           foregroundColor: AppColors.soilCharcoal,
         ),
@@ -141,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.otherUser.displayName),
+        title: Text(_otherUser.displayName),
         backgroundColor: AppColors.eggshell,
         foregroundColor: AppColors.soilCharcoal,
         elevation: 0,
@@ -153,7 +189,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<List<Message>>(
               stream: _messagingService.getConversationMessages(
                 userId1: _currentUserId!,
-                userId2: widget.otherUser.uid,
+                userId2: _otherUser.uid,
               ),
               builder: (context, snapshot) {
                 debugPrint(
@@ -217,7 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         Text('No messages yet', style: AppTypography.bodyLG),
                         const SizedBox(height: 8),
                         Text(
-                          'Say hello to ${widget.otherUser.displayName}!',
+                          'Say hello to ${_otherUser.displayName}!',
                           style: AppTypography.body.copyWith(
                             color: Colors.grey,
                           ),

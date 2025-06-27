@@ -44,4 +44,48 @@ class Snap {
       expiresAt: (data['expiresAt'] as Timestamp? ?? Timestamp.now()).toDate(),
     );
   }
+
+  /// Creates a copy of this snap with updated fields
+  Snap copyWith({
+    String? id,
+    String? vendorId,
+    String? vendorName,
+    String? vendorAvatarUrl,
+    String? mediaUrl,
+    MediaType? mediaType,
+    String? caption,
+    String? filterType,
+    DateTime? createdAt,
+    DateTime? expiresAt,
+  }) {
+    return Snap(
+      id: id ?? this.id,
+      vendorId: vendorId ?? this.vendorId,
+      vendorName: vendorName ?? this.vendorName,
+      vendorAvatarUrl: vendorAvatarUrl ?? this.vendorAvatarUrl,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      mediaType: mediaType ?? this.mediaType,
+      caption: caption ?? this.caption,
+      filterType: filterType ?? this.filterType,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+    );
+  }
+
+  /// Updates this snap's cached profile data with fresh profile information
+  /// Returns a new Snap instance with updated vendor name and avatar
+  Snap updateProfileData({
+    required String vendorName,
+    required String vendorAvatarUrl,
+  }) {
+    return copyWith(
+      vendorName: vendorName,
+      vendorAvatarUrl: vendorAvatarUrl,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Snap(id: $id, vendorId: $vendorId, vendorName: $vendorName, mediaType: $mediaType, createdAt: $createdAt)';
+  }
 }

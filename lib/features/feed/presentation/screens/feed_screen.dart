@@ -6,6 +6,7 @@ import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/feed_post_widget.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/story_carousel_widget.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
+import 'package:marketsnap/main.dart'; // Import to access global services
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -15,7 +16,8 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  final FeedService _feedService = FeedService();
+  // Use global feed service instance with profile update notifier
+  final FeedService _feedService = feedService;
 
   @override
   void initState() {
