@@ -625,4 +625,44 @@ class ProfileService {
       throw Exception('Failed to delete regular user profile: $e');
     }
   }
+
+  /// Loads any user profile (vendor or regular user) from Firestore
+  /// Returns a VendorProfile for compatibility with messaging UI
+  Future<VendorProfile?> loadAnyUserProfileFromFirestore(String uid) async {
+    debugPrint('[ProfileService] Loading any user profile from Firestore for UID: $uid');
+
+    try {
+      // First try to load as vendor profile
+      final vendorProfile = await loadProfileFromFirestore(uid);
+      if (vendorProfile != null) {
+        debugPrint('[ProfileService] Found vendor profile for UID: $uid');
+        return vendorProfile;
+      }
+
+      // If not found, try to load as regular user profile
+      final regularProfile = await loadRegularUserProfileFromFirestore(uid);
+      if (regularProfile != null) {
+        debugPrint('[ProfileService] Found regular user profile for UID: $uid, converting to VendorProfile format');
+        
+        // Convert RegularUserProfile to VendorProfile for messaging UI compatibility
+        return VendorProfile(
+          uid: regularProfile.uid,
+          displayName: regularProfile.displayName,
+          stallName: 'Customer', // Regular users don't have stalls
+          marketCity: 'User', // Regular users don't have market cities
+          allowLocation: false,
+          avatarURL: regularProfile.avatarURL,
+          localAvatarPath: regularProfile.localAvatarPath,
+          needsSync: false, // Already loaded from Firestore
+          lastUpdated: DateTime.now(),
+        );
+      }
+
+      debugPrint('[ProfileService] No profile found in either collection for UID: $uid');
+      return null;
+    } catch (e) {
+      debugPrint('[ProfileService] Error loading any user profile from Firestore: $e');
+      throw Exception('Failed to load user profile: $e');
+    }
+  }
 }
