@@ -175,7 +175,7 @@ Legend:
   - [ ] Track follows, friends, and interactions.
   - [ ] Suggest stories/posts based on social graph and trending topics.
 
-- [X] **13. Snap/Story Deletion**
+- [X] **13. Snap/Story Deletion** ✅ **COMPLETED WITH FULL IMPLEMENTATION**
   - [X] Add "Delete" button for user's own snaps in feed and story carousel
   - [X] Implement FeedService.deleteSnap(snapId) to remove snap from Firestore and Storage
   - [X] Add confirmation dialog and error handling in UI
