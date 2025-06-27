@@ -375,7 +375,7 @@ Once the emulators are running, you can test your Firestore-triggered functions 
 
 ### Testing AI Helper Functions (Locally)
 
-The project includes scaffolded Cloud Functions for future AI features (`generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ`). You can test them locally using the emulators.
+The project includes AI-powered features (`generateCaption`, `getRecipeSnippet`, `vectorSearchFAQ`) that can be tested locally using the emulators.
 
 1.  **Enable AI Functions**: In your root `.env` file, set `AI_FUNCTIONS_ENABLED=true`.
 2.  **Add OpenAI Key**: Ensure your `OPENAI_API_KEY` is also set in the `.env` file.
@@ -389,6 +389,20 @@ The project includes scaffolded Cloud Functions for future AI features (`generat
     http://127.0.0.1:5001/marketsnap-app/us-central1/generateCaption
     ```
 5.  **Check Logs**: Observe the emulator logs for output confirming the function was triggered and the API key was found.
+
+### Deploying AI Features to Production
+
+To enable AI features (Wicker caption suggestions and RAG) in production:
+
+1. **Add GitHub Secrets**: In your GitHub repository, go to Settings > Secrets and variables > Actions, and add:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `AI_FUNCTIONS_ENABLED`: Set to `true`
+
+2. **Deploy**: Push changes to the main branch or manually trigger the workflow
+
+3. **Verify**: The deployment pipeline will automatically configure the AI environment variables using Google Cloud Secret Manager
+
+**Note**: AI features are disabled by default. Without the proper GitHub secrets, the functions will return "disabled" status but won't break the application.
 
 ### Development Scripts
 
