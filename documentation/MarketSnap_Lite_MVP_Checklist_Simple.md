@@ -175,6 +175,20 @@ Legend:
   - [ ] Track follows, friends, and interactions.
   - [ ] Suggest stories/posts based on social graph and trending topics.
 
+- [X] **13. Snap/Story Deletion** ✅ **COMPLETED WITH FULL IMPLEMENTATION**
+  - [X] Add "Delete" button for user's own snaps in feed and story carousel
+  - [X] Implement FeedService.deleteSnap(snapId) to remove snap from Firestore and Storage
+  - [X] Add confirmation dialog and error handling in UI
+  - [X] Ensure real-time UI update after deletion
+  - [X] Add comprehensive logging for all deletion steps
+
+- [ ] **14. Account Deletion**
+  - [ ] Add "Delete Account" option to settings screen
+  - [ ] Implement full account deletion flow (snaps, stories, messages, followers, profile, Auth, local data)
+  - [ ] Add backend Cloud Function for cascading deletes
+  - [ ] Add comprehensive logging and error handling
+  - [ ] Ensure user is logged out and UI/UX is clear after deletion
+
 
 ---
 

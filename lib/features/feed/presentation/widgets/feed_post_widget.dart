@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/models/snap_model.dart';
+import '../../application/feed_service.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../core/services/rag_service.dart';
 import '../../../../core/models/rag_feedback.dart';
+import '../../../../main.dart'; // Import to access global services
 
 /// Individual feed post widget displaying a snap with media and interactions
 /// Handles both photo and video content with proper aspect ratios
@@ -31,8 +33,12 @@ class FeedPostWidget extends StatefulWidget {
 }
 
 class _FeedPostWidgetState extends State<FeedPostWidget> {
+  // Use global feed service instance
+  final FeedService _feedService = feedService;
+  
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
+  bool _isDeleting = false; // Track deletion state
 
   // RAG Enhancement State
   final RAGService _ragService = RAGService();
@@ -264,6 +270,30 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             _formatTimestamp(widget.snap.createdAt),
             style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
+
+          // Delete button for current user's posts
+          if (widget.isCurrentUserPost) ...[
+            const SizedBox(width: AppSpacing.sm),
+            _isDeleting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.appleRed,
+                    ),
+                  )
+                : IconButton(
+                    onPressed: _showDeleteConfirmation,
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.appleRed,
+                      size: 20,
+                    ),
+                    tooltip: 'Delete post',
+                    visualDensity: VisualDensity.compact,
+                  ),
+          ],
         ],
       ),
     );
@@ -932,6 +962,190 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   String _generateRecipeHash(RecipeSnippet recipe) {
     final combinedString = '${recipe.recipeName}_${recipe.ingredients.join('_')}';
     return combinedString.hashCode.toString();
+  }
+
+  /// Show confirmation dialog before deleting the snap
+  Future<void> _showDeleteConfirmation() async {
+    HapticFeedback.mediumImpact();
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Delete ${widget.snap.mediaType == MediaType.video ? 'Video' : 'Photo'}?',
+          style: AppTypography.h2.copyWith(
+            color: AppColors.soilCharcoal,
+          ),
+        ),
+        content: Text(
+          'This action cannot be undone. Your ${widget.snap.mediaType == MediaType.video ? 'video' : 'photo'} and caption will be permanently deleted.',
+          style: AppTypography.body.copyWith(
+            color: AppColors.soilTaupe,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.bodyLG.copyWith(
+                color: AppColors.soilTaupe,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.appleRed.withAlpha(26),
+            ),
+            child: Text(
+              'Delete',
+              style: AppTypography.bodyLG.copyWith(
+                color: AppColors.appleRed,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteSnap();
+    }
+  }
+
+  /// Delete the snap using FeedService
+  Future<void> _deleteSnap() async {
+    debugPrint('[FeedPostWidget] 🗑️ Starting snap deletion for ${widget.snap.id}');
+    
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      final success = await _feedService.deleteSnap(widget.snap.id);
+      
+      if (mounted) {
+        if (success) {
+          debugPrint('[FeedPostWidget] ✅ Snap deletion successful');
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    '${widget.snap.mediaType == MediaType.video ? 'Video' : 'Photo'} deleted successfully',
+                    style: AppTypography.body.copyWith(color: Colors.white),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.leafGreen,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+          
+          // Note: The UI will automatically update via the FeedService streams
+          // No need to manually remove this widget from the UI
+          
+        } else {
+          debugPrint('[FeedPostWidget] ❌ Snap deletion failed');
+          
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Failed to delete ${widget.snap.mediaType == MediaType.video ? 'video' : 'photo'}. Please try again.',
+                    style: AppTypography.body.copyWith(color: Colors.white),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.appleRed,
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _showDeleteConfirmation,
+              ),
+            ),
+          );
+        }
+        
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+      
+    } catch (error) {
+      debugPrint('[FeedPostWidget] ❌ Snap deletion error: $error');
+      
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'An error occurred while deleting. Please try again.',
+                  style: AppTypography.body.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.appleRed,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _showDeleteConfirmation,
+            ),
+          ),
+        );
+      }
+    }
   }
 }
 
