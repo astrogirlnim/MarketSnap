@@ -411,14 +411,15 @@ export const sendMessageNotification = onDocumentCreated(
 
 // --- AI Helper Functions (Phase 2 Scaffolding) ---
 
-// Configuration for AI Functions - support both environment variables and Firebase config
-const AI_FUNCTIONS_ENABLED = 
-  process.env.AI_FUNCTIONS_ENABLED === "true" || 
+// Configuration for AI Functions - support both environment variables
+// and Firebase config
+const AI_FUNCTIONS_ENABLED =
+  process.env.AI_FUNCTIONS_ENABLED === "true" ||
   functions.config().ai?.functions_enabled === "true" ||
   functions.config().marketsnap?.ai?.enabled === "true";
 
-const OPENAI_API_KEY = 
-  process.env.OPENAI_API_KEY || 
+const OPENAI_API_KEY =
+  process.env.OPENAI_API_KEY ||
   functions.config().marketsnap?.openai?.key;
 
 /**
@@ -684,8 +685,8 @@ export const getRecipeSnippet = createAIHelper(
 
     try {
       // Get OpenAI API key
-      const OPENAI_API_KEY = 
-        process.env.OPENAI_API_KEY || 
+      const OPENAI_API_KEY =
+        process.env.OPENAI_API_KEY ||
         functions.config().marketsnap?.openai?.key;
       if (!OPENAI_API_KEY) {
         logger.error("[getRecipeSnippet] OpenAI API key not found");
@@ -906,8 +907,8 @@ export const vectorSearchFAQ = createAIHelper(
 
     try {
       // Get OpenAI API key
-      const OPENAI_API_KEY = 
-        process.env.OPENAI_API_KEY || 
+      const OPENAI_API_KEY =
+        process.env.OPENAI_API_KEY ||
         functions.config().marketsnap?.openai?.key;
       if (!OPENAI_API_KEY) {
         logger.error("[vectorSearchFAQ] OpenAI API key not found");
