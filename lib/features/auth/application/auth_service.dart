@@ -208,13 +208,26 @@ class AuthService {
     
     _offlineAuthController = StreamController<User?>.broadcast();
     
-    // Check for cached user first (for offline persistence) - SYNCHRONOUS
-    if (_hiveService != null && _hiveService!.hasAuthenticationCache() && _hiveService!.isCachedAuthenticationValid()) {
-      final cachedUserData = _hiveService!.getCachedAuthenticatedUser();
-      if (cachedUserData != null) {
-        final cachedUser = CachedUser.fromMap(cachedUserData);
-        _cachedUser = cachedUser.toFirebaseUserLike();
-        debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser!.uid}');
+    // Check for cached user first (for offline persistence) - SYNCHRONOUS with error handling
+    try {
+      if (_hiveService != null && _hiveService!.hasAuthenticationCache() && _hiveService!.isCachedAuthenticationValid()) {
+        final cachedUserData = _hiveService!.getCachedAuthenticatedUser();
+        if (cachedUserData != null) {
+          // Safely cast and validate the cached data
+          final Map<String, dynamic> userData = Map<String, dynamic>.from(cachedUserData);
+          final cachedUser = CachedUser.fromMap(userData);
+          _cachedUser = cachedUser.toFirebaseUserLike();
+          debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser!.uid}');
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthService] ⚠️ Failed to load cached user (clearing corrupted cache): $e');
+      // Clear corrupted cache data
+      try {
+        _hiveService?.clearAuthenticationCache();
+        debugPrint('[AuthService] 🗑️ Corrupted authentication cache cleared');
+      } catch (clearError) {
+        debugPrint('[AuthService] ❌ Failed to clear corrupted cache: $clearError');
       }
     }
     

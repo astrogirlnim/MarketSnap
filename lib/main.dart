@@ -174,6 +174,14 @@ Future<void> main() async {
     debugPrint('[main] Hive service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing Hive service: $e');
+    // Create minimal fallback Hive service
+    try {
+      hiveService = HiveService(SecureStorageService());
+      debugPrint('[main] Fallback Hive service created (may have limited functionality).');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create Hive service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize authentication service with Hive support
@@ -182,6 +190,15 @@ Future<void> main() async {
     debugPrint('[main] Auth service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing auth service: $e');
+    // Create a fallback AuthService without Hive if initialization fails
+    try {
+      authService = AuthService();
+      debugPrint('[main] Fallback auth service created without cached data.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Fallback auth service failed: $fallbackError');
+      // This should never happen, but if it does, we need to exit gracefully
+      rethrow;
+    }
   }
 
   // Initialize profile service
@@ -190,6 +207,14 @@ Future<void> main() async {
     debugPrint('[main] Profile service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing profile service: $e');
+    // Create fallback profile service
+    try {
+      profileService = ProfileService(hiveService: hiveService);
+      debugPrint('[main] Fallback profile service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create profile service: $fallbackError');
+      rethrow;
+    }
   }
 
   try {
@@ -198,6 +223,14 @@ Future<void> main() async {
     debugPrint('[main] Background sync service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing background sync service: $e');
+    // Create basic background sync service without full initialization
+    try {
+      backgroundSyncService = BackgroundSyncService(hiveService: hiveService);
+      debugPrint('[main] Basic background sync service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create background sync service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize LUT filter service
@@ -207,6 +240,14 @@ Future<void> main() async {
     debugPrint('[main] LUT filter service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing LUT filter service: $e');
+    // LUT filter service is critical for camera functionality
+    try {
+      lutFilterService = LutFilterService.instance;
+      debugPrint('[main] Basic LUT filter service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create LUT filter service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize account linking service
@@ -218,6 +259,19 @@ Future<void> main() async {
     debugPrint('[main] Account linking service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing account linking service: $e');
+    debugPrint('[main] Account linking will be limited without proper initialization.');
+    // We'll continue without account linking service - it's not critical for basic auth
+    // Create a minimal fallback that won't cause late initialization errors
+    try {
+      accountLinkingService = AccountLinkingService(
+        authService: authService,
+        profileService: profileService,
+      );
+      debugPrint('[main] Account linking service created despite initial error.');
+    } catch (finalError) {
+      debugPrint('[main] CRITICAL: Cannot initialize account linking service: $finalError');
+      rethrow;
+    }
   }
 
   // Initialize messaging service
@@ -226,6 +280,14 @@ Future<void> main() async {
     debugPrint('[main] Messaging service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing messaging service: $e');
+    // Create basic messaging service
+    try {
+      messagingService = MessagingService();
+      debugPrint('[main] Basic messaging service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create messaging service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize push notification service
@@ -235,6 +297,14 @@ Future<void> main() async {
     debugPrint('[main] Push notification service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing push notification service: $e');
+    // Create basic push notification service
+    try {
+      pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+      debugPrint('[main] Basic push notification service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create push notification service: $fallbackError');
+      rethrow;
+    }
   }
 
   debugPrint('[main] Firebase & App Check initialized.');
@@ -271,8 +341,12 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void dispose() {
-    // Dispose auth service resources
-    authService.dispose();
+    // Dispose auth service resources with null safety
+    try {
+      authService.dispose();
+    } catch (e) {
+      debugPrint('[AuthWrapper] Error disposing auth service: $e');
+    }
     super.dispose();
   }
 
