@@ -32,63 +32,63 @@ async function addTestData() {
     const testSnaps = [
       {
         id: 'test-strawberries-1',
-        text: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.\n🍓 #fresh #berries #farmstand',
         vendorId: 'vendor-berry-patch',
         vendorName: 'Berry Patch',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
+        mediaUrl: 'https://picsum.photos/400/300?random=101',
         mediaType: 'photo',
-        imageUrl: 'https://picsum.photos/400/300?random=101',
+        caption: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.\n🍓 #fresh #berries #farmstand',
         filterType: null,
         createdAt: admin.firestore.Timestamp.now(),
-        likes: 12,
-        comments: 3,
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
       },
       {
         id: 'test-tomatoes-2', 
-        text: 'Fresh organic tomatoes just picked this morning! ��',
         vendorId: 'vendor-test-user',
         vendorName: 'Test',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
+        mediaUrl: 'https://picsum.photos/400/300?random=102',
         mediaType: 'photo',
-        imageUrl: 'https://picsum.photos/400/300?random=102',
+        caption: 'Fresh organic tomatoes just picked this morning! 🍅',
         filterType: null,
         createdAt: admin.firestore.Timestamp.now(),
-        likes: 8,
-        comments: 1,
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
       {
         id: 'test-sourdough-3',
-        text: 'Warm sourdough just out of the oven! 🍞',
         vendorId: 'vendor-sunrise-bakery',
         vendorName: 'Sunrise Bakery',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
+        mediaUrl: 'https://picsum.photos/400/300?random=103',
         mediaType: 'photo', 
-        imageUrl: 'https://picsum.photos/400/300?random=103',
+        caption: 'Warm sourdough just out of the oven! 🍞',
         filterType: null,
         createdAt: admin.firestore.Timestamp.now(),
-        likes: 15,
-        comments: 5,
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
       {
         id: 'test-leafy-greens-4',
-        text: 'Beautiful leafy greens ready for your salad! 🥬',
         vendorId: 'vendor-green-garden',
         vendorName: 'Green Garden',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
+        mediaUrl: 'https://picsum.photos/400/300?random=104',
         mediaType: 'photo',
-        imageUrl: 'https://picsum.photos/400/300?random=104',
+        caption: 'Beautiful leafy greens ready for your salad! 🥬',
         filterType: null,
         createdAt: admin.firestore.Timestamp.now(),
-        likes: 6,
-        comments: 2,
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
       {
         id: 'test-craft-candle-5',
-        text: 'Handmade lavender scented candles - perfect for relaxation! 🕯️ Made with natural soy wax and essential oils.',
         vendorId: 'vendor-craft-corner',
         vendorName: 'Craft Corner',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
+        mediaUrl: 'https://picsum.photos/400/300?random=105',
         mediaType: 'photo',
-        imageUrl: 'https://picsum.photos/400/300?random=105',
+        caption: 'Handmade lavender scented candles - perfect for relaxation! 🕯️ Made with natural soy wax and essential oils.',
         filterType: null,
         createdAt: admin.firestore.Timestamp.now(),
-        likes: 4,
-        comments: 1,
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
     ];
 
@@ -112,7 +112,7 @@ async function addTestData() {
       const snap = testSnaps[i];
       const docRef = db.collection('snaps').doc();
       await docRef.set(snap);
-      console.log(`✅ Added snap ${i + 1}: "${snap.text}" by ${snap.vendorName}`);
+      console.log(`✅ Added snap ${i + 1}: "${snap.caption}" by ${snap.vendorName}`);
     }
 
     console.log('🎉 Test data added successfully!');
