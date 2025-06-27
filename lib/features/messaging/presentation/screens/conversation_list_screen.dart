@@ -257,9 +257,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
               // Load from Firestore and cache the result
               return FutureBuilder<VendorProfile?>(
-                future: _profileService.loadAnyUserProfileFromFirestore(
-                  otherUserId,
-                ),
+                future: _profileService.loadAnyUserProfileFromFirestore(otherUserId),
                 builder: (context, profileSnapshot) {
                   if (profileSnapshot.connectionState ==
                       ConnectionState.waiting) {
