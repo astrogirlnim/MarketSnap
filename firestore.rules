@@ -31,6 +31,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.followerUid == request.auth.uid;
     }
 
+    // FAQ Vectors: RAG feature for vendor FAQ content
+    // Vendors can manage their own FAQ vectors, but anyone can read them for search
+    match /faqVectors/{faqId} {
+      allow read; // Public read for FAQ search functionality
+      allow create: if request.auth != null && request.resource.data.vendorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.vendorId == request.auth.uid;
+    }
+
     // Messages: Ephemeral messaging between vendor and shopper.
     // Only the sender (fromUid) and recipient (toUid) can read/write messages.
     // Messages auto-expire after 24h via TTL field.

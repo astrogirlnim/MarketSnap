@@ -28,38 +28,68 @@ async function addTestData() {
       media3: 'https://picsum.photos/400/300?random=12'
     };
 
-    // Sample snaps data
+    // Test snaps data
     const testSnaps = [
       {
-        vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
-        vendorName: 'Test',
+        id: 'test-strawberries-1',
+        vendorId: 'vendor-berry-patch',
+        vendorName: 'Berry Patch',
         vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
-        mediaUrl: PLACEHOLDER_IMAGES.media1,
+        mediaUrl: 'https://picsum.photos/400/300?random=101',
+        mediaType: 'photo',
+        caption: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.\n🍓 #fresh #berries #farmstand',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24 hours from now
+      },
+      {
+        id: 'test-tomatoes-2', 
+        vendorId: 'vendor-test-user',
+        vendorName: 'Test',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
+        mediaUrl: 'https://picsum.photos/400/300?random=102',
         mediaType: 'photo',
         caption: 'Fresh organic tomatoes just picked this morning! 🍅',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // 24 hours from now
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
       {
+        id: 'test-sourdough-3',
         vendorId: 'vendor-sunrise-bakery',
         vendorName: 'Sunrise Bakery',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
-        mediaUrl: PLACEHOLDER_IMAGES.media2,
-        mediaType: 'photo',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
+        mediaUrl: 'https://picsum.photos/400/300?random=103',
+        mediaType: 'photo', 
         caption: 'Warm sourdough just out of the oven! 🍞',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22 * 60 * 60 * 1000)) // 22 hours from now
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       },
       {
+        id: 'test-leafy-greens-4',
         vendorId: 'vendor-green-garden',
         vendorName: 'Green Garden',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
-        mediaUrl: PLACEHOLDER_IMAGES.media3,
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
+        mediaUrl: 'https://picsum.photos/400/300?random=104',
         mediaType: 'photo',
         caption: 'Beautiful leafy greens ready for your salad! 🥬',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 4 * 60 * 60 * 1000)), // 4 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 20 * 60 * 60 * 1000)) // 20 hours from now
-      }
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      },
+      {
+        id: 'test-craft-candle-5',
+        vendorId: 'vendor-craft-corner',
+        vendorName: 'Craft Corner',
+        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
+        mediaUrl: 'https://picsum.photos/400/300?random=105',
+        mediaType: 'photo',
+        caption: 'Handmade lavender scented candles - perfect for relaxation! 🕯️ Made with natural soy wax and essential oils.',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      },
     ];
 
     console.log('📝 Adding sample snaps to Firestore...');

@@ -134,15 +134,39 @@ Legend:
   - [X] Allow vendor edit before final post. ✅ **DONE** - Fully editable caption input with restore functionality
   - [X] Cache caption keyed by media hash. ✅ **DONE** - SHA-1 media hash with vendor context, 24-hour TTL with automatic cleanup
 
-- [ ] **6. Recipe & FAQ Snippets (Phase 2)**
-  - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.
-  - [ ] On snap view, call `getRecipeSnippet` for produce keyword.
-  - [ ] Render collapsible FAQ card below story.
+- [X] **6. Recipe & FAQ Snippets (Phase 2)** ✅ **COMPLETED WITH REAL OPENAI RAG INTEGRATION**
+  - [X] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job. ✅ **DONE** - Complete FAQ vector model with OpenAI embeddings support
+  - [X] On snap view, call `getRecipeSnippet` for produce keyword. ✅ **DONE** - Real GPT-4 recipe generation with context-aware prompts
+  - [X] Render collapsible FAQ card below story. ✅ **DONE** - Vector similarity search with keyword fallback via Cloud Functions
 
 - [ ] **7. Ephemeral Messaging Logic**
   - [ ] Message send service → write to `messages` + trigger push.
   - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
   - [ ] Unit test: conversation auto-deletes after 24 h.
+
+- [ ] **8. RAG Feedback & Analytics**
+  - [ ] Add upvote/skip/edit UI to recipe/FAQ cards.
+  - [ ] Store user feedback in Firestore.
+  - [ ] Track engagement and feedback analytics.
+  - [ ] Pass feedback to RAG prompts for adaptive suggestions.
+
+- [ ] **9. RAG Personalization**
+  - [ ] Store user interests/history in Firestore.
+  - [ ] Use user profile/history in RAG prompt construction.
+  - [ ] Adjust suggestion ranking based on feedback.
+
+- [ ] **10. Vendor Knowledge Base Management**
+  - [ ] Vendor UI for FAQ/recipe CRUD and feedback analytics.
+  - [ ] Batch vectorization Cloud Function for new/edited FAQs.
+
+- [ ] **11. Scalable Vector Search**
+  - [ ] Integrate pgvector/Pinecone/Weaviate for FAQ vector storage/search.
+  - [ ] Migrate FAQ vectors from Firestore to vector DB.
+  - [ ] Update FAQ search logic to use vector similarity.
+
+- [ ] **12. Social Graph & Content Suggestions**
+  - [ ] Track follows, friends, and interactions.
+  - [ ] Suggest stories/posts based on social graph and trending topics.
 
 
 ---

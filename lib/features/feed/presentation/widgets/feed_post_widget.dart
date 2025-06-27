@@ -5,6 +5,7 @@ import '../../domain/models/snap_model.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
+import '../../../../core/services/rag_service.dart';
 
 /// Individual feed post widget displaying a snap with media and interactions
 /// Handles both photo and video content with proper aspect ratios
@@ -31,11 +32,20 @@ class FeedPostWidget extends StatefulWidget {
 class _FeedPostWidgetState extends State<FeedPostWidget> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
+  
+  // RAG Enhancement State
+  final RAGService _ragService = RAGService();
+  SnapEnhancementData? _enhancementData;
+  bool _isLoadingEnhancements = false;
+  bool _hasEnhancementError = false;
+  bool _isRecipeExpanded = false;
+  bool _isFAQExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _initializeVideo();
+    _initializeRAGService();
   }
 
   /// Initialize video player if the snap contains video content
@@ -51,6 +61,79 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             });
           }
         });
+    }
+  }
+
+  /// Initialize RAG service and load enhancements for this snap
+  Future<void> _initializeRAGService() async {
+    if (widget.snap.caption == null || widget.snap.caption!.isEmpty) {
+      debugPrint('[FeedPostWidget] No caption available for RAG enhancements');
+      return;
+    }
+
+    setState(() {
+      _isLoadingEnhancements = true;
+      _hasEnhancementError = false;
+    });
+
+    try {
+      debugPrint('[FeedPostWidget] ========== INITIALIZING RAG SERVICE ==========');
+      debugPrint('[FeedPostWidget] Snap ID: ${widget.snap.id}');
+      debugPrint('[FeedPostWidget] Caption: "${widget.snap.caption}"');
+      debugPrint('[FeedPostWidget] Vendor ID: ${widget.snap.vendorId}');
+      debugPrint('[FeedPostWidget] Media Type: ${widget.snap.mediaType}');
+      
+      await _ragService.initialize();
+      debugPrint('[FeedPostWidget] RAG service initialized successfully');
+      
+      final enhancementData = await _ragService.getSnapEnhancements(
+        caption: widget.snap.caption!,
+        vendorId: widget.snap.vendorId,
+        mediaType: widget.snap.mediaType.toString().split('.').last, // photo or video
+      );
+
+      debugPrint('[FeedPostWidget] ========== RAG SERVICE RESPONSE ==========');
+      debugPrint('[FeedPostWidget] Enhancement data received:');
+      debugPrint('[FeedPostWidget] - Recipe: ${enhancementData.recipe != null}');
+      debugPrint('[FeedPostWidget] - Recipe name: ${enhancementData.recipe?.recipeName}');
+      debugPrint('[FeedPostWidget] - Recipe relevance: ${enhancementData.recipe?.relevanceScore}');
+      debugPrint('[FeedPostWidget] - FAQs count: ${enhancementData.faqs.length}');
+      debugPrint('[FeedPostWidget] - Has data: ${enhancementData.hasData}');
+      debugPrint('[FeedPostWidget] - From cache: ${enhancementData.fromCache}');
+      
+      if (enhancementData.faqs.isNotEmpty) {
+        debugPrint('[FeedPostWidget] FAQ Details:');
+        for (int i = 0; i < enhancementData.faqs.length; i++) {
+          final faq = enhancementData.faqs[i];
+          debugPrint('[FeedPostWidget] FAQ $i: Q="${faq.question}" A="${faq.answer}" Score=${faq.score}');
+        }
+      } else {
+        debugPrint('[FeedPostWidget] No FAQs in enhancement data');
+      }
+
+      if (mounted) {
+        setState(() {
+          _enhancementData = enhancementData;
+          _isLoadingEnhancements = false;
+        });
+
+        debugPrint('[FeedPostWidget] Enhancement data set in state - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}');
+        debugPrint('[FeedPostWidget] Valid recipe: ${enhancementData.hasValidRecipe}');
+        if (enhancementData.recipe != null) {
+          debugPrint('[FeedPostWidget] Recipe details - Name: "${enhancementData.recipe!.recipeName}", Category: ${enhancementData.recipe!.category}, Relevance: ${enhancementData.recipe!.relevanceScore}');
+        }
+        debugPrint('[FeedPostWidget] UI will display: Recipe card=${enhancementData.hasValidRecipe}, FAQ card=${enhancementData.faqs.isNotEmpty}');
+      }
+    } catch (e) {
+      debugPrint('[FeedPostWidget] ========== RAG SERVICE ERROR ==========');
+      debugPrint('[FeedPostWidget] Error loading RAG enhancements: $e');
+      debugPrint('[FeedPostWidget] Error type: ${e.runtimeType}');
+      if (mounted) {
+        setState(() {
+          _isLoadingEnhancements = false;
+          _hasEnhancementError = true;
+        });
+      }
     }
   }
 
@@ -89,6 +172,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
           // Action buttons
           _buildActionButtons(),
+
+          // RAG Enhancement Cards
+          _buildEnhancementCards(),
         ],
       ),
     );
@@ -431,5 +517,331 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     } else {
       return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
+  }
+
+  /// Build RAG Enhancement Cards
+  Widget _buildEnhancementCards() {
+    // Show loading state
+    if (_isLoadingEnhancements) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.marketBlue,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'Loading suggestions...',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.soilTaupe,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show error state (minimal)
+    if (_hasEnhancementError) {
+      debugPrint('[FeedPostWidget] RAG enhancements failed to load');
+      return const SizedBox.shrink();
+    }
+
+    // Show enhancement cards if we have data
+    if (_enhancementData?.hasData == true) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          children: [
+            _buildRecipeCard(),
+            _buildFAQCard(),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  /// Build Recipe Card
+  Widget _buildRecipeCard() {
+    final recipe = _enhancementData?.recipe;
+    if (recipe == null) return const SizedBox.shrink();
+    
+    // Don't show recipe card for non-food items or empty recipes
+    if (recipe.recipeName.isEmpty || 
+        recipe.category == 'non_food' || 
+        recipe.relevanceScore < 0.3) {
+      debugPrint('[FeedPostWidget] Skipping recipe card - non-food item or low relevance: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
+      return const SizedBox.shrink();
+    }
+
+    debugPrint('[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.harvestOrange.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.harvestOrange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.restaurant_menu,
+                color: AppColors.harvestOrange,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              '🍽️ Recipe Suggestion',
+              style: AppTypography.bodyLG.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.soilCharcoal,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  recipe.recipeName,
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.harvestOrange,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                if (!_isRecipeExpanded && recipe.ingredients.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    recipe.ingredients.take(3).join(' • '),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilTaupe,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (!_isRecipeExpanded) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to see full recipe',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.harvestOrange.withValues(alpha: 0.7),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            trailing: Icon(
+              _isRecipeExpanded ? Icons.expand_less : Icons.expand_more,
+              color: AppColors.soilTaupe,
+            ),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isRecipeExpanded = !_isRecipeExpanded;
+              });
+            },
+          ),
+          if (_isRecipeExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.snippet,
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilCharcoal,
+                    ),
+                  ),
+                  if (recipe.ingredients.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Ingredients:',
+                      style: AppTypography.bodyLG.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.soilCharcoal,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...recipe.ingredients.map((ingredient) => Text(
+                      '• $ingredient',
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.soilTaupe,
+                      ),
+                    )),
+                  ],
+                  if (recipe.fromCache) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.cached,
+                          size: 14,
+                          color: AppColors.soilTaupe.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Cached suggestion',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.soilTaupe.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Build FAQ Card
+  Widget _buildFAQCard() {
+    final faqs = _enhancementData?.faqs ?? [];
+    if (faqs.isEmpty) return const SizedBox.shrink();
+
+    debugPrint('[FeedPostWidget] Rendering FAQ card with ${faqs.length} results');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.leafGreen.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.soilTaupe.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.leafGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.help_outline,
+                color: AppColors.leafGreen,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              '❓ Related Questions',
+              style: AppTypography.bodyLG.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.soilCharcoal,
+              ),
+            ),
+            subtitle: Text(
+              '${faqs.length} answer${faqs.length == 1 ? '' : 's'} found',
+              style: AppTypography.body.copyWith(
+                color: AppColors.leafGreen,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            trailing: Icon(
+              _isFAQExpanded ? Icons.expand_less : Icons.expand_more,
+              color: AppColors.soilTaupe,
+            ),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isFAQExpanded = !_isFAQExpanded;
+              });
+            },
+          ),
+          if (_isFAQExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                children: faqs.take(3).map((faq) => Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.eggshell.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Q: ${faq.question}',
+                        style: AppTypography.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.soilCharcoal,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'A: ${faq.answer}',
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.soilTaupe,
+                        ),
+                      ),
+                      if (faq.score > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star,
+                              size: 12,
+                              color: AppColors.sunsetAmber,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${(faq.score * 100).toInt()}% match',
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.soilTaupe.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                )).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

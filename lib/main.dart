@@ -13,6 +13,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/auth/presentation/screens/auth_welcome_screen.dart';
@@ -117,6 +118,15 @@ Future<void> main() async {
         debugPrint('Mapping Storage Emulator host "localhost" to "$storageHost".');
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
+      }
+
+      try {
+        // ✅ FIX: Configure Firebase Functions emulator
+        const functionsHost = '10.0.2.2';
+        FirebaseFunctions.instance.useFunctionsEmulator(functionsHost, 5001);
+        debugPrint('Mapping Functions Emulator host "localhost" to "$functionsHost".');
+      } catch (e) {
+        debugPrint('[main] Functions emulator configuration failed: $e');
       }
 
       debugPrint('[main] Firebase emulators configured successfully.');

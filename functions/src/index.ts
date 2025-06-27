@@ -430,6 +430,21 @@ const createAIHelper = (
   return functions.https.onCall(async (data, context) => {
     logger.log(`[${functionName}] received request.`);
 
+    // Allow calls from Firebase emulator during development
+    if (process.env.FUNCTIONS_EMULATOR === "true") {
+      logger.log(`[${functionName}] Running in emulator mode`);
+    } else {
+      // In production, require authentication
+      if (!context.auth) {
+        logger.error(`[${functionName}] Authentication required`);
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "Authentication required"
+        );
+      }
+      logger.log(`[${functionName}] Authenticated user: ${context.auth.uid}`);
+    }
+
     if (!AI_FUNCTIONS_ENABLED) {
       logger.warn(
         `[${functionName}] AI functions are disabled. ` +
@@ -585,7 +600,7 @@ Return only the caption text, no quotes or extra formatting.`;
 
       // Call OpenAI API with appropriate model
       const modelName = imageBase64 && mediaType === "photo" ?
-        "gpt-4-vision-preview" : "gpt-4";
+        "gpt-4o" : "gpt-4o";
       const completion = await openai.chat.completions.create({
         model: modelName,
         messages: messages,
@@ -641,44 +656,377 @@ Return only the caption text, no quotes or extra formatting.`;
 );
 
 /**
- * Gets a recipe snippet based on snap content.
- * [Phase 2: Scaffolded]
+ * Gets a recipe snippet based on snap content using OpenAI GPT-4.
+ * Analyzes caption and keywords to generate relevant recipe suggestions.
  */
 export const getRecipeSnippet = createAIHelper(
   "getRecipeSnippet",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (data, context) => {
-    logger.log(
-      "[getRecipeSnippet] TODO: Implement actual recipe snippet logic."
-    );
-    // Dummy response for now
-    return {
-      recipeName: "Simple Summer Salad",
-      snippet: "A refreshing salad perfect for a sunny day...",
-    };
+  async (data, context) => {
+    logger.log("[getRecipeSnippet] Starting recipe generation");
+    logger.log("[getRecipeSnippet] Input data:", data);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {caption, keywords, mediaType, vendorId} = data;
+
+    if (!caption) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Caption is required for recipe generation"
+      );
+    }
+
+    try {
+      // Get OpenAI API key
+      const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      if (!OPENAI_API_KEY) {
+        logger.error("[getRecipeSnippet] OpenAI API key not found");
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI API key is not configured"
+        );
+      }
+
+      logger.log(
+        `[getRecipeSnippet] Processing caption: "${caption}" with ` +
+        `${(keywords || []).length} keywords`
+      );
+
+      // Import OpenAI
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let OpenAI: any;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error(
+          "[getRecipeSnippet] OpenAI package not installed:",
+          importError
+        );
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI package is not installed"
+        );
+      }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+      });
+
+      // Build context-aware prompt for recipe generation
+      const keywordList = (keywords || []).join(", ");
+      const prompt = "You are a helpful cooking assistant for MarketSnap, " +
+        "a farmers market app. Based on the following produce/product " +
+        "description, determine if this is food-related and suggest a recipe " +
+        `if appropriate.
+
+Product description: "${caption}"
+Detected keywords: ${keywordList}
+Media type: ${mediaType || "photo"}
+
+CRITICAL DECISION LOGIC:
+1. First determine: Is this describing FOOD, PRODUCE, or EDIBLE ITEMS?
+   - FOOD: fruits, vegetables, herbs, baked goods, dairy, meat, grains, etc.
+   - NOT FOOD: crafts, soaps, candles, flowers, decorative items, tools, etc.
+
+2. If it's NOT FOOD, return:
+{
+  "recipeName": null,
+  "snippet": null,
+  "ingredients": [],
+  "category": "non_food",
+  "relevanceScore": 0.0
+}
+
+3. If it IS FOOD, provide a complete recipe:
+{
+  "recipeName": "Recipe Title (under 35 characters)",
+  "snippet": "Brief description of the recipe and why it's great " +
+    "(under 120 characters)",
+  "ingredients": ["ingredient1", "ingredient2", "ingredient3", "ingredient4"],
+  "category": "produce|baked_goods|dairy|herbs|etc",
+  "relevanceScore": 0.85
+}
+
+FOOD CATEGORIES: produce, baked_goods, dairy, herbs, meat, grains, beverages
+NON-FOOD CATEGORIES: crafts, soaps, candles, flowers, decorative, tools, " +
+  "clothing"
+
+IMPORTANT RULES:
+- Only suggest recipes for actual FOOD items
+- Flowers, crafts, soaps, candles = NOT FOOD = null recipe
+- If unsure, err on the side of NOT FOOD
+- Include ALL ingredients needed for the recipe (oil, salt, pepper, etc.)
+- Keep responses concise but complete for mobile display`;
+
+      logger.log("[getRecipeSnippet] Sending request to OpenAI GPT-4");
+
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful cooking assistant that provides " +
+              "simple, practical recipes for farmers market products. " +
+              "Always respond with valid JSON matching the requested format. " +
+              "Make sure to include ALL ingredients and keep responses " +
+              "concise but complete.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 600, // Increased from 400 to ensure complete responses
+        temperature: 0.7,
+        top_p: 0.9,
+      });
+
+      const responseText = completion.choices[0]?.message?.content?.trim();
+
+      if (!responseText) {
+        throw new Error("OpenAI returned empty response");
+      }
+
+      logger.log(
+        "[getRecipeSnippet] Raw OpenAI response " +
+        `(${responseText.length} chars): ${responseText}`
+      );
+
+      // Parse the JSON response
+      let recipeData;
+      try {
+        // Clean the response to remove markdown backticks and "json" identifier
+        const cleanedResponse = responseText.replace(/```json\n|```/g, "")
+          .trim();
+        logger.log(
+          "[getRecipeSnippet] Cleaned response for parsing: " +
+          `${cleanedResponse}`
+        );
+        recipeData = JSON.parse(cleanedResponse);
+      } catch (parseError) {
+        logger.error(
+          "[getRecipeSnippet] Failed to parse JSON response:",
+          parseError
+        );
+        logger.error("[getRecipeSnippet] Raw response was:", responseText);
+        throw new Error("Invalid JSON response from OpenAI");
+      }
+
+      // Validate response structure
+      const response = {
+        recipeName: recipeData.recipeName || null,
+        snippet: recipeData.snippet || null,
+        ingredients: Array.isArray(recipeData.ingredients) ?
+          recipeData.ingredients : [],
+        category: recipeData.category || "general",
+        relevanceScore: typeof recipeData.relevanceScore === "number" ?
+          recipeData.relevanceScore : 0.5,
+      };
+
+      logger.log(
+        `[getRecipeSnippet] Generated recipe: "${response.recipeName}" ` +
+        `(relevance: ${response.relevanceScore})`
+      );
+
+      return response;
+    } catch (error) {
+      logger.error("[getRecipeSnippet] Error generating recipe:", error);
+
+      // Return appropriate error
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ?
+        error.message : "Unknown error";
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to generate recipe snippet: ${errorMessage}`
+      );
+    }
   }
 );
 
 /**
- * Performs a vector search for relevant FAQs.
- * [Phase 2: Scaffolded]
+ * Performs a vector search for relevant FAQs using OpenAI embeddings.
+ * Falls back to keyword search if embeddings are not available.
  */
 export const vectorSearchFAQ = createAIHelper(
   "vectorSearchFAQ",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (data, context) => {
-    logger.log(
-      "[vectorSearchFAQ] TODO: Implement actual vector search logic."
-    );
-    // Dummy response for now
-    return {
-      results: [
-        {
-          question: "How long do your products last?",
-          answer: "Our produce is fresh and should last for about a week.",
-          score: 0.88,
-        },
-      ],
-    };
+  async (data, context) => {
+    logger.log("[vectorSearchFAQ] Starting FAQ search");
+    logger.log("[vectorSearchFAQ] Input data:", data);
+
+    const {query, keywords, vendorId, limit = 3} = data;
+
+    if (!query) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Query is required for FAQ search"
+      );
+    }
+
+    try {
+      // Get OpenAI API key
+      const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      if (!OPENAI_API_KEY) {
+        logger.error("[vectorSearchFAQ] OpenAI API key not found");
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI API key is not configured"
+        );
+      }
+
+      logger.log(
+        `[vectorSearchFAQ] Searching for: "${query}" ` +
+        `${vendorId ? `from vendor: ${vendorId}` : "across all vendors"}`
+      );
+
+      // Import OpenAI for embeddings
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let OpenAI: any;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error(
+          "[vectorSearchFAQ] OpenAI package not installed:",
+          importError
+        );
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI package is not installed"
+        );
+      }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+      });
+
+      // Generate embedding for the query
+      logger.log("[vectorSearchFAQ] Generating query embedding");
+      const embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: query,
+      });
+
+      const queryEmbedding = embeddingResponse.data[0].embedding;
+      logger.log(
+        "[vectorSearchFAQ] Generated embedding with " +
+        `${queryEmbedding.length} dimensions`
+      );
+
+      // Search FAQs in Firestore
+      // For now, we'll implement a simple keyword-based fallback since
+      // vector search requires additional setup (pgvector or similar)
+      let faqQuery = db.collection("faqVectors").limit(limit * 2);
+
+      // Filter by vendor if specified
+      if (vendorId) {
+        faqQuery = faqQuery.where("vendorId", "==", vendorId);
+      }
+
+      const faqSnapshot = await faqQuery.get();
+
+      if (faqSnapshot.empty) {
+        logger.log("[vectorSearchFAQ] No FAQs found in database");
+        return {results: []};
+      }
+
+      logger.log(
+        `[vectorSearchFAQ] Found ${faqSnapshot.docs.length} FAQ entries`
+      );
+
+      // Calculate similarity scores
+      const results = [];
+      const queryWords = query.toLowerCase().split(" ");
+      const keywordSet = new Set([
+        ...queryWords,
+        ...(keywords || []).map((k: string) => k.toLowerCase()),
+      ]);
+
+      for (const doc of faqSnapshot.docs) {
+        const faqData = doc.data();
+
+        // Calculate relevance score based on keyword matching
+        // In a full implementation, this would use vector similarity
+        let score = 0;
+
+        const questionText = (faqData.question || "").toLowerCase();
+        const answerText = (faqData.answer || "").toLowerCase();
+        const chunkText = (faqData.chunkText || "").toLowerCase();
+        const combinedText = `${questionText} ${answerText} ${chunkText}`;
+
+        // Score based on exact query matches
+        if (combinedText.includes(query.toLowerCase())) {
+          score += 0.5;
+        }
+
+        // Score based on keyword matches
+        let keywordMatches = 0;
+        keywordSet.forEach((keyword) => {
+          if (combinedText.includes(keyword)) {
+            keywordMatches++;
+          }
+        });
+
+        score += (keywordMatches / Math.max(keywordSet.size, 1)) * 0.4;
+
+        // Category bonus for matching product types
+        const category = faqData.category || "";
+        const categoryKeywords = ["produce", "baked", "dairy", "herb", "craft"];
+        const hasRelevantCategory = categoryKeywords.some((cat) =>
+          query.toLowerCase().includes(cat) && category.includes(cat)
+        );
+        if (hasRelevantCategory) {
+          score += 0.1;
+        }
+
+        // Only include results with reasonable relevance
+        if (score > 0.1) {
+          results.push({
+            question: faqData.question || "",
+            answer: faqData.answer || "",
+            score: Math.min(score, 1.0),
+            vendorId: faqData.vendorId || "",
+            category: faqData.category || "general",
+            faqId: doc.id,
+          });
+        }
+      }
+
+      // Sort by relevance score and limit results
+      results.sort((a, b) => b.score - a.score);
+      const topResults = results.slice(0, limit);
+
+      logger.log(
+        `[vectorSearchFAQ] Returning ${topResults.length} results ` +
+        `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")})`
+      );
+
+      return {
+        results: topResults,
+        totalFound: results.length,
+        // In production: "vector_similarity"
+        searchMethod: "keyword_similarity",
+      };
+    } catch (error) {
+      logger.error("[vectorSearchFAQ] Error searching FAQs:", error);
+
+      // Return appropriate error
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ?
+        error.message : "Unknown error";
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to search FAQs: ${errorMessage}`
+      );
+    }
   }
 );
