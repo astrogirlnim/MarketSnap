@@ -238,7 +238,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                         .length;
 
                     return ConversationListItem(
-                      otherParticipant: cachedProfile!,
+                      otherParticipant: cachedProfile,
                       lastMessage: lastMessage,
                       currentUserId: currentUserId,
                       onTap: () {
