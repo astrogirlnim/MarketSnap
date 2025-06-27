@@ -5,20 +5,191 @@ import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
+import '../../../core/services/hive_service.dart';
+
+/// Simple cached user model for offline authentication
+class CachedUser {
+  final String uid;
+  final String email;
+  final String? phoneNumber;
+  final String? displayName;
+  final String? photoURL;
+
+  CachedUser({
+    required this.uid,
+    required this.email,
+    this.phoneNumber,
+    this.displayName,
+    this.photoURL,
+  });
+
+  factory CachedUser.fromMap(Map<String, dynamic> map) {
+    return CachedUser(
+      uid: map['uid'] as String,
+      email: map['email'] as String,
+      phoneNumber: map['phoneNumber'] as String?,
+      displayName: map['displayName'] as String?,
+      photoURL: map['photoURL'] as String?,
+    );
+  }
+
+  /// Create a Firebase User-like interface for compatibility
+  User toFirebaseUserLike() {
+    // This is a simplified representation - in production you might want
+    // to create a proper User implementation or wrapper
+    return _CachedFirebaseUser(
+      uid: uid,
+      email: email,
+      phoneNumber: phoneNumber,
+      displayName: displayName,
+      photoURL: photoURL,
+    );
+  }
+}
+
+/// Simple Firebase User implementation for cached offline users
+class _CachedFirebaseUser implements User {
+  @override
+  final String uid;
+  
+  @override
+  final String? email;
+  
+  @override
+  final String? phoneNumber;
+  
+  @override
+  final String? displayName;
+  
+  @override
+  final String? photoURL;
+
+  _CachedFirebaseUser({
+    required this.uid,
+    this.email,
+    this.phoneNumber,
+    this.displayName,
+    this.photoURL,
+  });
+
+  // Implement required User interface methods with sensible defaults
+  @override
+  bool get emailVerified => true; // Assume verified for cached users
+  
+  @override
+  bool get isAnonymous => false;
+  
+  @override
+  UserMetadata get metadata => throw UnimplementedError('Metadata not available for cached users');
+  
+  @override
+  MultiFactor get multiFactor => throw UnimplementedError('MultiFactor not available for cached users');
+  
+  @override
+  List<UserInfo> get providerData => [];
+  
+  @override
+  String? get refreshToken => null;
+  
+  @override
+  String? get tenantId => null;
+  
+  @override
+  Future<void> delete() => throw UnimplementedError('Delete not available for cached users');
+  
+  @override
+  Future<String> getIdToken([bool forceRefresh = false]) => 
+    throw UnimplementedError('ID token not available for cached users');
+  
+  @override
+  Future<IdTokenResult> getIdTokenResult([bool forceRefresh = false]) => 
+    throw UnimplementedError('ID token result not available for cached users');
+  
+  @override
+  Future<User> linkWithCredential(AuthCredential credential) => 
+    throw UnimplementedError('Link credential not available for cached users');
+  
+  @override
+  Future<ConfirmationResult> linkWithPhoneNumber(String phoneNumber, [RecaptchaVerifier? verifier]) => 
+    throw UnimplementedError('Link phone number not available for cached users');
+  
+  @override
+  Future<UserCredential> linkWithPopup(AuthProvider provider) => 
+    throw UnimplementedError('Link popup not available for cached users');
+  
+  @override
+  Future<void> linkWithRedirect(AuthProvider provider) => 
+    throw UnimplementedError('Link redirect not available for cached users');
+  
+  @override
+  Future<UserCredential> reauthenticateWithCredential(AuthCredential credential) => 
+    throw UnimplementedError('Reauthenticate not available for cached users');
+  
+  @override
+  Future<UserCredential> reauthenticateWithPopup(AuthProvider provider) => 
+    throw UnimplementedError('Reauthenticate popup not available for cached users');
+  
+  @override
+  Future<void> reauthenticateWithRedirect(AuthProvider provider) => 
+    throw UnimplementedError('Reauthenticate redirect not available for cached users');
+  
+  @override
+  Future<void> reload() => throw UnimplementedError('Reload not available for cached users');
+  
+  @override
+  Future<void> sendEmailVerification([ActionCodeSettings? actionCodeSettings]) => 
+    throw UnimplementedError('Send email verification not available for cached users');
+  
+  @override
+  Future<User> unlink(String providerId) => 
+    throw UnimplementedError('Unlink not available for cached users');
+  
+  @override
+  Future<void> updateDisplayName(String? displayName) => 
+    throw UnimplementedError('Update display name not available for cached users');
+  
+  @override
+  Future<void> updateEmail(String newEmail) => 
+    throw UnimplementedError('Update email not available for cached users');
+  
+  @override
+  Future<void> updatePassword(String newPassword) => 
+    throw UnimplementedError('Update password not available for cached users');
+  
+  @override
+  Future<void> updatePhoneNumber(PhoneAuthCredential phoneCredential) => 
+    throw UnimplementedError('Update phone number not available for cached users');
+  
+  @override
+  Future<void> updatePhotoURL(String? photoURL) => 
+    throw UnimplementedError('Update photo URL not available for cached users');
+  
+  @override
+  Future<void> updateProfile({String? displayName, String? photoURL}) => 
+    throw UnimplementedError('Update profile not available for cached users');
+  
+  @override
+  Future<void> verifyBeforeUpdateEmail(String newEmail, [ActionCodeSettings? actionCodeSettings]) => 
+    throw UnimplementedError('Verify before update email not available for cached users');
+}
 
 /// Authentication service handling Firebase Auth operations
 /// Supports both phone number and email OTP authentication flows
 /// Enhanced with offline authentication persistence for better UX
 class AuthService {
   final FirebaseAuth _firebaseAuth;
+  final HiveService? _hiveService;
   
   // Offline authentication state management
   StreamController<User?>? _offlineAuthController;
   User? _cachedUser;
   bool _isOfflineMode = false;
 
-  AuthService({FirebaseAuth? firebaseAuth})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance {
+  AuthService({
+    FirebaseAuth? firebaseAuth,
+    HiveService? hiveService,
+  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+       _hiveService = hiveService {
     _initializeOfflineAuth();
   }
 
@@ -28,8 +199,25 @@ class AuthService {
     
     _offlineAuthController = StreamController<User?>.broadcast();
     
-    // Initialize with current Firebase user if available
-    _cachedUser = _firebaseAuth.currentUser;
+    // Check for cached user first (for offline persistence)
+    if (_hiveService != null && _hiveService!.hasAuthenticationCache() && _hiveService!.isCachedAuthenticationValid()) {
+      final cachedUserData = _hiveService!.getCachedAuthenticatedUser();
+      if (cachedUserData != null) {
+        final cachedUser = CachedUser.fromMap(cachedUserData);
+        _cachedUser = cachedUser.toFirebaseUserLike();
+        debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser!.uid}');
+      }
+    }
+    
+    // Initialize with current Firebase user if available (and no cached user)
+    if (_cachedUser == null) {
+      _cachedUser = _firebaseAuth.currentUser;
+      if (_cachedUser != null) {
+        debugPrint('[AuthService] 🔥 Using current Firebase user: ${_cachedUser!.uid}');
+        // Cache this user for offline persistence
+        _cacheCurrentUser(_cachedUser!);
+      }
+    }
     
     // Check initial connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
@@ -56,12 +244,43 @@ class AuthService {
         _cachedUser = user;
         _offlineAuthController?.add(user);
         debugPrint('[AuthService] ✅ Cached user state updated (online)');
+        
+        // Cache for offline persistence
+        if (user != null) {
+          _cacheCurrentUser(user);
+        } else {
+          _clearUserCache();
+        }
       }
     });
+  }
+
+  /// Cache the current user for offline persistence
+  void _cacheCurrentUser(User user) {
+    if (_hiveService == null) return;
     
-    if (_cachedUser != null) {
-      debugPrint('[AuthService] 💾 Restored cached user: ${_cachedUser!.uid}');
-    }
+    debugPrint('[AuthService] 💾 Caching user for offline persistence: ${user.uid}');
+    
+    _hiveService!.cacheAuthenticatedUser(
+      uid: user.uid,
+      email: user.email ?? '',
+      phoneNumber: user.phoneNumber,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+    ).catchError((error) {
+      debugPrint('[AuthService] ❌ Failed to cache user: $error');
+    });
+  }
+
+  /// Clear cached user data
+  void _clearUserCache() {
+    if (_hiveService == null) return;
+    
+    debugPrint('[AuthService] 🗑️ Clearing cached user data');
+    
+    _hiveService!.clearAuthenticationCache().catchError((error) {
+      debugPrint('[AuthService] ❌ Failed to clear user cache: $error');
+    });
   }
 
   /// Handle connectivity changes
@@ -122,6 +341,9 @@ class AuthService {
       // Clear cached state immediately
       _cachedUser = null;
       _offlineAuthController?.add(null);
+      
+      // Clear persistent authentication cache
+      _clearUserCache();
       
       // Sign out from Firebase if online
       if (!_isOfflineMode) {

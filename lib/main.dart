@@ -167,14 +167,6 @@ Future<void> main() async {
     // Continue without App Check if it fails - not critical for basic functionality
   }
 
-  // Initialize authentication service
-  try {
-    authService = AuthService();
-    debugPrint('[main] Auth service initialized.');
-  } catch (e) {
-    debugPrint('[main] Error initializing auth service: $e');
-  }
-
   // Initialize and schedule background sync service
   try {
     hiveService = HiveService(SecureStorageService());
@@ -182,6 +174,14 @@ Future<void> main() async {
     debugPrint('[main] Hive service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing Hive service: $e');
+  }
+
+  // Initialize authentication service with Hive support
+  try {
+    authService = AuthService(hiveService: hiveService);
+    debugPrint('[main] Auth service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing auth service: $e');
   }
 
   // Initialize profile service
@@ -307,13 +307,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
         debugPrint(
           '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
         );
+        debugPrint('[AuthWrapper] Connection state: ${snapshot.connectionState}');
+        debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
+        debugPrint('[AuthWrapper] Data: ${snapshot.data}');
 
-        // Show loading while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+        // Skip loading state check - auth service always emits initial state
+        // Handle authentication state directly based on data
 
         // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {

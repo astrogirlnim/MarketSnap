@@ -19,11 +19,13 @@ class HiveService {
   late final Box<PendingMediaItem> pendingMediaQueueBox;
   late final Box<UserSettings> userSettingsBox;
   late final Box<VendorProfile> vendorProfileBox;
+  late final Box<Map<String, dynamic>> authCacheBox;
 
   // Box names
   static const String pendingMediaQueueBoxName = 'pendingMediaQueue';
   static const String userSettingsBoxName = 'userSettings';
   static const String vendorProfileBoxName = 'vendorProfile';
+  static const String authCacheBoxName = 'authCache';
 
   // Directory for quarantined media files
   static const String _pendingDirectoryName = 'pending_uploads';
@@ -81,6 +83,12 @@ class HiveService {
         vendorProfileBoxName,
         cipher,
         (box) => vendorProfileBox = box,
+      );
+
+      await _openBoxWithRecovery<Map<String, dynamic>>(
+        authCacheBoxName,
+        cipher,
+        (box) => authCacheBox = box,
       );
 
       // Ensure user settings has a default value if the box is new
@@ -262,6 +270,71 @@ class HiveService {
   bool hasCompleteVendorProfile(String uid) {
     final profile = getVendorProfile(uid);
     return profile?.isComplete ?? false;
+  }
+
+  // ================================
+  // AUTH CACHE METHODS
+  // ================================
+
+  /// Cache authenticated user data for offline persistence
+  Future<void> cacheAuthenticatedUser({
+    required String uid,
+    required String email,
+    String? phoneNumber,
+    String? displayName,
+    String? photoURL,
+  }) async {
+    debugPrint('[HiveService] Caching authenticated user: $uid');
+    
+    final userData = {
+      'uid': uid,
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'displayName': displayName,
+      'photoURL': photoURL,
+      'cachedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+    
+    await authCacheBox.put('current_user', userData);
+    debugPrint('[HiveService] ✅ User authentication cached successfully');
+  }
+
+  /// Get cached authenticated user data
+  Map<String, dynamic>? getCachedAuthenticatedUser() {
+    final userData = authCacheBox.get('current_user');
+    if (userData != null) {
+      debugPrint('[HiveService] 💾 Retrieved cached user: ${userData['uid']}');
+    }
+    return userData;
+  }
+
+  /// Clear cached authentication data (for sign out)
+  Future<void> clearAuthenticationCache() async {
+    await authCacheBox.delete('current_user');
+    debugPrint('[HiveService] 🗑️ Authentication cache cleared');
+  }
+
+  /// Check if user authentication is cached
+  bool hasAuthenticationCache() {
+    return authCacheBox.containsKey('current_user');
+  }
+
+  /// Check if cached authentication is recent (within 30 days)
+  bool isCachedAuthenticationValid() {
+    final userData = getCachedAuthenticatedUser();
+    if (userData == null) return false;
+    
+    final cachedAt = userData['cachedAt'] as int?;
+    if (cachedAt == null) return false;
+    
+    final cacheTime = DateTime.fromMillisecondsSinceEpoch(cachedAt);
+    final now = DateTime.now();
+    final daysSinceCached = now.difference(cacheTime).inDays;
+    
+    final isValid = daysSinceCached <= 30; // 30 day expiry
+    debugPrint('[HiveService] 📅 Cached auth validity: $isValid (${daysSinceCached} days old)');
+    
+    return isValid;
   }
 
   /// Closes all open Hive boxes.
