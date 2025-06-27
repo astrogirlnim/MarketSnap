@@ -1,6 +1,8 @@
 # MarketSnap
 
-A cross-platform mobile application built with Flutter and Firebase backend, supporting both iOS and Android platforms.
+![image](https://github.com/user-attachments/assets/6a2632b1-918e-4073-9677-5cef04237996)
+
+"MarketSnap enables farmers-market vendors to share real-time "fresh-stock" photos and 5-second clips that work offline first, sync transparently when connectivity returns, and auto-expire after 24 hours—driving foot traffic before produce spoils." A cross-platform mobile application built with Flutter and Firebase backend, supporting both iOS and Android platforms.
 
 ## Project Overview
 
