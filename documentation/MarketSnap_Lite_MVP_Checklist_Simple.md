@@ -107,10 +107,12 @@ Legend:
 ## Phase 4 – Implementation Layer  
 **Criteria:** Business logic & AI value. *Depends on all prior phases.*
 
-- [ ] **1. Offline Media Queue Logic**
-  - [ ] Serialize photo/video + metadata into Hive queue.
-  - [ ] WorkManager uploads when network available; writes `snaps` doc + Storage file.
-  - [ ] Delete queue item on 200 response; retry on failure.
+- [X] **1. Offline Media Queue Logic** ✅ **CORE COMPLETE, CRITICAL BUG RESOLVED**
+  - [X] Serialize photo/video + metadata into Hive queue. ✅ **DONE** - PendingMediaItem model with all fields
+  - [X] WorkManager uploads when network available; writes `snaps` doc + Storage file. ✅ **DONE** - Background sync with Firebase
+  - [X] Delete queue item on 200 response; retry on failure. ✅ **DONE** - Comprehensive error handling
+  - [X] **ENHANCEMENT**: Smart posting flow with connectivity monitoring ✅ **ADDED** - 10s timeout online, instant queue offline
+  - [X] **CRITICAL FIX**: Offline authentication persistence ✅ **RESOLVED** - LateInitializationError fixed with robust error handling
 
 - [ ] **2. Push Notification Flow**
   - [ ] Request FCM permissions; save token in `followers` sub‑coll.

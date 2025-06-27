@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,8 +6,12 @@ import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
-import '../../../../main.dart' show backgroundSyncService;
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../../core/services/background_sync_service.dart';
+
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -32,6 +37,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     with TickerProviderStateMixin {
   final LutFilterService _lutFilterService = LutFilterService.instance;
   final TextEditingController _captionController = TextEditingController();
+  late final BackgroundSyncService backgroundSyncService;
 
   // Filter state
   LutFilterType _selectedFilter = LutFilterType.none;
@@ -47,6 +53,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   // Animation controllers
   late AnimationController _filterAnimationController;
   late Animation<double> _filterAnimation;
+
+  // Posting state
+  bool _hasConnectivity = true;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
@@ -75,6 +85,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
     // Initialize LUT filter service
     _initializeLutService();
+
+    // Initialize background sync service
+    backgroundSyncService = BackgroundSyncService();
+
+    // Initialize connectivity monitoring
+    _initializeConnectivity();
   }
 
   @override
@@ -83,6 +99,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     _captionController.dispose();
     _filterAnimationController.dispose();
     _lutFilterService.clearPreviewCache();
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 
@@ -193,22 +210,62 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
-      // Trigger immediate sync
-      await backgroundSyncService.triggerImmediateSync();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post added to upload queue!')),
-        );
-        // Navigate back to the main shell (or wherever is appropriate)
-        // This pops all routes until the main shell.
-        Navigator.of(context).popUntil((route) => route.isFirst);
+      // Show different behavior based on connectivity
+      if (_hasConnectivity) {
+        // Online: Try immediate sync with timeout
+        debugPrint('[MediaReviewScreen] Online - attempting immediate sync with timeout');
+        
+        try {
+          // Set a reasonable timeout for online posting
+          await backgroundSyncService.triggerImmediateSync().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('[MediaReviewScreen] Immediate sync timed out - will continue in background');
+              throw TimeoutException('Upload timed out', const Duration(seconds: 10));
+            },
+          );
+          
+          // Success - immediate upload completed
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Posted successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        } on TimeoutException {
+          // Timeout - let it continue in background
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('📤 Posting in background...'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        }
+      } else {
+        // Offline: Add to queue and show offline message with queue count
+        debugPrint('[MediaReviewScreen] Offline - added to queue for later upload');
+        
+        if (mounted) {
+          // Get current queue count for better user feedback
+          _showOfflineQueueMessage();
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to post: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -414,56 +471,171 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build post button
+  /// Build post button with connectivity awareness
   Widget _buildPostButton() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          onPressed: _isPosting ? null : _postMedia,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurple,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          // Connectivity status indicator
+          if (!_hasConnectivity)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wifi_off, size: 16, color: Colors.orange.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Offline - will post when connected',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            elevation: 4,
-          ),
-          child: _isPosting
-              ? const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Text('Posting...', style: TextStyle(fontSize: 16)),
-                  ],
-                )
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.send, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Post',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+          
+          // Post button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isPosting ? null : _postMedia,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _hasConnectivity 
+                  ? Colors.deepPurple 
+                  : Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-        ),
+                elevation: 4,
+              ),
+              child: _isPosting
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _hasConnectivity ? 'Posting...' : 'Adding to queue...',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _hasConnectivity ? Icons.send : Icons.schedule_send,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _hasConnectivity ? 'Post' : 'Queue for Later',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// Show offline queue message with current queue count
+  Future<void> _showOfflineQueueMessage() async {
+    try {
+      // Get current queue count
+      final pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
+      final queueCount = pendingBox.length;
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.wifi_off, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  queueCount == 1 
+                    ? '📱 1 post queued for upload'
+                    : '📱 $queueCount posts queued for upload',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blue.shade600,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Error getting queue count: $e');
+      // Fallback to simple message
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.wifi_off, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('📱 Will post when online')),
+            ],
+          ),
+          backgroundColor: Colors.blue.shade600,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Initialize connectivity monitoring
+  void _initializeConnectivity() async {
+    // Check initial connectivity
+    final connectivityResult = await Connectivity().checkConnectivity();
+    _updateConnectivityStatus(connectivityResult);
+
+    // Listen for connectivity changes
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _updateConnectivityStatus,
+    );
+  }
+
+  /// Update connectivity status
+  void _updateConnectivityStatus(List<ConnectivityResult> result) {
+    final bool hasConnection = result.any((connectivity) => 
+      connectivity != ConnectivityResult.none
+    );
+    
+    if (mounted && _hasConnectivity != hasConnection) {
+      setState(() {
+        _hasConnectivity = hasConnection;
+      });
+      
+      // Log connectivity change for debugging
+      debugPrint('[MediaReviewScreen] Connectivity changed: ${hasConnection ? 'ONLINE' : 'OFFLINE'}');
+    }
   }
 
   @override

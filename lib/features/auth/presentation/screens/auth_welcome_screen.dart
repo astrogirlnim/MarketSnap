@@ -9,15 +9,50 @@ import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../../../shared/presentation/widgets/version_display_widget.dart';
 import '../../application/auth_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// MarketSnap Welcome Screen - Redesigned to match login_page.png reference
 /// Features the basket character icon and farmers-market aesthetic
-class AuthWelcomeScreen extends StatelessWidget {
+/// Enhanced with offline authentication support
+class AuthWelcomeScreen extends StatefulWidget {
   const AuthWelcomeScreen({super.key});
 
   @override
+  State<AuthWelcomeScreen> createState() => _AuthWelcomeScreenState();
+}
+
+class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
+  bool _isOffline = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    
+    // Monitor connectivity changes
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final isOffline = results.contains(ConnectivityResult.none);
+      if (mounted && _isOffline != isOffline) {
+        setState(() {
+          _isOffline = isOffline;
+        });
+      }
+    });
+  }
+  
+  Future<void> _checkConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final isOffline = connectivityResult.contains(ConnectivityResult.none);
+    if (mounted) {
+      setState(() {
+        _isOffline = isOffline;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    debugPrint('[AuthWelcomeScreen] Building MarketSnap welcome screen');
+    debugPrint('[AuthWelcomeScreen] Building MarketSnap welcome screen (offline: $_isOffline)');
 
     // Check if phone auth should be disabled on iOS emulator
     final bool isIOSEmulator = Platform.isIOS && kDebugMode;
@@ -48,6 +83,16 @@ class AuthWelcomeScreen extends StatelessWidget {
                 children: [
                   // Spacer to push content down
                   const Spacer(flex: 1),
+
+                  // Offline status indicator
+                  if (_isOffline) ...[
+                    MarketSnapStatusMessage(
+                      message: 'You\'re offline - Sign in to access your account once connected',
+                      type: StatusType.warning,
+                      showIcon: true,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
 
                   // Basket Character Icon - Center of the design
                   const Center(child: BasketIcon(size: 120)),

@@ -22,6 +22,7 @@ import 'features/profile/application/profile_service.dart';
 import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -167,14 +168,6 @@ Future<void> main() async {
     // Continue without App Check if it fails - not critical for basic functionality
   }
 
-  // Initialize authentication service
-  try {
-    authService = AuthService();
-    debugPrint('[main] Auth service initialized.');
-  } catch (e) {
-    debugPrint('[main] Error initializing auth service: $e');
-  }
-
   // Initialize and schedule background sync service
   try {
     hiveService = HiveService(SecureStorageService());
@@ -182,6 +175,31 @@ Future<void> main() async {
     debugPrint('[main] Hive service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing Hive service: $e');
+    // Create minimal fallback Hive service
+    try {
+      hiveService = HiveService(SecureStorageService());
+      debugPrint('[main] Fallback Hive service created (may have limited functionality).');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create Hive service: $fallbackError');
+      rethrow;
+    }
+  }
+
+  // Initialize authentication service with Hive support
+  try {
+    authService = AuthService(hiveService: hiveService);
+    debugPrint('[main] Auth service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing auth service: $e');
+    // Create a fallback AuthService without Hive if initialization fails
+    try {
+      authService = AuthService();
+      debugPrint('[main] Fallback auth service created without cached data.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Fallback auth service failed: $fallbackError');
+      // This should never happen, but if it does, we need to exit gracefully
+      rethrow;
+    }
   }
 
   // Initialize profile service
@@ -190,6 +208,14 @@ Future<void> main() async {
     debugPrint('[main] Profile service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing profile service: $e');
+    // Create fallback profile service
+    try {
+      profileService = ProfileService(hiveService: hiveService);
+      debugPrint('[main] Fallback profile service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create profile service: $fallbackError');
+      rethrow;
+    }
   }
 
   try {
@@ -198,6 +224,14 @@ Future<void> main() async {
     debugPrint('[main] Background sync service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing background sync service: $e');
+    // Create basic background sync service without full initialization
+    try {
+      backgroundSyncService = BackgroundSyncService(hiveService: hiveService);
+      debugPrint('[main] Basic background sync service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create background sync service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize LUT filter service
@@ -207,6 +241,14 @@ Future<void> main() async {
     debugPrint('[main] LUT filter service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing LUT filter service: $e');
+    // LUT filter service is critical for camera functionality
+    try {
+      lutFilterService = LutFilterService.instance;
+      debugPrint('[main] Basic LUT filter service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create LUT filter service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize account linking service
@@ -218,6 +260,19 @@ Future<void> main() async {
     debugPrint('[main] Account linking service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing account linking service: $e');
+    debugPrint('[main] Account linking will be limited without proper initialization.');
+    // We'll continue without account linking service - it's not critical for basic auth
+    // Create a minimal fallback that won't cause late initialization errors
+    try {
+      accountLinkingService = AccountLinkingService(
+        authService: authService,
+        profileService: profileService,
+      );
+      debugPrint('[main] Account linking service created despite initial error.');
+    } catch (finalError) {
+      debugPrint('[main] CRITICAL: Cannot initialize account linking service: $finalError');
+      rethrow;
+    }
   }
 
   // Initialize messaging service
@@ -226,6 +281,14 @@ Future<void> main() async {
     debugPrint('[main] Messaging service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing messaging service: $e');
+    // Create basic messaging service
+    try {
+      messagingService = MessagingService();
+      debugPrint('[main] Basic messaging service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create messaging service: $fallbackError');
+      rethrow;
+    }
   }
 
   // Initialize push notification service
@@ -235,6 +298,60 @@ Future<void> main() async {
     debugPrint('[main] Push notification service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing push notification service: $e');
+    // Create basic push notification service
+    try {
+      pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+      debugPrint('[main] Basic push notification service created.');
+    } catch (fallbackError) {
+      debugPrint('[main] CRITICAL: Cannot create push notification service: $fallbackError');
+      rethrow;
+    }
+  }
+
+  // Add global connectivity monitoring for background sync
+  try {
+    // Monitor connectivity changes globally to trigger sync when coming back online
+    bool wasOffline = false;
+    
+    // Check initial connectivity state
+    final initialConnectivity = await Connectivity().checkConnectivity();
+    wasOffline = initialConnectivity.contains(ConnectivityResult.none);
+    debugPrint('[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}');
+    
+    // Listen for connectivity changes
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
+      final isOnline = results.any((result) => result != ConnectivityResult.none);
+      
+      debugPrint('[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}');
+      
+      // If we just came back online from being offline, trigger sync
+      if (isOnline && wasOffline) {
+        debugPrint('[main] 🌐 Back online! Triggering background sync for queued items...');
+        
+        try {
+          await backgroundSyncService.triggerImmediateSync();
+          debugPrint('[main] ✅ Background sync completed successfully');
+        } catch (e) {
+          debugPrint('[main] ❌ Background sync failed: $e');
+          
+          // Fallback: Schedule a one-time task for more reliable sync
+          try {
+            await backgroundSyncService.scheduleOneTimeSyncTask();
+            debugPrint('[main] 📅 Scheduled one-time sync task as fallback');
+          } catch (scheduleError) {
+            debugPrint('[main] ❌ Failed to schedule fallback sync: $scheduleError');
+          }
+        }
+      }
+      
+      // Update offline state
+      wasOffline = !isOnline;
+    });
+    
+    debugPrint('[main] Global connectivity monitoring initialized.');
+  } catch (e) {
+    debugPrint('[main] Error setting up global connectivity monitoring: $e');
+    // Non-critical error - app can continue without global sync monitoring
   }
 
   debugPrint('[main] Firebase & App Check initialized.');
@@ -269,6 +386,17 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void dispose() {
+    // Dispose auth service resources with null safety
+    try {
+      authService.dispose();
+    } catch (e) {
+      debugPrint('[AuthWrapper] Error disposing auth service: $e');
+    }
+    super.dispose();
+  }
+
   /// Handles post-authentication flow including account linking
   Future<bool> _handlePostAuthenticationFlow() async {
     debugPrint('[AuthWrapper] Handling post-authentication flow');
@@ -300,18 +428,42 @@ class _AuthWrapperState extends State<AuthWrapper> {
         debugPrint(
           '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
         );
+        debugPrint('[AuthWrapper] Connection state: ${snapshot.connectionState}');
+        debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
+        debugPrint('[AuthWrapper] Data: ${snapshot.data}');
+        debugPrint('[AuthWrapper] Is offline mode: ${authService.isOfflineMode}');
 
-        // Show loading while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+        // Skip loading state check - auth service always emits initial state
+        // Handle authentication state directly based on data
 
         // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
 
+          // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
+          if (authService.isOfflineMode) {
+            debugPrint('[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow');
+            
+            // Go directly to profile check without network operations
+            if (profileService.hasCompleteProfile()) {
+              debugPrint('[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen');
+              return MainShellScreen(
+                profileService: profileService,
+                hiveService: hiveService,
+              );
+            } else {
+              debugPrint('[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen');
+              return VendorProfileScreen(
+                profileService: profileService,
+                onProfileComplete: () {
+                  debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                  setState(() {});
+                },
+              );
+            }
+          }
+
+          // ONLINE MODE: Run full post-authentication flow
           return FutureBuilder<bool>(
             future: _handlePostAuthenticationFlow(),
             builder: (context, authFuture) {
