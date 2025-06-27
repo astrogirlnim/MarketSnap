@@ -53,6 +53,19 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.vendorId == request.auth.uid;
     }
 
+    // RAG Feedback: User feedback on recipe and FAQ suggestions
+    // Users can create feedback for their own interactions and view their own history
+    // Vendors can read feedback on their content for analytics
+    match /ragFeedback/{feedbackId} {
+      // Users can read their own feedback
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Vendors can read feedback on their content for analytics
+      allow read: if request.auth != null && request.auth.uid == resource.data.vendorId;
+      // Users can create feedback for their own interactions
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // No updates or deletes - feedback is immutable for analytics integrity
+    }
+
     // Messages: Ephemeral messaging between vendor and shopper.
     // Only the sender (fromUid) and recipient (toUid) can read/write messages.
     // Messages auto-expire after 24h via TTL field.

@@ -6,6 +6,7 @@ import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../core/services/rag_service.dart';
+import '../../../../core/models/rag_feedback.dart';
 
 /// Individual feed post widget displaying a snap with media and interactions
 /// Handles both photo and video content with proper aspect ratios
@@ -40,6 +41,10 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   bool _hasEnhancementError = false;
   bool _isRecipeExpanded = false;
   bool _isFAQExpanded = false;
+
+  // Feedback State
+  final Set<String> _recipeFeedbackGiven = <String>{}; // Recipe hashes that received feedback
+  final Set<String> _faqFeedbackGiven = <String>{}; // FAQ IDs that received feedback
 
   @override
   void initState() {
@@ -600,6 +605,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       '[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})',
     );
 
+    final recipeHash = _generateRecipeHash(recipe);
+    final hasFeedback = _recipeFeedbackGiven.contains(recipeHash);
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
@@ -680,6 +688,13 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
+              _recordFeedback(
+                contentType: 'recipe',
+                contentId: recipeHash,
+                contentTitle: recipe.recipeName,
+                action: RAGFeedbackAction.expand,
+                relevanceScore: recipe.relevanceScore,
+              );
               setState(() {
                 _isRecipeExpanded = !_isRecipeExpanded;
               });
@@ -717,6 +732,15 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: AppSpacing.md),
+                  // Feedback Buttons
+                  _buildFeedbackButtons(
+                    contentType: 'recipe',
+                    contentId: recipeHash,
+                    contentTitle: recipe.recipeName,
+                    relevanceScore: recipe.relevanceScore,
+                    hasFeedback: hasFeedback,
+                  ),
                   if (recipe.fromCache) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Row(
@@ -803,6 +827,16 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
+              // Record expand action for first FAQ
+              if (faqs.isNotEmpty) {
+                _recordFeedback(
+                  contentType: 'faq',
+                  contentId: faqs.first.vendorId, // Using vendorId as FAQ ID for now
+                  contentTitle: faqs.first.question,
+                  action: RAGFeedbackAction.expand,
+                  relevanceScore: faqs.first.score,
+                );
+              }
               setState(() {
                 _isFAQExpanded = !_isFAQExpanded;
               });
@@ -816,54 +850,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                 children: faqs
                     .take(3)
                     .map(
-                      (faq) => Container(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          color: AppColors.eggshell.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Q: ${faq.question}',
-                              style: AppTypography.body.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.soilCharcoal,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'A: ${faq.answer}',
-                              style: AppTypography.body.copyWith(
-                                color: AppColors.soilTaupe,
-                              ),
-                            ),
-                            if (faq.score > 0) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    size: 12,
-                                    color: AppColors.sunsetAmber,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${(faq.score * 100).toInt()}% match',
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.soilTaupe.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                      (faq) => _buildFAQItem(faq),
                     )
                     .toList(),
               ),
@@ -872,5 +859,266 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         ],
       ),
     );
+  }
+
+  /// Build individual FAQ item with feedback buttons
+  Widget _buildFAQItem(FAQResult faq) {
+    final faqId = '${faq.vendorId}_${faq.question.hashCode}';
+    final hasFeedback = _faqFeedbackGiven.contains(faqId);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.eggshell.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Q: ${faq.question}',
+            style: AppTypography.body.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.soilCharcoal,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'A: ${faq.answer}',
+            style: AppTypography.body.copyWith(
+              color: AppColors.soilTaupe,
+            ),
+          ),
+          if (faq.score > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.star,
+                  size: 12,
+                  color: AppColors.sunsetAmber,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '${(faq.score * 100).toInt()}% match',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.soilTaupe.withValues(
+                      alpha: 0.7,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          // FAQ Feedback Buttons
+          _buildFeedbackButtons(
+            contentType: 'faq',
+            contentId: faqId,
+            contentTitle: faq.question,
+            relevanceScore: faq.score,
+            hasFeedback: hasFeedback,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build feedback buttons for recipe/FAQ content
+  Widget _buildFeedbackButtons({
+    required String contentType,
+    required String contentId,
+    required String contentTitle,
+    required double relevanceScore,
+    required bool hasFeedback,
+  }) {
+    return Row(
+      children: [
+        Text(
+          'Was this helpful?',
+          style: AppTypography.caption.copyWith(
+            color: AppColors.soilTaupe,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        if (!hasFeedback) ...[
+          // Upvote Button
+          _buildFeedbackButton(
+            icon: Icons.thumb_up_outlined,
+            label: 'Yes',
+            color: AppColors.leafGreen,
+            onTap: () => _recordFeedback(
+              contentType: contentType,
+              contentId: contentId,
+              contentTitle: contentTitle,
+              action: RAGFeedbackAction.upvote,
+              relevanceScore: relevanceScore,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          // Downvote Button
+          _buildFeedbackButton(
+            icon: Icons.thumb_down_outlined,
+            label: 'No',
+            color: AppColors.appleRed,
+            onTap: () => _recordFeedback(
+              contentType: contentType,
+              contentId: contentId,
+              contentTitle: contentTitle,
+              action: RAGFeedbackAction.downvote,
+              relevanceScore: relevanceScore,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          // Skip Button
+          _buildFeedbackButton(
+            icon: Icons.skip_next_outlined,
+            label: 'Skip',
+            color: AppColors.soilTaupe,
+            onTap: () => _recordFeedback(
+              contentType: contentType,
+              contentId: contentId,
+              contentTitle: contentTitle,
+              action: RAGFeedbackAction.skip,
+              relevanceScore: relevanceScore,
+            ),
+          ),
+        ] else ...[
+          // Feedback given state
+          Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                size: 16,
+                color: AppColors.leafGreen,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Thanks for your feedback!',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.leafGreen,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Build individual feedback button
+  Widget _buildFeedbackButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Record user feedback on RAG suggestions
+  void _recordFeedback({
+    required String contentType,
+    required String contentId,
+    required String contentTitle,
+    required RAGFeedbackAction action,
+    required double relevanceScore,
+  }) {
+    debugPrint(
+      '[FeedPostWidget] Recording $action feedback for $contentType: $contentTitle',
+    );
+
+    // Record feedback via RAG service (non-blocking)
+    _ragService.recordFeedback(
+      snapId: widget.snap.id,
+      vendorId: widget.snap.vendorId,
+      action: action,
+      contentType: contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentId: contentId,
+      contentTitle: contentTitle,
+      relevanceScore: relevanceScore,
+    );
+
+    // Update UI state to show feedback given
+    setState(() {
+      if (contentType == 'recipe') {
+        _recipeFeedbackGiven.add(contentId);
+      } else if (contentType == 'faq') {
+        _faqFeedbackGiven.add(contentId);
+      }
+    });
+
+    // Show brief feedback message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            action == RAGFeedbackAction.upvote
+                ? '👍 Thanks! This helps us improve suggestions'
+                : action == RAGFeedbackAction.downvote
+                    ? '👎 Thanks for the feedback'
+                    : '⏭️ Suggestion skipped',
+            style: AppTypography.body.copyWith(color: Colors.white),
+          ),
+          backgroundColor: action == RAGFeedbackAction.upvote
+              ? AppColors.leafGreen
+              : action == RAGFeedbackAction.downvote
+                  ? AppColors.appleRed
+                  : AppColors.soilTaupe,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Generate consistent recipe hash for tracking
+  String _generateRecipeHash(RecipeSnippet recipe) {
+    final combinedString = '${recipe.recipeName}_${recipe.ingredients.join('_')}';
+    return combinedString.hashCode.toString();
   }
 }
