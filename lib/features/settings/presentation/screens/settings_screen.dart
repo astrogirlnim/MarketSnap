@@ -56,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Load current settings
       final settings = widget.settingsService.getCurrentSettings();
 
-      // Load storage status and check if sufficient (only once during init)
+      // ✅ PERFORMANCE FIX: Load storage status using cached values
       final storageStatus = await widget.settingsService
           .getStorageStatusMessage();
       final hasSufficientStorage = await widget.settingsService
@@ -202,6 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   /// Refresh storage information
+  /// ✅ PERFORMANCE FIX: Uses explicit cache refresh for manual updates
   Future<void> _refreshStorage() async {
     try {
       developer.log(
@@ -209,7 +210,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      // Refresh both storage status and sufficiency check
+      // Show loading state for refresh
+      setState(() {
+        _storageStatus = 'Refreshing...';
+      });
+
+      // ✅ PERFORMANCE FIX: Force refresh storage cache
+      await widget.settingsService.refreshStorageCache();
+
+      // Get updated values from refreshed cache
       final storageStatus = await widget.settingsService
           .getStorageStatusMessage();
       final hasSufficientStorage = await widget.settingsService
@@ -228,11 +237,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '[SettingsScreen] Storage sufficiency refreshed: $hasSufficientStorage',
         name: 'SettingsScreen',
       );
+
+      // Show success feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Storage information updated'),
+            backgroundColor: AppColors.leafGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       developer.log(
         '[SettingsScreen] Error refreshing storage: $e',
         name: 'SettingsScreen',
       );
+
+      setState(() {
+        _storageStatus = 'Refresh failed';
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh storage: $e'),
+            backgroundColor: AppColors.appleRed,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
