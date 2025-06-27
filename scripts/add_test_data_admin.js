@@ -28,48 +28,68 @@ async function addTestData() {
       media3: 'https://picsum.photos/400/300?random=12'
     };
 
-    // Sample snaps data
+    // Test snaps data
     const testSnaps = [
       {
+        id: 'test-strawberries-1',
+        text: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.\n🍓 #fresh #berries #farmstand',
         vendorId: 'vendor-berry-patch',
         vendorName: 'Berry Patch',
-        vendorAvatarUrl: 'https://picsum.photos/50/50?random=4',
-        mediaUrl: 'https://images.pexels.com/photos/1788912/pexels-photo-1788912.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', // A real image of strawberries
         mediaType: 'photo',
-        caption: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
+        imageUrl: 'https://picsum.photos/400/300?random=101',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        likes: 12,
+        comments: 3,
       },
       {
-        vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
+        id: 'test-tomatoes-2', 
+        text: 'Fresh organic tomatoes just picked this morning! ��',
+        vendorId: 'vendor-test-user',
         vendorName: 'Test',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
-        mediaUrl: PLACEHOLDER_IMAGES.media1,
         mediaType: 'photo',
-        caption: 'Fresh organic tomatoes just picked this morning! 🍅',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // 24 hours from now
+        imageUrl: 'https://picsum.photos/400/300?random=102',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        likes: 8,
+        comments: 1,
       },
       {
+        id: 'test-sourdough-3',
+        text: 'Warm sourdough just out of the oven! 🍞',
         vendorId: 'vendor-sunrise-bakery',
         vendorName: 'Sunrise Bakery',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
-        mediaUrl: PLACEHOLDER_IMAGES.media2,
-        mediaType: 'photo',
-        caption: 'Warm sourdough just out of the oven! 🍞',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22 * 60 * 60 * 1000)) // 22 hours from now
+        mediaType: 'photo', 
+        imageUrl: 'https://picsum.photos/400/300?random=103',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        likes: 15,
+        comments: 5,
       },
       {
+        id: 'test-leafy-greens-4',
+        text: 'Beautiful leafy greens ready for your salad! 🥬',
         vendorId: 'vendor-green-garden',
         vendorName: 'Green Garden',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
-        mediaUrl: PLACEHOLDER_IMAGES.media3,
         mediaType: 'photo',
-        caption: 'Beautiful leafy greens ready for your salad! 🥬',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 4 * 60 * 60 * 1000)), // 4 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 20 * 60 * 60 * 1000)) // 20 hours from now
-      }
+        imageUrl: 'https://picsum.photos/400/300?random=104',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        likes: 6,
+        comments: 2,
+      },
+      {
+        id: 'test-craft-candle-5',
+        text: 'Handmade lavender scented candles - perfect for relaxation! 🕯️ Made with natural soy wax and essential oils.',
+        vendorId: 'vendor-craft-corner',
+        vendorName: 'Craft Corner',
+        mediaType: 'photo',
+        imageUrl: 'https://picsum.photos/400/300?random=105',
+        filterType: null,
+        createdAt: admin.firestore.Timestamp.now(),
+        likes: 4,
+        comments: 1,
+      },
     ];
 
     console.log('📝 Adding sample snaps to Firestore...');
@@ -92,7 +112,7 @@ async function addTestData() {
       const snap = testSnaps[i];
       const docRef = db.collection('snaps').doc();
       await docRef.set(snap);
-      console.log(`✅ Added snap ${i + 1}: "${snap.caption}" by ${snap.vendorName}`);
+      console.log(`✅ Added snap ${i + 1}: "${snap.text}" by ${snap.vendorName}`);
     }
 
     console.log('🎉 Test data added successfully!');
