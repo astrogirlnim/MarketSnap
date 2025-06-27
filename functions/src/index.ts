@@ -430,6 +430,29 @@ const createAIHelper = (
   return functions.https.onCall(async (data, context) => {
     logger.log(`[${functionName}] received request.`);
 
+    // Check if we're running in emulator mode
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || 
+                      process.env.NODE_ENV === "development" ||
+                      !process.env.GCLOUD_PROJECT ||
+                      process.env.GCLOUD_PROJECT === "demo-project";
+    
+    logger.log(`[${functionName}] Running in emulator mode: ${isEmulator}`);
+
+    // In emulator mode, skip authentication validation but log the attempt
+    if (isEmulator) {
+      logger.log(`[${functionName}] Emulator mode: skipping auth validation`);
+    } else {
+      // In production, require authentication
+      if (!context.auth) {
+        logger.error(`[${functionName}] Authentication required`);
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "Authentication required to use AI functions"
+        );
+      }
+      logger.log(`[${functionName}] Authenticated user: ${context.auth.uid}`);
+    }
+
     if (!AI_FUNCTIONS_ENABLED) {
       logger.warn(
         `[${functionName}] AI functions are disabled. ` +
@@ -670,7 +693,7 @@ export const getRecipeSnippet = createAIHelper(
         );
       }
 
-      logger.log(
+    logger.log(
         `[getRecipeSnippet] Processing caption: "${caption}" with ` +
         `${(keywords || []).length} keywords`
       );
@@ -960,12 +983,12 @@ export const vectorSearchFAQ = createAIHelper(
       results.sort((a, b) => b.score - a.score);
       const topResults = results.slice(0, limit);
 
-      logger.log(
+    logger.log(
         `[vectorSearchFAQ] Returning ${topResults.length} results ` +
         `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")})`
-      );
+    );
 
-      return {
+    return {
         results: topResults,
         totalFound: results.length,
         searchMethod: "keyword_similarity", // In production: "vector_similarity"
