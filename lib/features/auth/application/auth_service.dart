@@ -348,9 +348,15 @@ class AuthService {
 
   /// Stream of authentication state changes (works offline)
   Stream<User?> get authStateChanges {
+    // Always use the offline controller as it maintains sync with Firebase
+    // and provides offline capabilities
     if (_offlineAuthController != null) {
       return _offlineAuthController!.stream;
     }
+    
+    // Fallback to Firebase stream if offline controller is not initialized
+    // This should rarely happen as _initializeOfflineAuthSync runs in constructor
+    debugPrint('[AuthService] ⚠️ Warning: Offline controller not initialized, falling back to Firebase stream');
     return _firebaseAuth.authStateChanges();
   }
 
