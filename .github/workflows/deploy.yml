@@ -438,6 +438,28 @@ jobs:
           firebase use --add ${{ secrets.FIREBASE_PROJECT_ID }} --alias default
           echo "✅ Firebase project setup complete"
 
+      - name: Configure AI Functions Settings
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🤖 Configuring AI functions settings..."
+          
+          # Enable AI functions
+          firebase functions:config:set ai.functions_enabled=true
+          echo "✅ AI functions enabled"
+          
+          # Set OpenAI API key
+          if [ -n "$OPENAI_API_KEY" ]; then
+            firebase functions:config:set marketsnap.openai.key="$OPENAI_API_KEY"
+            echo "✅ OpenAI API key configured (key: ${OPENAI_API_KEY:0:10}...)"
+          else
+            echo "⚠️  OPENAI_API_KEY secret not found - AI features will be disabled"
+            firebase functions:config:set ai.functions_enabled=false
+          fi
+          
+          echo "🔧 Current AI configuration:"
+          firebase functions:config:get
+
       - name: Deploy Firebase Backend
         run: |
           echo "🚀 Deploying Firebase backend with caching optimizations..."
