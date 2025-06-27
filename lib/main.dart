@@ -22,6 +22,7 @@ import 'features/profile/application/profile_service.dart';
 import 'features/profile/presentation/screens/vendor_profile_screen.dart';
 import 'features/shell/presentation/screens/main_shell_screen.dart';
 import 'shared/presentation/widgets/version_display_widget.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -305,6 +306,52 @@ Future<void> main() async {
       debugPrint('[main] CRITICAL: Cannot create push notification service: $fallbackError');
       rethrow;
     }
+  }
+
+  // Add global connectivity monitoring for background sync
+  try {
+    // Monitor connectivity changes globally to trigger sync when coming back online
+    bool wasOffline = false;
+    
+    // Check initial connectivity state
+    final initialConnectivity = await Connectivity().checkConnectivity();
+    wasOffline = initialConnectivity.contains(ConnectivityResult.none);
+    debugPrint('[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}');
+    
+    // Listen for connectivity changes
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
+      final isOnline = results.any((result) => result != ConnectivityResult.none);
+      
+      debugPrint('[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}');
+      
+      // If we just came back online from being offline, trigger sync
+      if (isOnline && wasOffline) {
+        debugPrint('[main] 🌐 Back online! Triggering background sync for queued items...');
+        
+        try {
+          await backgroundSyncService.triggerImmediateSync();
+          debugPrint('[main] ✅ Background sync completed successfully');
+        } catch (e) {
+          debugPrint('[main] ❌ Background sync failed: $e');
+          
+          // Fallback: Schedule a one-time task for more reliable sync
+          try {
+            await backgroundSyncService.scheduleOneTimeSyncTask();
+            debugPrint('[main] 📅 Scheduled one-time sync task as fallback');
+          } catch (scheduleError) {
+            debugPrint('[main] ❌ Failed to schedule fallback sync: $scheduleError');
+          }
+        }
+      }
+      
+      // Update offline state
+      wasOffline = !isOnline;
+    });
+    
+    debugPrint('[main] Global connectivity monitoring initialized.');
+  } catch (e) {
+    debugPrint('[main] Error setting up global connectivity monitoring: $e');
+    // Non-critical error - app can continue without global sync monitoring
   }
 
   debugPrint('[main] Firebase & App Check initialized.');
