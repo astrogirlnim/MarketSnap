@@ -144,6 +144,30 @@ Legend:
   - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
   - [ ] Unit test: conversation auto-deletes after 24 h.
 
+- [ ] **8. RAG Feedback & Analytics**
+  - [ ] Add upvote/skip/edit UI to recipe/FAQ cards.
+  - [ ] Store user feedback in Firestore.
+  - [ ] Track engagement and feedback analytics.
+  - [ ] Pass feedback to RAG prompts for adaptive suggestions.
+
+- [ ] **9. RAG Personalization**
+  - [ ] Store user interests/history in Firestore.
+  - [ ] Use user profile/history in RAG prompt construction.
+  - [ ] Adjust suggestion ranking based on feedback.
+
+- [ ] **10. Vendor Knowledge Base Management**
+  - [ ] Vendor UI for FAQ/recipe CRUD and feedback analytics.
+  - [ ] Batch vectorization Cloud Function for new/edited FAQs.
+
+- [ ] **11. Scalable Vector Search**
+  - [ ] Integrate pgvector/Pinecone/Weaviate for FAQ vector storage/search.
+  - [ ] Migrate FAQ vectors from Firestore to vector DB.
+  - [ ] Update FAQ search logic to use vector similarity.
+
+- [ ] **12. Social Graph & Content Suggestions**
+  - [ ] Track follows, friends, and interactions.
+  - [ ] Suggest stories/posts based on social graph and trending topics.
+
 
 ---
 
