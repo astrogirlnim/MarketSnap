@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/models/vendor_profile.dart';
 import '../../../core/models/regular_user_profile.dart';
 import '../../../core/services/hive_service.dart';
+import '../../../core/services/profile_update_notifier.dart';
 import '../../../main.dart' as main;
 
 /// Service for managing vendor profiles with offline-first capabilities.
@@ -18,6 +19,7 @@ class ProfileService {
   final FirebaseStorage _storage;
   final FirebaseAuth _auth;
   final ImagePicker _imagePicker;
+  final ProfileUpdateNotifier _profileUpdateNotifier;
 
   ProfileService({
     required HiveService hiveService,
@@ -25,11 +27,13 @@ class ProfileService {
     FirebaseStorage? storage,
     FirebaseAuth? auth,
     ImagePicker? imagePicker,
+    ProfileUpdateNotifier? profileUpdateNotifier,
   }) : _hiveService = hiveService,
        _firestore = firestore ?? FirebaseFirestore.instance,
        _storage = storage ?? FirebaseStorage.instance,
        _auth = auth ?? FirebaseAuth.instance,
-       _imagePicker = imagePicker ?? ImagePicker();
+       _imagePicker = imagePicker ?? ImagePicker(),
+       _profileUpdateNotifier = profileUpdateNotifier ?? ProfileUpdateNotifier();
 
   /// Gets the current user's UID
   String? get currentUserUid => _auth.currentUser?.uid;
@@ -77,6 +81,10 @@ class ProfileService {
 
     await _hiveService.saveVendorProfile(profile);
     debugPrint('[ProfileService] Profile saved locally successfully');
+
+    // 📢 Broadcast profile update to all listeners
+    _profileUpdateNotifier.notifyVendorProfileUpdate(profile);
+    debugPrint('[ProfileService] 📢 Profile update broadcasted for: ${profile.displayName}');
 
     // Try to sync immediately if online - but don't block the UI
     _attemptImmediateSync(uid);
@@ -247,9 +255,12 @@ class ProfileService {
 
       // Save updated profile with avatar URL
       if (avatarURL != null) {
-        await _hiveService.saveVendorProfile(
-          profileToSync.copyWith(needsSync: false),
-        );
+        final finalProfile = profileToSync.copyWith(needsSync: false);
+        await _hiveService.saveVendorProfile(finalProfile);
+        
+        // 📢 Broadcast profile update since avatar URL was updated
+        _profileUpdateNotifier.notifyVendorProfileUpdate(finalProfile);
+        debugPrint('[ProfileService] 📢 Profile update broadcasted after avatar sync for: ${finalProfile.displayName}');
       }
 
       debugPrint('[ProfileService] Profile synced to Firestore successfully');
@@ -409,6 +420,10 @@ class ProfileService {
       // Delete from local storage
       await _hiveService.deleteVendorProfile(uid);
 
+      // 📢 Broadcast profile deletion to all listeners
+      _profileUpdateNotifier.notifyProfileDelete(uid);
+      debugPrint('[ProfileService] 📢 Profile deletion broadcasted for UID: $uid');
+
       debugPrint('[ProfileService] Profile deleted successfully');
     } catch (e) {
       debugPrint('[ProfileService] Error deleting profile: $e');
@@ -457,6 +472,10 @@ class ProfileService {
       await _hiveService.saveRegularUserProfile(profile);
 
       debugPrint('[ProfileService] Regular user profile saved locally');
+
+      // 📢 Broadcast profile update to all listeners
+      _profileUpdateNotifier.notifyRegularUserProfileUpdate(profile);
+      debugPrint('[ProfileService] 📢 Regular user profile update broadcasted for: ${profile.displayName}');
 
       // Try to sync to Firestore if online
       try {
@@ -536,9 +555,14 @@ class ProfileService {
       );
 
       // Mark as synced locally
-      await _hiveService.saveRegularUserProfile(
-        profileToSync.copyWith(needsSync: false),
-      );
+      final finalProfile = profileToSync.copyWith(needsSync: false);
+      await _hiveService.saveRegularUserProfile(finalProfile);
+
+      // 📢 Broadcast profile update if avatar was updated
+      if (avatarURL != null) {
+        _profileUpdateNotifier.notifyRegularUserProfileUpdate(finalProfile);
+        debugPrint('[ProfileService] 📢 Regular user profile update broadcasted after avatar sync for: ${finalProfile.displayName}');
+      }
 
       debugPrint(
         '[ProfileService] Regular user profile synced to Firestore successfully',
@@ -618,6 +642,10 @@ class ProfileService {
 
       // Delete from local storage
       await _hiveService.deleteRegularUserProfile(uid);
+
+      // 📢 Broadcast profile deletion to all listeners
+      _profileUpdateNotifier.notifyProfileDelete(uid);
+      debugPrint('[ProfileService] 📢 Profile deletion broadcasted for UID: $uid');
 
       debugPrint('[ProfileService] Regular user profile deleted successfully');
     } catch (e) {

@@ -10,6 +10,7 @@ import 'package:marketsnap/features/messaging/presentation/screens/chat_screen.d
 import 'package:marketsnap/features/messaging/presentation/screens/vendor_discovery_screen.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
 import 'package:marketsnap/shared/presentation/theme/app_typography.dart';
+import 'package:marketsnap/core/services/profile_update_notifier.dart';
 import 'package:marketsnap/main.dart'; // Import main to access global services
 
 class ConversationListScreen extends StatefulWidget {
@@ -24,6 +25,55 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   final MessagingService _messagingService = messagingService;
   final ProfileService _profileService = profileService;
   final AuthService _authService = authService;
+  final ProfileUpdateNotifier _profileUpdateNotifier = ProfileUpdateNotifier();
+
+  // Cache for profile data to improve performance and handle updates
+  final Map<String, VendorProfile> _profileCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToProfileUpdates();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  /// Listen to profile updates and refresh cached profile data
+  void _listenToProfileUpdates() {
+    _profileUpdateNotifier.allProfileUpdates.listen((update) {
+      final uid = update['uid'] as String;
+      
+      if (update['type'] == 'delete') {
+        setState(() {
+          _profileCache.remove(uid);
+        });
+        developer.log('[ConversationListScreen] 🗑️ Removed profile from cache: $uid');
+      } else {
+        // Update profile cache and refresh UI
+        _refreshProfileInCache(uid).then((_) {
+          if (mounted) {
+            setState(() {}); // Trigger rebuild to show updated profile
+          }
+        });
+      }
+    });
+  }
+
+  /// Refresh a specific profile in the cache
+  Future<void> _refreshProfileInCache(String uid) async {
+    try {
+      final profile = await _profileService.loadAnyUserProfileFromFirestore(uid);
+      if (profile != null) {
+        _profileCache[uid] = profile;
+        developer.log('[ConversationListScreen] 🔄 Updated profile cache for: ${profile.displayName}');
+      }
+    } catch (e) {
+      developer.log('[ConversationListScreen] Error refreshing profile cache for $uid: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,10 +219,45 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   ? lastMessage.toUid
                   : lastMessage.fromUid;
 
+              // Check cache first, then load from Firestore if needed
+              VendorProfile? cachedProfile = _profileCache[otherUserId];
+              
+              if (cachedProfile != null) {
+                // Use cached profile data
+                return StreamBuilder<List<Message>>(
+                  stream: _messagingService.getConversationMessages(
+                    userId1: currentUserId,
+                    userId2: otherUserId,
+                  ),
+                  builder: (context, messagesSnapshot) {
+                    final messages = messagesSnapshot.data ?? [];
+                    final unreadCount = messages
+                        .where(
+                          (msg) => msg.toUid == currentUserId && !msg.isRead,
+                        )
+                        .length;
+
+                    return ConversationListItem(
+                      otherParticipant: cachedProfile,
+                      lastMessage: lastMessage,
+                      currentUserId: currentUserId,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ChatScreen(otherUser: cachedProfile),
+                          ),
+                        );
+                      },
+                      isUnread: unreadCount > 0,
+                    );
+                  },
+                );
+              }
+
+              // Load from Firestore and cache the result
               return FutureBuilder<VendorProfile?>(
-                future: _profileService.loadAnyUserProfileFromFirestore(
-                  otherUserId,
-                ),
+                future: _profileService.loadAnyUserProfileFromFirestore(otherUserId),
                 builder: (context, profileSnapshot) {
                   if (profileSnapshot.connectionState ==
                       ConnectionState.waiting) {
@@ -191,6 +276,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                       subtitle: Text('Profile not found'),
                     );
                   }
+
+                  // Cache the loaded profile
+                  _profileCache[otherUserId] = otherUser;
 
                   // Calculate unread count for this conversation
                   return StreamBuilder<List<Message>>(

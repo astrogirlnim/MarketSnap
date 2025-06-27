@@ -27,6 +27,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'features/auth/presentation/screens/user_type_selection_screen.dart';
 import 'features/profile/presentation/screens/regular_user_profile_screen.dart';
 import 'core/models/user_type.dart';
+import 'core/services/profile_update_notifier.dart';
+import 'features/feed/application/feed_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -38,6 +40,8 @@ late final ProfileService profileService;
 late final AccountLinkingService accountLinkingService;
 late final MessagingService messagingService;
 late final PushNotificationService pushNotificationService;
+late final ProfileUpdateNotifier profileUpdateNotifier;
+late final FeedService feedService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -231,15 +235,39 @@ Future<void> main() async {
     }
   }
 
+  // Initialize profile update notifier
+  try {
+    profileUpdateNotifier = ProfileUpdateNotifier();
+    debugPrint('[main] Profile update notifier initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing profile update notifier: $e');
+    // Create fallback profile update notifier
+    try {
+      profileUpdateNotifier = ProfileUpdateNotifier();
+      debugPrint('[main] Fallback profile update notifier created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create profile update notifier: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
   // Initialize profile service
   try {
-    profileService = ProfileService(hiveService: hiveService);
+    profileService = ProfileService(
+      hiveService: hiveService,
+      profileUpdateNotifier: profileUpdateNotifier,
+    );
     debugPrint('[main] Profile service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing profile service: $e');
     // Create fallback profile service
     try {
-      profileService = ProfileService(hiveService: hiveService);
+      profileService = ProfileService(
+        hiveService: hiveService,
+        profileUpdateNotifier: profileUpdateNotifier,
+      );
       debugPrint('[main] Fallback profile service created.');
     } catch (fallbackError) {
       debugPrint(
@@ -354,6 +382,24 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create push notification service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize feed service
+  try {
+    feedService = FeedService(profileUpdateNotifier: profileUpdateNotifier);
+    debugPrint('[main] Feed service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing feed service: $e');
+    // Create basic feed service
+    try {
+      feedService = FeedService(profileUpdateNotifier: profileUpdateNotifier);
+      debugPrint('[main] Basic feed service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create feed service: $fallbackError',
       );
       rethrow;
     }
