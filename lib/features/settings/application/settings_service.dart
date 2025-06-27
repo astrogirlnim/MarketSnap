@@ -10,11 +10,13 @@ import '../../../core/services/hive_service.dart';
 /// Handles settings CRUD operations, storage calculations, and external link navigation.
 class SettingsService {
   final HiveService _hiveService;
-  
+
   // ✅ PERFORMANCE FIX: Cache expensive storage calculations
   static double? _cachedStorageMB;
   static DateTime? _cacheTimestamp;
-  static const Duration _cacheValidity = Duration(minutes: 5); // Cache for 5 minutes
+  static const Duration _cacheValidity = Duration(
+    minutes: 5,
+  ); // Cache for 5 minutes
 
   SettingsService({required HiveService hiveService})
     : _hiveService = hiveService;
@@ -145,7 +147,10 @@ class SettingsService {
       // ✅ PERFORMANCE: Test with much smaller files (1MB max) for speed
       const testSizeKB = 100; // Test with 100KB instead of 10MB+
       const bytesPerKB = 1024;
-      final testData = List.filled(testSizeKB * bytesPerKB, 42); // Small test data
+      final testData = List.filled(
+        testSizeKB * bytesPerKB,
+        42,
+      ); // Small test data
 
       final tempFile = File('${directory.path}/storage_test_light.tmp');
 
@@ -179,13 +184,12 @@ class SettingsService {
         // ✅ PERFORMANCE: Conservative but fast estimate
         // If we can write a small file, assume reasonable storage is available
         return 1000.0; // 1GB conservative estimate
-
       } catch (e) {
         developer.log(
           '[SettingsService] Small file test failed: $e',
           name: 'SettingsService',
         );
-        
+
         // If we can't even write 100KB, storage is very limited
         return 50.0; // 50MB minimal estimate
       }
@@ -206,7 +210,7 @@ class SettingsService {
     return 1500.0; // 1.5GB estimate for Android
   }
 
-  /// Platform-specific iOS storage estimation  
+  /// Platform-specific iOS storage estimation
   Future<double> _estimateIOSStorage(Directory directory) async {
     // For iOS documents directory, assume reasonable space is available
     // This is much faster than heavy I/O testing
@@ -218,7 +222,7 @@ class SettingsService {
     if (_cachedStorageMB == null || _cacheTimestamp == null) {
       return false;
     }
-    
+
     final now = DateTime.now();
     final cacheAge = now.difference(_cacheTimestamp!);
     return cacheAge < _cacheValidity;
@@ -271,7 +275,7 @@ class SettingsService {
       '[SettingsService] Manually refreshing storage cache...',
       name: 'SettingsService',
     );
-    
+
     // Force refresh by invalidating cache
     await getAvailableStorageMB(forceRefresh: true);
   }

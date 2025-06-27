@@ -459,11 +459,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final currentUser = authService.currentUser;
     debugPrint('[AuthWrapper] 👤 Current user: ${currentUser?.uid}');
     debugPrint('[AuthWrapper] 📧 Current user email: ${currentUser?.email}');
-    debugPrint('[AuthWrapper] 📱 Current user phone: ${currentUser?.phoneNumber}');
+    debugPrint(
+      '[AuthWrapper] 📱 Current user phone: ${currentUser?.phoneNumber}',
+    );
 
     try {
       debugPrint('[AuthWrapper] 🔗 Starting account linking process');
-      
+
       // Handle account linking after sign-in
       final hasExistingProfile = await accountLinkingService
           .handleSignInAccountLinking();
@@ -475,14 +477,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
       // Save FCM token
       final token = await pushNotificationService.getFCMToken();
       if (token != null) {
-        debugPrint('[AuthWrapper] 📱 FCM token obtained: ${token.substring(0, 20)}...');
+        debugPrint(
+          '[AuthWrapper] 📱 FCM token obtained: ${token.substring(0, 20)}...',
+        );
         await profileService.saveFCMToken(token);
         debugPrint('[AuthWrapper] ✅ FCM token saved successfully');
       } else {
         debugPrint('[AuthWrapper] ⚠️ No FCM token available');
       }
 
-      debugPrint('[AuthWrapper] 🏁 Post-authentication flow completed successfully');
+      debugPrint(
+        '[AuthWrapper] 🏁 Post-authentication flow completed successfully',
+      );
       return hasExistingProfile;
     } catch (e, stackTrace) {
       debugPrint('[AuthWrapper] ❌ Account linking failed: $e');
@@ -496,7 +502,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     debugPrint('[AuthWrapper] 🔄 Building AuthWrapper widget');
-    
+
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
@@ -527,7 +533,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           // ✅ FIX: Check if user changed to reset cached future
           final newUserId = user.uid;
           if (_currentUserId != newUserId) {
-            debugPrint('[AuthWrapper] 🔄 User changed from $_currentUserId to $newUserId, resetting post-auth future');
+            debugPrint(
+              '[AuthWrapper] 🔄 User changed from $_currentUserId to $newUserId, resetting post-auth future',
+            );
             _currentUserId = newUserId;
             _postAuthFuture = null; // Reset future for new user
           } else {
@@ -567,24 +575,38 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
           // ✅ FIX: Cache the future to prevent rebuild cycles
           if (_postAuthFuture == null) {
-            debugPrint('[AuthWrapper] 🚀 Creating new post-auth future for user: ${user.uid}');
+            debugPrint(
+              '[AuthWrapper] 🚀 Creating new post-auth future for user: ${user.uid}',
+            );
             _postAuthFuture = _handlePostAuthenticationFlow();
           } else {
             debugPrint('[AuthWrapper] ♻️ Using cached post-auth future');
           }
 
           // ONLINE MODE: Run full post-authentication flow
-          debugPrint('[AuthWrapper] 🔄 Building FutureBuilder for post-auth flow');
+          debugPrint(
+            '[AuthWrapper] 🔄 Building FutureBuilder for post-auth flow',
+          );
           return FutureBuilder<bool>(
             future: _postAuthFuture, // ✅ Use cached future
             builder: (context, authFuture) {
-              debugPrint('[AuthWrapper] 📊 FutureBuilder state: ${authFuture.connectionState}');
-              debugPrint('[AuthWrapper] 📊 FutureBuilder hasData: ${authFuture.hasData}');
-              debugPrint('[AuthWrapper] 📊 FutureBuilder data: ${authFuture.data}');
-              debugPrint('[AuthWrapper] 📊 FutureBuilder error: ${authFuture.error}');
-              
+              debugPrint(
+                '[AuthWrapper] 📊 FutureBuilder state: ${authFuture.connectionState}',
+              );
+              debugPrint(
+                '[AuthWrapper] 📊 FutureBuilder hasData: ${authFuture.hasData}',
+              );
+              debugPrint(
+                '[AuthWrapper] 📊 FutureBuilder data: ${authFuture.data}',
+              );
+              debugPrint(
+                '[AuthWrapper] 📊 FutureBuilder error: ${authFuture.error}',
+              );
+
               if (authFuture.connectionState == ConnectionState.waiting) {
-                debugPrint('[AuthWrapper] ⏳ Showing loading screen for post-auth flow');
+                debugPrint(
+                  '[AuthWrapper] ⏳ Showing loading screen for post-auth flow',
+                );
                 return const Scaffold(
                   body: Center(
                     child: Column(
@@ -600,13 +622,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
               }
 
               if (authFuture.hasError) {
-                debugPrint('[AuthWrapper] ❌ FutureBuilder error: ${authFuture.error}');
+                debugPrint(
+                  '[AuthWrapper] ❌ FutureBuilder error: ${authFuture.error}',
+                );
                 // Continue with default flow on error
               }
 
               // Account linking completed - check if existing profile was found
               final hasExistingProfile = authFuture.data ?? false;
-              debugPrint('[AuthWrapper] 📋 Has existing profile: $hasExistingProfile');
+              debugPrint(
+                '[AuthWrapper] 📋 Has existing profile: $hasExistingProfile',
+              );
 
               if (hasExistingProfile) {
                 // User has an existing profile - go directly to main app
@@ -622,9 +648,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 final hasVendorProfile = profileService.hasCompleteProfile();
                 final hasRegularProfile = profileService
                     .hasCompleteRegularUserProfile();
-                    
-                debugPrint('[AuthWrapper] 📋 Has vendor profile: $hasVendorProfile');
-                debugPrint('[AuthWrapper] 📋 Has regular profile: $hasRegularProfile');
+
+                debugPrint(
+                  '[AuthWrapper] 📋 Has vendor profile: $hasVendorProfile',
+                );
+                debugPrint(
+                  '[AuthWrapper] 📋 Has regular profile: $hasRegularProfile',
+                );
 
                 if (hasVendorProfile || hasRegularProfile) {
                   debugPrint(
@@ -700,7 +730,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // ✅ FIX: Reset cached future when user signs out
         if (!snapshot.hasData && _postAuthFuture != null) {
-          debugPrint('[AuthWrapper] 🚪 User signed out, clearing post-auth future');
+          debugPrint(
+            '[AuthWrapper] 🚪 User signed out, clearing post-auth future',
+          );
           _postAuthFuture = null;
           _currentUserId = null;
         }

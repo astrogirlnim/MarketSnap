@@ -629,7 +629,9 @@ class ProfileService {
   /// Loads any user profile (vendor or regular user) from Firestore
   /// Returns a VendorProfile for compatibility with messaging UI
   Future<VendorProfile?> loadAnyUserProfileFromFirestore(String uid) async {
-    debugPrint('[ProfileService] Loading any user profile from Firestore for UID: $uid');
+    debugPrint(
+      '[ProfileService] Loading any user profile from Firestore for UID: $uid',
+    );
 
     try {
       // First try to load as vendor profile
@@ -642,8 +644,10 @@ class ProfileService {
       // If not found, try to load as regular user profile
       final regularProfile = await loadRegularUserProfileFromFirestore(uid);
       if (regularProfile != null) {
-        debugPrint('[ProfileService] Found regular user profile for UID: $uid, converting to VendorProfile format');
-        
+        debugPrint(
+          '[ProfileService] Found regular user profile for UID: $uid, converting to VendorProfile format',
+        );
+
         // Convert RegularUserProfile to VendorProfile for messaging UI compatibility
         return VendorProfile(
           uid: regularProfile.uid,
@@ -658,10 +662,14 @@ class ProfileService {
         );
       }
 
-      debugPrint('[ProfileService] No profile found in either collection for UID: $uid');
+      debugPrint(
+        '[ProfileService] No profile found in either collection for UID: $uid',
+      );
       return null;
     } catch (e) {
-      debugPrint('[ProfileService] Error loading any user profile from Firestore: $e');
+      debugPrint(
+        '[ProfileService] Error loading any user profile from Firestore: $e',
+      );
       throw Exception('Failed to load user profile: $e');
     }
   }

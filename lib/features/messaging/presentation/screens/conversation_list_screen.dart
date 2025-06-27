@@ -170,7 +170,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   : lastMessage.fromUid;
 
               return FutureBuilder<VendorProfile?>(
-                future: _profileService.loadAnyUserProfileFromFirestore(otherUserId),
+                future: _profileService.loadAnyUserProfileFromFirestore(
+                  otherUserId,
+                ),
                 builder: (context, profileSnapshot) {
                   if (profileSnapshot.connectionState ==
                       ConnectionState.waiting) {
