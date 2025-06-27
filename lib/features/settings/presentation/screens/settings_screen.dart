@@ -26,6 +26,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   UserSettings? _currentSettings;
   String? _storageStatus;
+  bool? _hasSufficientStorage; // Cache storage check result
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -55,13 +56,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Load current settings
       final settings = widget.settingsService.getCurrentSettings();
 
-      // Load storage status
+      // Load storage status and check if sufficient (only once during init)
       final storageStatus = await widget.settingsService
           .getStorageStatusMessage();
+      final hasSufficientStorage = await widget.settingsService
+          .hasSufficientStorage();
 
       setState(() {
         _currentSettings = settings;
         _storageStatus = storageStatus;
+        _hasSufficientStorage = hasSufficientStorage;
         _isLoading = false;
       });
 
@@ -71,6 +75,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       developer.log(
         '[SettingsScreen] Storage status: $storageStatus',
+        name: 'SettingsScreen',
+      );
+      developer.log(
+        '[SettingsScreen] Has sufficient storage: $hasSufficientStorage',
         name: 'SettingsScreen',
       );
     } catch (e) {
@@ -201,15 +209,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
+      // Refresh both storage status and sufficiency check
       final storageStatus = await widget.settingsService
           .getStorageStatusMessage();
+      final hasSufficientStorage = await widget.settingsService
+          .hasSufficientStorage();
 
       setState(() {
         _storageStatus = storageStatus;
+        _hasSufficientStorage = hasSufficientStorage;
       });
 
       developer.log(
         '[SettingsScreen] Storage refreshed: $storageStatus',
+        name: 'SettingsScreen',
+      );
+      developer.log(
+        '[SettingsScreen] Storage sufficiency refreshed: $hasSufficientStorage',
         name: 'SettingsScreen',
       );
     } catch (e) {
@@ -476,20 +492,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: AppSpacing.md),
 
           // Storage warning if needed
-          FutureBuilder<bool>(
-            future: widget.settingsService.hasSufficientStorage(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && !snapshot.data!) {
-                return MarketSnapStatusMessage(
-                  message:
-                      'Low storage: Consider freeing up space for optimal performance',
-                  type: StatusType.warning,
-                  showIcon: true,
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+          if (_hasSufficientStorage == false)
+            MarketSnapStatusMessage(
+              message:
+                  'Low storage: Consider freeing up space for optimal performance',
+              type: StatusType.warning,
+              showIcon: true,
+            ),
         ],
       ),
     );
