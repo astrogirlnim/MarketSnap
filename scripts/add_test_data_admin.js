@@ -31,6 +31,16 @@ async function addTestData() {
     // Sample snaps data
     const testSnaps = [
       {
+        vendorId: 'vendor-berry-patch',
+        vendorName: 'Berry Patch',
+        vendorAvatarUrl: 'https://picsum.photos/50/50?random=4',
+        mediaUrl: 'https://images.pexels.com/photos/1788912/pexels-photo-1788912.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', // A real image of strawberries
+        mediaType: 'photo',
+        caption: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.',
+        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
+      },
+      {
         vendorId: 'A41wmeGZ7hv8WB9LKGSSm3cbTDWt',
         vendorName: 'Test',
         vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,

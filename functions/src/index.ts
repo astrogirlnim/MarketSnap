@@ -608,7 +608,7 @@ Return only the caption text, no quotes or extra formatting.`;
 
       // Call OpenAI API with appropriate model
       const modelName = imageBase64 && mediaType === "photo" ?
-        "gpt-4-vision-preview" : "gpt-4";
+        "gpt-4o" : "gpt-4o";
       const completion = await openai.chat.completions.create({
         model: modelName,
         messages: messages,
@@ -731,15 +731,15 @@ Detected keywords: ${keywordList}
 Media type: ${mediaType || "photo"}
 
 Please provide:
-1. A recipe name (under 50 characters)
-2. A brief description/snippet (under 200 characters) 
-3. Main ingredients list (3-6 items)
+1. A recipe name (under 35 characters)
+2. A brief description/snippet (under 120 characters) 
+3. Main ingredients list (3-4 items max, keep each under 15 characters)
 4. Product category (produce, baked_goods, dairy, herbs, crafts, etc.)
 
 Focus on:
 - Simple, accessible recipes suitable for home cooking
 - Highlighting the freshness and quality of market ingredients
-- Seasonal and local cooking approaches
+- CONCISE ingredients and descriptions for mobile display
 - Practical recipes that can be made with common kitchen tools
 
 Return your response as JSON with this exact structure:
@@ -759,7 +759,7 @@ If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -788,7 +788,9 @@ If the product isn't suitable for recipes (like crafts, soaps, flowers), ` +
       // Parse the JSON response
       let recipeData;
       try {
-        recipeData = JSON.parse(responseText);
+        // Clean the response to remove markdown backticks and "json" identifier
+        const cleanedResponse = responseText.replace(/```json\n|```/g, "").trim();
+        recipeData = JSON.parse(cleanedResponse);
       } catch (parseError) {
         logger.error(
           "[getRecipeSnippet] Failed to parse JSON response:",

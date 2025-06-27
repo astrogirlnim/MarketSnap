@@ -77,15 +77,39 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     });
 
     try {
-      debugPrint('[FeedPostWidget] Initializing RAG service for snap: ${widget.snap.id}');
-      await _ragService.initialize();
+      debugPrint('[FeedPostWidget] ========== INITIALIZING RAG SERVICE ==========');
+      debugPrint('[FeedPostWidget] Snap ID: ${widget.snap.id}');
+      debugPrint('[FeedPostWidget] Caption: "${widget.snap.caption}"');
+      debugPrint('[FeedPostWidget] Vendor ID: ${widget.snap.vendorId}');
+      debugPrint('[FeedPostWidget] Media Type: ${widget.snap.mediaType}');
       
-      debugPrint('[FeedPostWidget] Getting enhancements for caption: "${widget.snap.caption}"');
+      await _ragService.initialize();
+      debugPrint('[FeedPostWidget] RAG service initialized successfully');
+      
       final enhancementData = await _ragService.getSnapEnhancements(
         caption: widget.snap.caption!,
         vendorId: widget.snap.vendorId,
         mediaType: widget.snap.mediaType.toString().split('.').last, // photo or video
       );
+
+      debugPrint('[FeedPostWidget] ========== RAG SERVICE RESPONSE ==========');
+      debugPrint('[FeedPostWidget] Enhancement data received:');
+      debugPrint('[FeedPostWidget] - Recipe: ${enhancementData.recipe != null}');
+      debugPrint('[FeedPostWidget] - Recipe name: ${enhancementData.recipe?.recipeName}');
+      debugPrint('[FeedPostWidget] - Recipe relevance: ${enhancementData.recipe?.relevanceScore}');
+      debugPrint('[FeedPostWidget] - FAQs count: ${enhancementData.faqs.length}');
+      debugPrint('[FeedPostWidget] - Has data: ${enhancementData.hasData}');
+      debugPrint('[FeedPostWidget] - From cache: ${enhancementData.fromCache}');
+      
+      if (enhancementData.faqs.isNotEmpty) {
+        debugPrint('[FeedPostWidget] FAQ Details:');
+        for (int i = 0; i < enhancementData.faqs.length; i++) {
+          final faq = enhancementData.faqs[i];
+          debugPrint('[FeedPostWidget] FAQ $i: Q="${faq.question}" A="${faq.answer}" Score=${faq.score}');
+        }
+      } else {
+        debugPrint('[FeedPostWidget] No FAQs in enhancement data');
+      }
 
       if (mounted) {
         setState(() {
@@ -93,10 +117,13 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           _isLoadingEnhancements = false;
         });
 
-        debugPrint('[FeedPostWidget] Enhancement data loaded - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}');
+        debugPrint('[FeedPostWidget] Enhancement data set in state - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}');
+        debugPrint('[FeedPostWidget] UI will display: Recipe card=${enhancementData.recipe != null}, FAQ card=${enhancementData.faqs.isNotEmpty}');
       }
     } catch (e) {
+      debugPrint('[FeedPostWidget] ========== RAG SERVICE ERROR ==========');
       debugPrint('[FeedPostWidget] Error loading RAG enhancements: $e');
+      debugPrint('[FeedPostWidget] Error type: ${e.runtimeType}');
       if (mounted) {
         setState(() {
           _isLoadingEnhancements = false;
@@ -581,12 +608,41 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                 color: AppColors.soilCharcoal,
               ),
             ),
-            subtitle: Text(
-              recipe.recipeName,
-              style: AppTypography.body.copyWith(
-                color: AppColors.harvestOrange,
-                fontWeight: FontWeight.w500,
-              ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  recipe.recipeName,
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.harvestOrange,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                if (!_isRecipeExpanded && recipe.ingredients.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    recipe.ingredients.take(3).join(' • '),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilTaupe,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (!_isRecipeExpanded) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to see full recipe',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.harvestOrange.withValues(alpha: 0.7),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
             ),
             trailing: Icon(
               _isRecipeExpanded ? Icons.expand_less : Icons.expand_more,

@@ -231,18 +231,15 @@ class RAGService {
       throw Exception('RAGService not initialized. Call initialize() first.');
     }
 
-    developer.log('[RAGService] Getting enhancements for caption: "$caption"', name: 'RAGService');
+    developer.log('[RAGService] ========== STARTING ENHANCEMENT REQUEST ==========', name: 'RAGService');
+    developer.log('[RAGService] Caption: "$caption"', name: 'RAGService');
+    developer.log('[RAGService] VendorId: $vendorId', name: 'RAGService');
+    developer.log('[RAGService] MediaType: $mediaType', name: 'RAGService');
     
     // Generate cache key
     final cacheKey = _generateCacheKey(caption, vendorId);
+    developer.log('[RAGService] Cache key: $cacheKey', name: 'RAGService');
     
-    // Check cache first
-    final cachedData = _getCachedData(cacheKey);
-    if (cachedData != null) {
-      developer.log('[RAGService] Returning cached enhancement data', name: 'RAGService');
-      return cachedData;
-    }
-
     // Extract keywords for search
     final keywords = _extractKeywords(caption);
     developer.log('[RAGService] Extracted keywords: ${keywords.join(", ")}', name: 'RAGService');
@@ -263,9 +260,13 @@ class RAGService {
           'vendorId': vendorId,
         }).timeout(_requestTimeout);
 
+        developer.log('[RAGService] Raw recipe result: ${recipeResult.data}', name: 'RAGService');
+        
         if (recipeResult.data != null) {
           recipe = RecipeSnippet.fromJson(Map<String, dynamic>.from(recipeResult.data));
-          developer.log('[RAGService] Got recipe: "${recipe.recipeName}"', name: 'RAGService');
+          developer.log('[RAGService] Parsed recipe: "${recipe.recipeName}" (relevance: ${recipe.relevanceScore})', name: 'RAGService');
+        } else {
+          developer.log('[RAGService] Recipe result data is null', name: 'RAGService');
         }
       } catch (e) {
         developer.log('[RAGService] Error getting recipe snippet: $e', name: 'RAGService');
@@ -283,12 +284,43 @@ class RAGService {
           'limit': 3, // Get top 3 relevant FAQs
         }).timeout(_requestTimeout);
 
-        if (faqResult.data != null && faqResult.data['results'] != null) {
-          final results = faqResult.data['results'] as List;
-          faqs = results
-              .map((result) => FAQResult.fromJson(Map<String, dynamic>.from(result)))
-              .toList();
-          developer.log('[RAGService] Got ${faqs.length} FAQ results', name: 'RAGService');
+        developer.log('[RAGService] Raw FAQ result: ${faqResult.data}', name: 'RAGService');
+        developer.log('[RAGService] FAQ result type: ${faqResult.data.runtimeType}', name: 'RAGService');
+        
+        if (faqResult.data != null) {
+          developer.log('[RAGService] FAQ result keys: ${faqResult.data.keys}', name: 'RAGService');
+          
+          if (faqResult.data['results'] != null) {
+            final results = faqResult.data['results'] as List;
+            developer.log('[RAGService] FAQ results array length: ${results.length}', name: 'RAGService');
+            developer.log('[RAGService] FAQ results array: $results', name: 'RAGService');
+            
+            faqs = results
+                .map((result) {
+                  developer.log('[RAGService] Processing FAQ result: $result', name: 'RAGService');
+                  developer.log('[RAGService] Result type: ${result.runtimeType}', name: 'RAGService');
+                  developer.log('[RAGService] Result keys: ${result.keys}', name: 'RAGService');
+                  
+                  try {
+                    final faqResult = FAQResult.fromJson(Map<String, dynamic>.from(result));
+                    developer.log('[RAGService] ✅ Successfully parsed FAQ: Q="${faqResult.question}" A="${faqResult.answer}" Score=${faqResult.score}', name: 'RAGService');
+                    return faqResult;
+                  } catch (e) {
+                    developer.log('[RAGService] ❌ Error parsing FAQ result: $e', name: 'RAGService');
+                    developer.log('[RAGService] Raw result data: $result', name: 'RAGService');
+                    // Return null to filter out failed parsing attempts
+                    return null;
+                  }
+                })
+                .where((faq) => faq != null)
+                .cast<FAQResult>()
+                .toList();
+            developer.log('[RAGService] Final parsed FAQs count: ${faqs.length}', name: 'RAGService');
+          } else {
+            developer.log('[RAGService] FAQ result has no "results" key', name: 'RAGService');
+          }
+        } else {
+          developer.log('[RAGService] FAQ result data is null', name: 'RAGService');
         }
       } catch (e) {
         developer.log('[RAGService] Error getting FAQ results: $e', name: 'RAGService');
@@ -301,14 +333,17 @@ class RAGService {
         query: caption,
       );
 
+      developer.log('[RAGService] Created enhancement data - Recipe: ${recipe != null}, FAQs: ${faqs.length}', name: 'RAGService');
+      developer.log('[RAGService] Enhancement hasData: ${enhancementData.hasData}', name: 'RAGService');
+
       // Cache the data
       await _cacheData(cacheKey, enhancementData);
 
-      developer.log('[RAGService] Enhancement complete - Recipe: ${recipe != null}, FAQs: ${faqs.length}', name: 'RAGService');
+      developer.log('[RAGService] ========== ENHANCEMENT REQUEST COMPLETE ==========', name: 'RAGService');
       return enhancementData;
 
     } catch (e) {
-      developer.log('[RAGService] Error getting enhancements: $e', name: 'RAGService');
+      developer.log('[RAGService] Critical error getting enhancements: $e', name: 'RAGService');
       
       // Return empty enhancement data on error
       return SnapEnhancementData(
