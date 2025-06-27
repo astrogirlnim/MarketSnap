@@ -290,13 +290,17 @@ Future<void> main() async {
 
   // Initialize messaging service
   try {
-    messagingService = MessagingService();
+    messagingService = MessagingService(
+      firebaseAuth: FirebaseAuth.instance,
+    );
     debugPrint('[main] Messaging service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing messaging service: $e');
     // Create basic messaging service
     try {
-      messagingService = MessagingService();
+      messagingService = MessagingService(
+        firebaseAuth: FirebaseAuth.instance,
+      );
       debugPrint('[main] Basic messaging service created.');
     } catch (fallbackError) {
       debugPrint('[main] CRITICAL: Cannot create messaging service: $fallbackError');
