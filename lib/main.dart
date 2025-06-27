@@ -466,35 +466,52 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   /// Handles post-authentication flow including account linking
   Future<bool> _handlePostAuthenticationFlow() async {
-    debugPrint('[AuthWrapper] Handling post-authentication flow');
+    debugPrint('[AuthWrapper] 🚀 Starting post-authentication flow');
+    final currentUser = authService.currentUser;
+    debugPrint('[AuthWrapper] 👤 Current user: ${currentUser?.uid}');
+    debugPrint('[AuthWrapper] 📧 Current user email: ${currentUser?.email}');
+    debugPrint('[AuthWrapper] 📱 Current user phone: ${currentUser?.phoneNumber}');
 
     try {
+      debugPrint('[AuthWrapper] 🔗 Starting account linking process');
+      
       // Handle account linking after sign-in
       final hasExistingProfile = await accountLinkingService
           .handleSignInAccountLinking();
       debugPrint(
-        '[AuthWrapper] Account linking flow completed. Has existing profile: $hasExistingProfile',
+        '[AuthWrapper] ✅ Account linking completed. Has existing profile: $hasExistingProfile',
       );
 
+      debugPrint('[AuthWrapper] 🔔 Saving FCM token');
       // Save FCM token
       final token = await pushNotificationService.getFCMToken();
       if (token != null) {
+        debugPrint('[AuthWrapper] 📱 FCM token obtained: ${token.substring(0, 20)}...');
         await profileService.saveFCMToken(token);
+        debugPrint('[AuthWrapper] ✅ FCM token saved successfully');
+      } else {
+        debugPrint('[AuthWrapper] ⚠️ No FCM token available');
       }
 
+      debugPrint('[AuthWrapper] 🏁 Post-authentication flow completed successfully');
       return hasExistingProfile;
-    } catch (e) {
-      debugPrint('[AuthWrapper] Account linking failed: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[AuthWrapper] ❌ Account linking failed: $e');
+      debugPrint('[AuthWrapper] 📚 Stack trace: $stackTrace');
       // Don't block the flow if account linking fails
+      debugPrint('[AuthWrapper] 🔄 Continuing with default flow despite error');
       return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[AuthWrapper] 🔄 Building AuthWrapper widget');
+    
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
+        debugPrint('[AuthWrapper] 📡 StreamBuilder triggered');
         debugPrint(
           '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
         );
@@ -503,6 +520,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         );
         debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
         debugPrint('[AuthWrapper] Data: ${snapshot.data}');
+        debugPrint('[AuthWrapper] User UID: ${snapshot.data?.uid}');
         debugPrint(
           '[AuthWrapper] Is offline mode: ${authService.isOfflineMode}',
         );
@@ -512,14 +530,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // User is authenticated - handle account linking and check profile completion
         if (snapshot.hasData && snapshot.data != null) {
-          debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
+          final user = snapshot.data!;
+          debugPrint('[AuthWrapper] ✅ User authenticated: ${user.uid}');
+          debugPrint('[AuthWrapper] User email: ${user.email}');
+          debugPrint('[AuthWrapper] User phone: ${user.phoneNumber}');
 
           // ✅ FIX: Check if user changed to reset cached future
-          final newUserId = snapshot.data!.uid;
+          final newUserId = user.uid;
           if (_currentUserId != newUserId) {
-            debugPrint('[AuthWrapper] 🔄 User changed, resetting post-auth future');
+            debugPrint('[AuthWrapper] 🔄 User changed from $_currentUserId to $newUserId, resetting post-auth future');
             _currentUserId = newUserId;
             _postAuthFuture = null; // Reset future for new user
+          } else {
+            debugPrint('[AuthWrapper] ✅ Same user, keeping cached future');
           }
 
           // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
@@ -554,13 +577,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
           }
 
           // ✅ FIX: Cache the future to prevent rebuild cycles
-          _postAuthFuture ??= _handlePostAuthenticationFlow();
+          if (_postAuthFuture == null) {
+            debugPrint('[AuthWrapper] 🚀 Creating new post-auth future for user: ${user.uid}');
+            _postAuthFuture = _handlePostAuthenticationFlow();
+          } else {
+            debugPrint('[AuthWrapper] ♻️ Using cached post-auth future');
+          }
 
           // ONLINE MODE: Run full post-authentication flow
+          debugPrint('[AuthWrapper] 🔄 Building FutureBuilder for post-auth flow');
           return FutureBuilder<bool>(
             future: _postAuthFuture, // ✅ Use cached future
             builder: (context, authFuture) {
+              debugPrint('[AuthWrapper] 📊 FutureBuilder state: ${authFuture.connectionState}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder hasData: ${authFuture.hasData}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder data: ${authFuture.data}');
+              debugPrint('[AuthWrapper] 📊 FutureBuilder error: ${authFuture.error}');
+              
               if (authFuture.connectionState == ConnectionState.waiting) {
+                debugPrint('[AuthWrapper] ⏳ Showing loading screen for post-auth flow');
                 return const Scaffold(
                   body: Center(
                     child: Column(
@@ -575,13 +610,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 );
               }
 
+              if (authFuture.hasError) {
+                debugPrint('[AuthWrapper] ❌ FutureBuilder error: ${authFuture.error}');
+                // Continue with default flow on error
+              }
+
               // Account linking completed - check if existing profile was found
               final hasExistingProfile = authFuture.data ?? false;
+              debugPrint('[AuthWrapper] 📋 Has existing profile: $hasExistingProfile');
 
               if (hasExistingProfile) {
                 // User has an existing profile - go directly to main app
                 debugPrint(
-                  '[AuthWrapper] User has existing profile - going to main app',
+                  '[AuthWrapper] ✅ User has existing profile - going to main app',
                 );
                 return MainShellScreen(
                   profileService: profileService,
@@ -592,10 +633,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 final hasVendorProfile = profileService.hasCompleteProfile();
                 final hasRegularProfile = profileService
                     .hasCompleteRegularUserProfile();
+                    
+                debugPrint('[AuthWrapper] 📋 Has vendor profile: $hasVendorProfile');
+                debugPrint('[AuthWrapper] 📋 Has regular profile: $hasRegularProfile');
 
                 if (hasVendorProfile || hasRegularProfile) {
                   debugPrint(
-                    '[AuthWrapper] User has complete profile, navigating to MainShellScreen',
+                    '[AuthWrapper] ✅ User has complete profile, navigating to MainShellScreen',
                   );
                   return MainShellScreen(
                     profileService: profileService,
@@ -603,7 +647,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   );
                 } else {
                   debugPrint(
-                    '[AuthWrapper] No profile found, navigating to UserTypeSelectionScreen',
+                    '[AuthWrapper] ❌ No profile found, navigating to UserTypeSelectionScreen',
                   );
 
                   // Import the UserTypeSelectionScreen
@@ -674,7 +718,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // User is not authenticated - show auth screen with demo option in debug mode
         debugPrint(
-          '[AuthWrapper] User not authenticated, navigating to AuthWelcomeScreen',
+          '[AuthWrapper] ❌ User not authenticated, navigating to AuthWelcomeScreen',
         );
         return const AuthWelcomeScreen();
       },
