@@ -10,7 +10,7 @@ This checklist breaks the MVP into four engineering phases. Complete every sub�
 - [X] **Phase 1:** Foundation  
 - [X] **Phase 2:** Data Layer  
 - [ ] **Phase 3:** Interface Layer  
-- [ ] **Phase 4:** Implementation Layer  
+- [~] **Phase 4:** Implementation Layer  
 
 Legend:  
 `[ ]` Not Started `[~]` In Progress `[X]` Completed `[!]` Blocked  
@@ -129,10 +129,10 @@ Legend:
   - [ ] Check free space ≥ 100 MB else show toast error.
   - [ ] Unit test: saved file survives app uninstall.
 
-- [ ] **5. AI Caption Helper (Phase 2)**
-  - [ ] Call `generateCaption` CF; display spinner max 2 s.
-  - [ ] Allow vendor edit before final post.
-  - [ ] Cache caption keyed by media hash.
+- [X] **5. AI Caption Helper (Phase 4.5)** ✅ **COMPLETED WITH REAL OPENAI INTEGRATION**
+  - [X] Call `generateCaption` CF; display spinner max 2 s. ✅ **DONE** - Real OpenAI GPT-4/Vision integration with 2-second timeout and animated Wicker mascot
+  - [X] Allow vendor edit before final post. ✅ **DONE** - Fully editable caption input with restore functionality
+  - [X] Cache caption keyed by media hash. ✅ **DONE** - SHA-1 media hash with vendor context, 24-hour TTL with automatic cleanup
 
 - [ ] **6. Recipe & FAQ Snippets (Phase 2)**
   - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.

@@ -1,17 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
+import '../../../../core/services/ai_caption_service.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/services/background_sync_service.dart';
-
+import '../../../../features/profile/application/profile_service.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -38,12 +40,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   final LutFilterService _lutFilterService = LutFilterService.instance;
   final TextEditingController _captionController = TextEditingController();
   late final BackgroundSyncService backgroundSyncService;
+  final AICaptionService _aiCaptionService = AICaptionService();
+  late final ProfileService _profileService;
 
   // Filter state
   LutFilterType _selectedFilter = LutFilterType.none;
   String? _filteredImagePath;
   bool _isApplyingFilter = false;
   bool _isPosting = false;
+
+  // AI Caption state
+  bool _isGeneratingCaption = false;
+  bool _aiCaptionAvailable = false;
+  String? _lastGeneratedCaption;
 
   // Video player (if media is video)
   late bool _isPhoto;
@@ -53,6 +62,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   // Animation controllers
   late AnimationController _filterAnimationController;
   late Animation<double> _filterAnimation;
+  late AnimationController _aiButtonAnimationController;
 
   // Posting state
   bool _hasConnectivity = true;
@@ -71,7 +81,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       _initializeVideoPlayer();
     }
 
-    // Initialize animation controller
+    // Initialize animation controllers
     _filterAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -83,11 +93,20 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
 
-    // Initialize LUT filter service
+    _aiButtonAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(); // Start the breathing animation immediately
+
+    // Initialize services
     _initializeLutService();
+    _initializeAIService();
 
     // Initialize background sync service
     backgroundSyncService = BackgroundSyncService();
+
+    // Initialize profile service
+    _profileService = ProfileService(hiveService: widget.hiveService);
 
     // Initialize connectivity monitoring
     _initializeConnectivity();
@@ -98,8 +117,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     _videoController?.dispose();
     _captionController.dispose();
     _filterAnimationController.dispose();
+    _aiButtonAnimationController.dispose();
     _lutFilterService.clearPreviewCache();
     _connectivitySubscription?.cancel();
+    _aiCaptionService.dispose();
     super.dispose();
   }
 
@@ -109,6 +130,21 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       await _lutFilterService.initialize();
     } catch (e) {
       // Handle error
+    }
+  }
+
+  /// Initialize AI Caption service
+  Future<void> _initializeAIService() async {
+    try {
+      await _aiCaptionService.initialize();
+      if (mounted) {
+        setState(() {
+          _aiCaptionAvailable = true;
+        });
+        _aiButtonAnimationController.forward();
+      }
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Failed to initialize AI service: $e');
     }
   }
 
@@ -178,6 +214,76 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         });
       }
     }
+  }
+
+  /// Generate AI caption with 2-second timeout
+  Future<void> _generateAICaption() async {
+    if (_isGeneratingCaption || !_aiCaptionAvailable) return;
+
+    setState(() {
+      _isGeneratingCaption = true;
+    });
+
+    try {
+      // Get vendor profile for context
+      Map<String, dynamic>? vendorProfile;
+      try {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          final profile = _profileService.getCurrentUserProfile();
+          vendorProfile = {
+            'stallName': profile?.stallName,
+            'marketCity': profile?.marketCity,
+          };
+        }
+      } catch (e) {
+        debugPrint('[MediaReviewScreen] Error getting vendor profile: $e');
+      }
+
+      // Generate caption
+      final response = await _aiCaptionService.generateCaption(
+        mediaPath: widget.mediaPath,
+        mediaType: widget.mediaType.name,
+        existingCaption: _captionController.text.isNotEmpty ? _captionController.text : null,
+        vendorProfile: vendorProfile,
+      );
+
+      if (mounted) {
+        setState(() {
+          _lastGeneratedCaption = response.caption;
+          _captionController.text = response.caption;
+        });
+
+        // Show feedback about the caption
+        if (response.fromCache) {
+          _showCaptionFeedback('🧺 Wicker remembers: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
+        } else {
+          _showCaptionFeedback('🧺 Wicker says: ${response.caption.length > 30 ? '${response.caption.substring(0, 30)}...' : response.caption}');
+        }
+      }
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] Error generating AI caption: $e');
+      if (mounted) {
+        _showCaptionFeedback('🧺 Wicker is taking a break, try again later');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingCaption = false;
+        });
+      }
+    }
+  }
+
+  /// Show caption feedback message
+  void _showCaptionFeedback(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.orange.shade600,
+      ),
+    );
   }
 
   /// Post the media with applied filters and caption
@@ -429,20 +535,28 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Build caption input section
+  /// Build caption input section with AI helper
   Widget _buildCaptionInput() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Add a caption',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
+          Row(
+                        children: [
+              const Text(
+                'Add a caption',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const Spacer(),
+              // Placeholder to maintain layout spacing
+              if (_aiCaptionAvailable)
+                const SizedBox(width: 48, height: 24),
+            ],
           ),
           const SizedBox(height: 8),
           TextField(
@@ -450,8 +564,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             maxLines: 2,
             maxLength: 200,
             decoration: InputDecoration(
-              hintText:
-                  'What\'s the story behind this ${widget.mediaType.name}?',
+              hintText: _isGeneratingCaption
+                  ? 'Wicker is crafting your caption...'
+                  : 'What\'s the story behind this ${widget.mediaType.name}?',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -464,8 +579,37 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 ),
               ),
               contentPadding: const EdgeInsets.all(16),
+              suffixIcon: _lastGeneratedCaption != null &&
+                      _captionController.text != _lastGeneratedCaption
+                  ? IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _captionController.text = _lastGeneratedCaption!;
+                        });
+                        _showCaptionFeedback('✨ Restored Wicker\'s caption');
+                      },
+                      icon: Icon(
+                        Icons.restore,
+                        color: Colors.deepPurple.shade400,
+                        size: 20,
+                      ),
+                      tooltip: 'Restore Wicker\'s caption',
+                    )
+                  : null,
             ),
           ),
+          if (_lastGeneratedCaption != null && _lastGeneratedCaption!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '🧺 Wicker\'s suggestion available • Caption is editable',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.orange.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -649,72 +793,123 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       ),
     );
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-        ),
-        title: Text(
-          'Review ${widget.mediaType.name.capitalize()}',
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          // Share/save options could go here
-          IconButton(
-            onPressed: () {
-              // TODO: Implement share functionality
-            },
-            icon: const Icon(Icons.share, color: Colors.grey),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Media preview section - Fixed height
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.5,
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                child: _buildMediaPreview(),
+    return Stack(
+      children: [
+        // Main app content
+        Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+            ),
+            title: Text(
+              'Review ${widget.mediaType.name.capitalize()}',
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
             ),
-
-            // Scrollable bottom section
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Filter selection (now enabled for videos too)
-                    _buildFilterSelection(),
-
-                    // Caption input
-                    _buildCaptionInput(),
-
-                    // Post button
-                    _buildPostButton(),
-
-                    // Bottom padding for safe area
-                    SizedBox(
-                      height: MediaQuery.of(context).padding.bottom + 16,
-                    ),
-                  ],
+            actions: [
+              // Share/save options could go here
+              IconButton(
+                onPressed: () {
+                  // TODO: Implement share functionality
+                },
+                icon: const Icon(Icons.share, color: Colors.grey),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Media preview section - Fixed height
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    child: _buildMediaPreview(),
+                  ),
                 ),
-              ),
+
+                // Scrollable bottom section
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Filter selection (now enabled for videos too)
+                        _buildFilterSelection(),
+
+                        // Caption input
+                        _buildCaptionInput(),
+
+                        // Post button
+                        _buildPostButton(),
+
+                        // Bottom padding for safe area
+                        SizedBox(
+                          height: MediaQuery.of(context).padding.bottom + 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        
+        // Wicker overlay - positioned in the foreground
+        if (_aiCaptionAvailable)
+          Positioned(
+            right: 8,
+            bottom: MediaQuery.of(context).size.height * 0.32, // Position near the caption area
+            child: AnimatedBuilder(
+              animation: _aiButtonAnimationController,
+              builder: (context, child) {
+                // Friendly breathing animation when idle
+                final breathingScale = _isGeneratingCaption 
+                    ? 1.0 
+                    : 1.0 + (sin(_aiButtonAnimationController.value * 2 * pi) * 0.08);
+                
+                // Gentle shake when generating
+                final shakeOffset = _isGeneratingCaption
+                    ? sin(_aiButtonAnimationController.value * 8 * pi) * 3.0
+                    : 0.0;
+                
+                return Transform.translate(
+                  offset: Offset(shakeOffset, 0),
+                  child: Transform.scale(
+                    scale: breathingScale,
+                    child: GestureDetector(
+                      onTap: _isGeneratingCaption ? null : _generateAICaption,
+                      child: Tooltip(
+                        message: _isGeneratingCaption
+                            ? 'Wicker is crafting your caption...'
+                            : 'Ask Wicker for a caption suggestion',
+                        child: SizedBox(
+                          width: 72,
+                          height: 72,
+                          child: Image.asset(
+                            'assets/images/icons/wicker_mascot.png',
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

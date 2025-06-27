@@ -461,20 +461,182 @@ const createAIHelper = (
 
 /**
  * Generates a caption for an image.
- * [Phase 2: Scaffolded]
+ * [Phase 4: Fully Implemented]
  */
 export const generateCaption = createAIHelper(
   "generateCaption",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (data, context) => {
-    logger.log(
-      "[generateCaption] TODO: Implement actual caption generation logic."
-    );
-    // Dummy response for now
-    return {
-      caption: "A vibrant photo of fresh market produce.",
-      confidence: 0.95,
-    };
+  async (data, context) => {
+    logger.log("[generateCaption] Processing caption generation request");
+
+    try {
+      // Extract parameters from request
+      const {mediaType, existingCaption, vendorProfile, imageBase64} = data;
+
+      logger.log(`[generateCaption] MediaType: ${mediaType || "photo"}`);
+      logger.log(
+        `[generateCaption] ExistingCaption: ${existingCaption || "none"}`
+      );
+      logger.log(
+        "[generateCaption] VendorProfile: " +
+        `${JSON.stringify(vendorProfile || {})}`
+      );
+      logger.log(
+        "[generateCaption] ImageBase64 length: " +
+        `${imageBase64?.length || 0} characters`
+      );
+
+      // Import OpenAI (dynamic import to handle potential missing dependency)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let OpenAI: any;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error(
+          "[generateCaption] OpenAI package not installed:",
+          importError
+        );
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI package is not installed in the functions environment."
+        );
+      }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+      });
+
+      // Build context-aware prompt for marketplace content
+      const vendorName = vendorProfile?.stallName || "vendor";
+      const marketCity = vendorProfile?.marketCity || "local market";
+
+      const basePrompt = "You are Wicker, the friendly AI mascot for " +
+        "MarketSnap! 🧺 You help farmers market vendors create engaging " +
+        `social media captions for their products.
+
+Context:
+- Vendor: ${vendorName}
+- Market: ${marketCity}
+- Media type: ${mediaType || "photo"}
+${existingCaption ? `- Current caption: "${existingCaption}"` : ""}
+
+Create a short, engaging caption (under 100 characters) that:
+- Works for ANY market product (fresh produce, baked goods, crafts, ` +
+        `flowers, prepared foods, artisan items, etc.)
+- Captures the local, handmade, or fresh market vibe
+- Encourages shoppers to visit or buy
+- Uses appropriate emojis (1-2 max) that match the product type
+- Feels authentic and not overly promotional
+- Highlights quality, craftsmanship, freshness, or uniqueness ` +
+        `as appropriate
+- Adapts tone to the product (food = fresh/delicious, ` +
+        `crafts = handmade/unique, etc.)
+
+${existingCaption ?
+    "Improve the existing caption while keeping the same general " +
+    "meaning and product focus." :
+    "Generate a new caption based on what you see or the context " +
+    "provided. If you can identify the product type from the image, " +
+    "tailor the caption accordingly."
+}
+
+Return only the caption text, no quotes or extra formatting.`;
+
+      // Prepare messages array
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const messages: any[] = [];
+
+      // If we have image data, use vision model for better context
+      if (imageBase64 && mediaType === "photo") {
+        logger.log(
+          "[generateCaption] Using GPT-4 Vision for image analysis"
+        );
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: basePrompt + "\n\nBased on the image provided, " +
+                "create a caption that describes what you see. Look for: " +
+                "fresh produce, baked goods, crafts, flowers, prepared " +
+                "foods, artisan items, or any other market products. " +
+                "Tailor your caption to match the specific product type " +
+                "and its appeal.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+                detail: "low", // Use low detail for faster processing
+              },
+            },
+          ],
+        });
+      } else {
+        // Text-only prompt when no image
+        messages.push({
+          role: "user",
+          content: basePrompt,
+        });
+      }
+
+      logger.log("[generateCaption] Sending request to OpenAI GPT-4");
+
+      // Call OpenAI API with appropriate model
+      const modelName = imageBase64 && mediaType === "photo" ?
+        "gpt-4-vision-preview" : "gpt-4";
+      const completion = await openai.chat.completions.create({
+        model: modelName,
+        messages: messages,
+        max_tokens: 100,
+        temperature: 0.7,
+        top_p: 1,
+        frequency_penalty: 0.2,
+        presence_penalty: 0.1,
+      });
+
+      const generatedCaption = completion.choices[0]?.message?.content?.trim();
+
+      if (!generatedCaption) {
+        throw new Error("OpenAI returned empty response");
+      }
+
+      logger.log(`[generateCaption] Generated caption: "${generatedCaption}"`);
+
+      // Calculate confidence based on response quality metrics
+      const lengthBonus = generatedCaption.length > 20 ? 0.1 : 0;
+      const emojiBonus = (generatedCaption.includes("🍅") ||
+        generatedCaption.includes("🥬") ||
+        generatedCaption.includes("🌽")) ? 0.05 : 0;
+      const confidence = Math.min(0.95, Math.max(0.7,
+        0.8 + lengthBonus + emojiBonus
+      ));
+
+      const response = {
+        caption: generatedCaption,
+        confidence: confidence,
+        model: "gpt-4",
+        timestamp: new Date().toISOString(),
+      };
+
+      logger.log(`[generateCaption] Success! Confidence: ${confidence}`);
+      return response;
+    } catch (error) {
+      logger.error("[generateCaption] Error generating caption:", error);
+
+      // Return appropriate error
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ?
+        error.message : "Unknown error";
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to generate caption: ${errorMessage}`
+      );
+    }
   }
 );
 
