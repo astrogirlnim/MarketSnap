@@ -198,16 +198,17 @@ class AuthService {
     HiveService? hiveService,
   }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
        _hiveService = hiveService {
-    _initializeOfflineAuth();
+    _initializeOfflineAuthSync();
+    _startAsyncInitialization();
   }
 
-  /// Initialize offline authentication monitoring
-  void _initializeOfflineAuth() async {
-    debugPrint('[AuthService] 🔧 Initializing offline authentication system');
+  /// Initialize offline authentication synchronously (constructor-safe)
+  void _initializeOfflineAuthSync() {
+    debugPrint('[AuthService] 🔧 Initializing offline authentication system (sync)');
     
     _offlineAuthController = StreamController<User?>.broadcast();
     
-    // Check for cached user first (for offline persistence)
+    // Check for cached user first (for offline persistence) - SYNCHRONOUS
     if (_hiveService != null && _hiveService!.hasAuthenticationCache() && _hiveService!.isCachedAuthenticationValid()) {
       final cachedUserData = _hiveService!.getCachedAuthenticatedUser();
       if (cachedUserData != null) {
@@ -222,10 +223,19 @@ class AuthService {
       _cachedUser = _firebaseAuth.currentUser;
       if (_cachedUser != null) {
         debugPrint('[AuthService] 🔥 Using current Firebase user: ${_cachedUser!.uid}');
-        // Cache this user for offline persistence
+        // Cache this user for offline persistence (async operation)
         _cacheCurrentUser(_cachedUser!);
       }
     }
+    
+    // Emit initial auth state immediately to prevent loading state
+    _offlineAuthController?.add(_cachedUser);
+    debugPrint('[AuthService] 🚀 Initial auth state emitted synchronously: ${_cachedUser?.uid ?? 'null'}');
+  }
+
+  /// Start async initialization after constructor completes
+  void _startAsyncInitialization() async {
+    debugPrint('[AuthService] 🔄 Starting async initialization');
     
     // Check initial connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
@@ -233,9 +243,11 @@ class AuthService {
     
     debugPrint('[AuthService] 📡 Initial connectivity: ${_isOfflineMode ? 'OFFLINE' : 'ONLINE'}');
     
-    // Emit initial auth state immediately to prevent loading state
-    _offlineAuthController?.add(_cachedUser);
-    debugPrint('[AuthService] 🚀 Initial auth state emitted: ${_cachedUser?.uid ?? 'null'}');
+    // Re-emit auth state with correct offline mode
+    if (_isOfflineMode && _cachedUser != null) {
+      _offlineAuthController?.add(_cachedUser);
+      debugPrint('[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser!.uid}');
+    }
     
     // Monitor connectivity changes
     Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
