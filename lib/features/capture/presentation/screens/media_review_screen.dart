@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../application/lut_filter_service.dart';
 import '../../../../core/models/pending_media.dart';
 import '../../../../core/services/hive_service.dart';
-import '../../../../main.dart' show backgroundSyncService;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -571,6 +570,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
       final queueCount = pendingBox.length;
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -593,6 +593,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     } catch (e) {
       debugPrint('[MediaReviewScreen] Error getting queue count: $e');
       // Fallback to simple message
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(

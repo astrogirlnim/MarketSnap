@@ -104,6 +104,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
       final backgroundSyncService = BackgroundSyncService();
       await backgroundSyncService.triggerImmediateSync();
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -117,6 +118,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(

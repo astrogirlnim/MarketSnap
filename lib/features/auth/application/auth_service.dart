@@ -210,14 +210,14 @@ class AuthService {
     
     // Check for cached user first (for offline persistence) - SYNCHRONOUS with error handling
     try {
-      if (_hiveService != null && _hiveService!.hasAuthenticationCache() && _hiveService!.isCachedAuthenticationValid()) {
-        final cachedUserData = _hiveService!.getCachedAuthenticatedUser();
+      if (_hiveService != null && _hiveService.hasAuthenticationCache() && _hiveService.isCachedAuthenticationValid()) {
+        final cachedUserData = _hiveService.getCachedAuthenticatedUser();
         if (cachedUserData != null) {
           // Safely cast and validate the cached data
           final Map<String, dynamic> userData = Map<String, dynamic>.from(cachedUserData);
           final cachedUser = CachedUser.fromMap(userData);
           _cachedUser = cachedUser.toFirebaseUserLike();
-          debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser!.uid}');
+          debugPrint('[AuthService] 💾 Restored cached user from Hive: ${_cachedUser?.uid}');
         }
       }
     } catch (e) {
@@ -235,7 +235,7 @@ class AuthService {
     if (_cachedUser == null) {
       _cachedUser = _firebaseAuth.currentUser;
       if (_cachedUser != null) {
-        debugPrint('[AuthService] 🔥 Using current Firebase user: ${_cachedUser!.uid}');
+        debugPrint('[AuthService] 🔥 Using current Firebase user: ${_cachedUser?.uid}');
         // Cache this user for offline persistence (async operation)
         _cacheCurrentUser(_cachedUser!);
       }
@@ -259,7 +259,7 @@ class AuthService {
     // Re-emit auth state with correct offline mode
     if (_isOfflineMode && _cachedUser != null) {
       _offlineAuthController?.add(_cachedUser);
-      debugPrint('[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser!.uid}');
+      debugPrint('[AuthService] 📱 Re-emitted cached user for offline mode: ${_cachedUser?.uid}');
     }
     
     // Monitor connectivity changes
@@ -294,7 +294,7 @@ class AuthService {
     
     debugPrint('[AuthService] 💾 Caching user for offline persistence: ${user.uid}');
     
-    _hiveService!.cacheAuthenticatedUser(
+    _hiveService.cacheAuthenticatedUser(
       uid: user.uid,
       email: user.email ?? '',
       phoneNumber: user.phoneNumber,
@@ -311,7 +311,7 @@ class AuthService {
     
     debugPrint('[AuthService] 🗑️ Clearing cached user data');
     
-    _hiveService!.clearAuthenticationCache().catchError((error) {
+    _hiveService.clearAuthenticationCache().catchError((error) {
       debugPrint('[AuthService] ❌ Failed to clear user cache: $error');
     });
   }
@@ -340,7 +340,7 @@ class AuthService {
   /// Current authenticated user (works offline with cached state)
   User? get currentUser {
     if (_isOfflineMode && _cachedUser != null) {
-      debugPrint('[AuthService] 📱 Returning cached user (offline): ${_cachedUser!.uid}');
+      debugPrint('[AuthService] 📱 Returning cached user (offline): ${_cachedUser?.uid}');
       return _cachedUser;
     }
     return _firebaseAuth.currentUser;
@@ -357,7 +357,7 @@ class AuthService {
   /// Authentication state - true if user is signed in (works offline)
   bool get isAuthenticated {
     if (_isOfflineMode && _cachedUser != null) {
-      debugPrint('[AuthService] 📱 User authenticated (offline cached): ${_cachedUser!.uid}');
+      debugPrint('[AuthService] 📱 User authenticated (offline cached): ${_cachedUser?.uid}');
       return true;
     }
     return currentUser != null;

@@ -332,7 +332,7 @@ class HiveService {
     final daysSinceCached = now.difference(cacheTime).inDays;
     
     final isValid = daysSinceCached <= 30; // 30 day expiry
-    debugPrint('[HiveService] 📅 Cached auth validity: $isValid (${daysSinceCached} days old)');
+    debugPrint('[HiveService] 📅 Cached auth validity: $isValid ($daysSinceCached days old)');
     
     return isValid;
   }
