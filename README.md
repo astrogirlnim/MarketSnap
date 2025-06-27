@@ -129,9 +129,9 @@ IOS_APP_ID=your_ios_app_id_here
 # App Bundle/Package Identifiers
 APP_BUNDLE_ID=your_bundle_id_here
 
-# OpenAI API Key for AI Helper Functions
+# OpenAI API Key for AI Helper Functions (Wicker captions & RAG suggestions)
 OPENAI_API_KEY=your_openai_api_key_here
-AI_FUNCTIONS_ENABLED=false # Set to true to enable AI functions
+AI_FUNCTIONS_ENABLED=true # Set to true to enable AI functions
 ```
 
 ### Firebase Configuration

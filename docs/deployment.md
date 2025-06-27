@@ -105,6 +105,7 @@ RELEASE_KEYSTORE_BASE64     # Android release keystore (base64 encoded)
 KEYSTORE_PASSWORD           # Android keystore password
 KEY_ALIAS                   # Android key alias
 KEY_PASSWORD                # Android key password
+OPENAI_API_KEY              # OpenAI API key for AI features (Wicker captions, RAG suggestions)
 ```
 
 #### Environment Variables Structure
