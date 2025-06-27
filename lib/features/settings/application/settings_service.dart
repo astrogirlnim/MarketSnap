@@ -278,7 +278,7 @@ class SettingsService {
 
   /// Opens support email in external mail app
   Future<bool> openSupportEmail() async {
-    const supportEmail = 'support@marketsnap.app';
+    const supportEmail = 'nmmsoftware@gmail.com';
     const subject = 'MarketSnap Support Request';
     final body =
         '''
