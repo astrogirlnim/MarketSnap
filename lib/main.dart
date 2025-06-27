@@ -449,6 +449,10 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  // ✅ FIX: Cache the post-auth future to prevent rebuild cycles
+  Future<bool>? _postAuthFuture;
+  String? _currentUserId;
+
   @override
   void dispose() {
     // Dispose auth service resources with null safety
@@ -510,6 +514,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (snapshot.hasData && snapshot.data != null) {
           debugPrint('[AuthWrapper] User authenticated: ${snapshot.data!.uid}');
 
+          // ✅ FIX: Check if user changed to reset cached future
+          final newUserId = snapshot.data!.uid;
+          if (_currentUserId != newUserId) {
+            debugPrint('[AuthWrapper] 🔄 User changed, resetting post-auth future');
+            _currentUserId = newUserId;
+            _postAuthFuture = null; // Reset future for new user
+          }
+
           // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
           if (authService.isOfflineMode) {
             debugPrint(
@@ -541,9 +553,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
             }
           }
 
+          // ✅ FIX: Cache the future to prevent rebuild cycles
+          _postAuthFuture ??= _handlePostAuthenticationFlow();
+
           // ONLINE MODE: Run full post-authentication flow
           return FutureBuilder<bool>(
-            future: _handlePostAuthenticationFlow(),
+            future: _postAuthFuture, // ✅ Use cached future
             builder: (context, authFuture) {
               if (authFuture.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
@@ -648,6 +663,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
               }
             },
           );
+        }
+
+        // ✅ FIX: Reset cached future when user signs out
+        if (!snapshot.hasData && _postAuthFuture != null) {
+          debugPrint('[AuthWrapper] 🚪 User signed out, clearing post-auth future');
+          _postAuthFuture = null;
+          _currentUserId = null;
         }
 
         // User is not authenticated - show auth screen with demo option in debug mode
