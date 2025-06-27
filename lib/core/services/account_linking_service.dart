@@ -41,15 +41,8 @@ class AccountLinkingService {
       '[AccountLinkingService] Current user - UID: ${currentUser.uid}, Phone: $phoneNumber, Email: $email',
     );
 
-    if (phoneNumber == null && email == null) {
-      debugPrint(
-        '[AccountLinkingService] No contact info available for profile lookup',
-      );
-      return null;
-    }
-
     try {
-      // First check if profile already exists with current UID
+      // First check if vendor profile already exists with current UID
       final currentUidProfile = await _firestore
           .collection('vendors')
           .doc(currentUser.uid)
@@ -65,21 +58,42 @@ class AccountLinkingService {
         );
       }
 
-      // Check for existing profiles with same phone number or email
-      final existingProfile = await _findExistingProfileByContact(
-        phoneNumber,
-        email,
-      );
-
-      if (existingProfile != null) {
+      // Check if a regular user profile exists - this indicates the user has an existing profile
+      final hasRegularProfile = _profileService.hasCompleteRegularUserProfile();
+      if (hasRegularProfile) {
         debugPrint(
-          '[AccountLinkingService] Found existing profile: ${existingProfile.stallName} (${existingProfile.uid})',
+          '[AccountLinkingService] Found existing regular user profile for current UID: ${currentUser.uid}',
+        );
+        // Return a placeholder VendorProfile to indicate profile exists
+        // The actual profile handling will be done by AuthWrapper
+        return VendorProfile(
+          uid: currentUser.uid,
+          displayName: 'Regular User',
+          stallName: 'Customer',
+          marketCity: 'User',
+          phoneNumber: phoneNumber,
+          email: email,
+          needsSync: false,
+        );
+      }
+
+      // Check for existing vendor profiles with same phone number or email
+      if (phoneNumber != null || email != null) {
+        final existingProfile = await _findExistingProfileByContact(
+          phoneNumber,
+          email,
         );
 
-        // Copy the existing profile to the current user's UID
-        await _copyProfileToCurrentUser(existingProfile);
+        if (existingProfile != null) {
+          debugPrint(
+            '[AccountLinkingService] Found existing vendor profile: ${existingProfile.stallName} (${existingProfile.uid})',
+          );
 
-        return existingProfile;
+          // Copy the existing profile to the current user's UID
+          await _copyProfileToCurrentUser(existingProfile);
+
+          return existingProfile;
+        }
       }
 
       debugPrint('[AccountLinkingService] No existing profile found');

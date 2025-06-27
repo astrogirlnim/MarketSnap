@@ -358,7 +358,75 @@ This issue prevents vendor retention and creates a poor user experience where ve
 
 ---
 
-## Latest Debugging Session: Phase 4.8 - Authentication Hang and Second Login Issues (RESOLVED)
+## Latest Debugging Session: Phase 4.9 - Unknown User Messaging Bug (RESOLVED)
+
+### **✅ RESOLVED: Unknown User Display in Vendor Messaging Interface**
+
+**Date:** January 27, 2025  
+**Issue:** Regular users appearing as "Unknown User" with "Profile not found" when messaging vendors  
+**Status:** ✅ **RESOLVED** with universal profile loading system
+
+#### Problem Analysis
+- **Symptom:** When regular (non-vendor) users sent messages to vendors, they appeared as "Unknown User" in vendor's message list
+- **Root Cause Discovery Process:**
+  1. ✅ **Authentication Working:** All users properly authenticated and messaging successful
+  2. ✅ **Messages Delivered:** Firebase Functions sending notifications correctly
+  3. ❌ **Profile Loading Issue:** ConversationListScreen only searched vendors collection
+  4. ❌ **Collection Mismatch:** Regular users stored in `regularUsers` collection, not `vendors`
+
+#### Technical Root Cause
+**Primary Issue:** Single-Collection Profile Loading  
+- **Problem:** `loadProfileFromFirestore()` method only searched `vendors` collection  
+- **Impact:** Regular user profiles (stored in `regularUsers`) not found by messaging interface  
+- **Result:** Regular users displayed as "Unknown User" with "Profile not found" subtitle  
+- **User Experience:** Vendor unable to identify who messaged them or click on conversations  
+
+#### Solution Implemented
+**✅ Universal Profile Loading System**
+```dart
+// NEW: Universal profile loader that searches both collections
+Future<VendorProfile?> loadAnyUserProfileFromFirestore(String uid) async {
+  // First try vendors collection
+  final vendorProfile = await loadProfileFromFirestore(uid);
+  if (vendorProfile != null) return vendorProfile;
+  
+  // Then try regular users collection  
+  final regularProfile = await loadRegularUserProfileFromFirestore(uid);
+  if (regularProfile != null) {
+    // Convert to VendorProfile format for UI compatibility
+    return VendorProfile(
+      uid: regularProfile.uid,
+      displayName: regularProfile.displayName,
+      stallName: 'Customer', // Appropriate label for regular users
+      marketCity: 'User', 
+      // ... other fields mapped appropriately
+    );
+  }
+  return null;
+}
+```
+
+**✅ Updated Messaging Components**
+- **ConversationListScreen:** Now uses `loadAnyUserProfileFromFirestore()`  
+- **PushNotificationService:** Updated for consistent profile loading  
+- **UI Compatibility:** Regular users display properly with converted VendorProfile format  
+
+#### Code Quality & Testing Results
+- **✅ Flutter Analyze:** 0 issues across all files  
+- **✅ Profile Conversion:** Regular users seamlessly converted to UI-compatible format  
+- **✅ Messaging Flow:** Complete vendor-to-regular-user messaging functionality  
+- **✅ Chat Navigation:** Conversations now clickable and fully functional  
+
+#### Impact & Results
+- **🎯 Unknown User Fixed:** Regular users now display with proper names (e.g., "Test regular")  
+- **💬 Full Messaging Support:** Vendor-vendor AND vendor-regular user communication  
+- **🖱️ Clickable Conversations:** All conversations navigable to chat screens  
+- **👥 User Experience:** Vendors can identify and communicate with all user types  
+- **🔄 Backward Compatibility:** Existing vendor-vendor messaging unaffected  
+
+---
+
+## Previous Debugging Session: Phase 4.8 - Authentication Hang and Second Login Issues (RESOLVED)
 
 ### **✅ RESOLVED: Authentication Hang and Second Login Failures**
 
