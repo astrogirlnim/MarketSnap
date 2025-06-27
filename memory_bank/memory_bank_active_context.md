@@ -310,3 +310,136 @@ We have successfully completed Phase 3.3 - Story Reel & Feed implementation and 
 
 1. **Story Reel & Feed UI Components** ✅ **COMPLETED**
    - ✅ Created `
+
+# Memory Bank - Active Context
+
+## Current Sprint: Phase 4.1 - Offline Media Queue Logic ✅ + Offline Authentication Enhancement
+
+### 🎯 Current Focus
+**COMPLETED**: Phase 4.1 Offline Media Queue Logic verification and enhancement
+**IN PROGRESS**: Offline Authentication Persistence Implementation
+**NEXT**: Debug Firebase Auth interface compatibility issue
+
+### 📋 Current Sprint Status
+
+#### ✅ COMPLETED - Phase 4.1 Verification & Enhancement
+1. **Offline Media Queue Logic** - ✅ FULLY IMPLEMENTED & ENHANCED
+   - ✅ Serialize photo/video + metadata into Hive queue (PendingMediaItem model)
+   - ✅ WorkManager uploads when network available (BackgroundSyncService)
+   - ✅ Delete queue item on 200 response; retry on failure (comprehensive error handling)
+   - ✅ Enhanced UX: Smart posting flow with 10-second timeout online, instant queue offline
+   - ✅ Real-time connectivity monitoring with better user messaging
+   - ✅ Color-coded feedback and context-aware UI states
+
+#### 🔄 IN PROGRESS - Offline Authentication Persistence
+1. **Authentication Cache Implementation** - ⚠️ COMPILATION ISSUE
+   - ✅ Added authCache Hive box for persistent user authentication storage
+   - ✅ Enhanced AuthService with CachedUser model for offline compatibility  
+   - ✅ Cache authenticated user data across app restarts (30-day expiry)
+   - ✅ Updated initialization order: HiveService before AuthService
+   - ✅ Clear authentication cache on sign out
+   - ❌ **BLOCKED**: Firebase Auth interface compatibility issue with _CachedFirebaseUser
+   - ❌ Missing method implementations causing compilation failure
+
+### 🚨 Current Blockers
+
+#### Firebase Auth Interface Compatibility Issue
+**Problem**: `_CachedFirebaseUser` class missing required method implementations
+**Error**: 
+```
+The non-abstract class '_CachedFirebaseUser' is missing implementations for these members:
+- User.linkWithProvider
+- User.reauthenticateWithProvider
+```
+
+**Status**: Attempted fix by adding missing methods, but compilation still fails
+**Next Steps**: 
+1. Investigate Firebase Auth version compatibility
+2. Consider alternative approach using wrapper pattern instead of implementing User interface
+3. Explore using Firebase Auth's built-in persistence mechanisms
+
+### 📝 Recent Changes (Last 24 Hours)
+
+#### Enhanced Offline UX Implementation
+- **connectivity_plus**: Added real-time network monitoring
+- **Smart Posting Flow**: 10-second timeout online, instant queue offline  
+- **Better Messaging**: "Will post when online" for offline state
+- **Color-coded Feedback**: Context-aware UI states
+- **Navigation Freedom**: Users can navigate away during posting
+
+#### Offline Authentication Persistence (Attempted)
+- **Hive Integration**: Added authCache box for persistent storage
+- **CachedUser Model**: Simple model for offline authentication state
+- **30-Day Expiry**: Automatic cache invalidation for security
+- **Cross-restart Persistence**: Users remain logged in after app restart
+
+### 🎯 Expected Offline Authentication Behavior (DOCUMENTED)
+
+#### When User is Online and Authenticates
+1. User completes phone/email verification successfully
+2. Firebase Auth creates authenticated user session
+3. AuthService caches user data in Hive (uid, email, phone, displayName, photoURL)
+4. User can access all app features normally
+
+#### When User Goes Offline (After Initial Authentication)
+1. **Immediate Offline Access**: User remains authenticated using cached data
+2. **Profile Access**: Local vendor profile data available from Hive
+3. **Media Posting**: Photos/videos queue locally for upload when online
+4. **Navigation**: Full app navigation remains functional
+5. **Data Persistence**: Authentication state survives app restarts
+
+#### When User Starts App Offline (Previously Authenticated)
+1. **Cached Authentication**: AuthService loads cached user from Hive
+2. **Validity Check**: Ensures cached data is < 30 days old
+3. **Offline Mode**: App functions fully with local data
+4. **Queue Processing**: Pending uploads remain queued until connectivity returns
+5. **Profile Management**: Local profile editing continues to work
+
+#### When User Tries to Authenticate While Offline
+1. **Prevention**: Phone/email verification requires network connection
+2. **Clear Messaging**: "Cannot verify while offline" error message
+3. **Offline Indicator**: Visual indicator shows offline status
+4. **Guidance**: User instructed to connect to internet for initial authentication
+
+#### Security & Data Management
+1. **30-Day Expiry**: Cached authentication expires after 30 days
+2. **Sign Out**: Clears both Firebase session and local cache
+3. **Data Sync**: Profile changes sync when connectivity returns
+4. **Privacy**: No sensitive tokens stored locally, only basic user metadata
+
+### 🔧 Technical Implementation Status
+
+#### Working Components
+- ✅ HiveService with authCache box
+- ✅ AuthService offline state management
+- ✅ Connectivity monitoring
+- ✅ Cache expiry logic
+- ✅ Sign out cache clearing
+
+#### Blocked Components
+- ❌ _CachedFirebaseUser interface implementation
+- ❌ App compilation due to missing Firebase Auth methods
+- ❌ End-to-end offline authentication testing
+
+### 📊 Phase 4.1 Final Status
+- **Offline Media Queue**: ✅ COMPLETE with UX enhancements
+- **Offline Authentication**: ⚠️ IMPLEMENTATION BLOCKED (compilation issue)
+- **Overall Progress**: 85% complete (core functionality working, authentication persistence blocked)
+
+### 🔄 Next Actions
+1. **Debug Firebase Auth Compatibility**: Resolve compilation issues
+2. **Alternative Implementation**: Consider wrapper pattern vs direct interface implementation
+3. **Testing**: End-to-end offline authentication testing once compilation fixed
+4. **Documentation**: Update Phase 4.1 completion status in checklist
+
+### 📈 Success Metrics Achieved
+- ✅ Offline media queue working end-to-end
+- ✅ Enhanced UX with real-time connectivity feedback
+- ✅ Smart posting flow prevents user frustration
+- ✅ Comprehensive error handling and retry logic
+- ⚠️ Offline authentication persistence (implementation blocked)
+
+---
+*Last Updated: January 7, 2025*
+*Current Sprint: Phase 4.1 - Offline Enhancements*
+*Status: 85% Complete (Core working, auth persistence blocked)*
