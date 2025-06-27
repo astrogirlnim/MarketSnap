@@ -11,13 +11,11 @@ import '../../../../core/models/user_type.dart';
 class UserTypeSelectionScreen extends StatefulWidget {
   final Function(UserType) onUserTypeSelected;
 
-  const UserTypeSelectionScreen({
-    super.key,
-    required this.onUserTypeSelected,
-  });
+  const UserTypeSelectionScreen({super.key, required this.onUserTypeSelected});
 
   @override
-  State<UserTypeSelectionScreen> createState() => _UserTypeSelectionScreenState();
+  State<UserTypeSelectionScreen> createState() =>
+      _UserTypeSelectionScreenState();
 }
 
 class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
@@ -25,14 +23,18 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    developer.log('[UserTypeSelectionScreen] Building user type selection screen', name: 'UserTypeSelectionScreen');
+    developer.log(
+      '[UserTypeSelectionScreen] Building user type selection screen',
+      name: 'UserTypeSelectionScreen',
+    );
 
     return Scaffold(
       backgroundColor: AppColors.cornsilk,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false, // No back button since this is part of onboarding
+        automaticallyImplyLeading:
+            false, // No back button since this is part of onboarding
         title: Text(
           'Welcome to MarketSnap!',
           style: AppTypography.h1.copyWith(color: AppColors.soilCharcoal),
@@ -48,18 +50,13 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
               const SizedBox(height: AppSpacing.xl),
 
               // Welcome message
-              Text(
-                'Choose your role',
-                style: AppTypography.h2,
-              ),
+              Text('Choose your role', style: AppTypography.h2),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'This helps us customize your MarketSnap experience.',
-                style: AppTypography.body.copyWith(
-                  color: AppColors.soilTaupe,
-                ),
+                style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
               ),
-              
+
               const SizedBox(height: AppSpacing.xxl),
 
               // Vendor option
@@ -144,7 +141,9 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
         width: double.infinity,
         padding: AppSpacing.edgeInsetsCard,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.marketBlue.withValues(alpha: 0.1) : AppColors.eggshell,
+          color: isSelected
+              ? AppColors.marketBlue.withValues(alpha: 0.1)
+              : AppColors.eggshell,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           border: Border.all(
             color: isSelected ? AppColors.marketBlue : AppColors.seedBrown,
@@ -161,11 +160,7 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
                 color: isSelected ? AppColors.marketBlue : AppColors.soilTaupe,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                color: AppColors.eggshell,
-                size: 28,
-              ),
+              child: Icon(icon, color: AppColors.eggshell, size: 28),
             ),
 
             const SizedBox(width: AppSpacing.lg),
@@ -178,7 +173,9 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
                   Text(
                     title,
                     style: AppTypography.h2.copyWith(
-                      color: isSelected ? AppColors.marketBlue : AppColors.soilCharcoal,
+                      color: isSelected
+                          ? AppColors.marketBlue
+                          : AppColors.soilCharcoal,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -194,11 +191,7 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
 
             // Selection indicator
             if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: AppColors.marketBlue,
-                size: 24,
-              )
+              Icon(Icons.check_circle, color: AppColors.marketBlue, size: 24)
             else
               Icon(
                 Icons.radio_button_unchecked,
@@ -210,4 +203,4 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
       ),
     );
   }
-} 
+}

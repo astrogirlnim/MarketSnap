@@ -55,7 +55,10 @@ class RegularUserProfile extends HiveObject {
       DateTime.fromMillisecondsSinceEpoch(lastUpdatedMillis);
 
   /// Creates a RegularUserProfile from Firestore document data
-  factory RegularUserProfile.fromFirestore(Map<String, dynamic> data, String uid) {
+  factory RegularUserProfile.fromFirestore(
+    Map<String, dynamic> data,
+    String uid,
+  ) {
     return RegularUserProfile(
       uid: uid,
       displayName: data['displayName'] ?? '',
@@ -124,4 +127,4 @@ class RegularUserProfile extends HiveObject {
   String toString() {
     return 'RegularUserProfile(uid: $uid, displayName: $displayName, phoneNumber: $phoneNumber, email: $email, avatarURL: $avatarURL, needsSync: $needsSync)';
   }
-} 
+}

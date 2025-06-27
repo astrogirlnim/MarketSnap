@@ -23,7 +23,8 @@ class VendorProfileViewScreen extends StatefulWidget {
   });
 
   @override
-  State<VendorProfileViewScreen> createState() => _VendorProfileViewScreenState();
+  State<VendorProfileViewScreen> createState() =>
+      _VendorProfileViewScreenState();
 }
 
 class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
@@ -45,13 +46,13 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
   void _checkUserType() {
     final currentProfile = widget.profileService.getCurrentUserProfile();
     final regularProfile = widget.profileService.getCurrentRegularUserProfile();
-    
+
     // Check if this is the current user's own profile
     _isCurrentUser = currentProfile?.uid == widget.vendor.uid;
-    
+
     // Check if current user is a regular user (not a vendor)
     _isRegularUser = regularProfile != null && currentProfile == null;
-    
+
     developer.log(
       '[VendorProfileViewScreen] User type - IsCurrentUser: $_isCurrentUser, IsRegularUser: $_isRegularUser',
       name: 'VendorProfileViewScreen',
@@ -139,7 +140,9 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
             color: AppColors.eggshell,
             border: Border.all(color: AppColors.seedBrown, width: 2),
           ),
-          child: widget.vendor.avatarURL != null && widget.vendor.avatarURL!.isNotEmpty
+          child:
+              widget.vendor.avatarURL != null &&
+                  widget.vendor.avatarURL!.isNotEmpty
               ? ClipOval(
                   child: Image.network(
                     widget.vendor.avatarURL!,
@@ -157,19 +160,17 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
+                                    loadingProgress.expectedTotalBytes!
                               : null,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.marketBlue,
+                          ),
                         ),
                       );
                     },
                   ),
                 )
-              : Icon(
-                  Icons.person,
-                  size: 48,
-                  color: AppColors.marketBlue,
-                ),
+              : Icon(Icons.person, size: 48, color: AppColors.marketBlue),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
@@ -198,9 +199,7 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
         children: [
           Text(
             'Vendor Information',
-            style: AppTypography.h2.copyWith(
-              color: AppColors.soilCharcoal,
-            ),
+            style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -242,11 +241,7 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: AppColors.marketBlue,
-          size: 20,
-        ),
+        Icon(icon, color: AppColors.marketBlue, size: 20),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
@@ -281,7 +276,10 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
       decoration: BoxDecoration(
         color: AppColors.marketBlue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: AppColors.marketBlue.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: AppColors.marketBlue.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -293,16 +291,12 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Stay Updated',
-            style: AppTypography.h2.copyWith(
-              color: AppColors.marketBlue,
-            ),
+            style: AppTypography.h2.copyWith(color: AppColors.marketBlue),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Follow ${widget.vendor.displayName} to get notified when they post fresh finds!',
-            style: AppTypography.body.copyWith(
-              color: AppColors.soilCharcoal,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -339,9 +333,7 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
         children: [
           Text(
             'Contact Information',
-            style: AppTypography.h2.copyWith(
-              color: AppColors.soilCharcoal,
-            ),
+            style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -352,7 +344,8 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
               label: 'Phone',
               value: widget.vendor.phoneNumber!,
             ),
-            if (widget.vendor.email != null) const SizedBox(height: AppSpacing.md),
+            if (widget.vendor.email != null)
+              const SizedBox(height: AppSpacing.md),
           ],
 
           // Email
@@ -370,11 +363,11 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
 
   Widget _buildFooterMessage() {
     return MarketSnapStatusMessage(
-      message: _isCurrentUser 
+      message: _isCurrentUser
           ? 'This is how your profile appears to other users'
           : 'Send a message to connect with ${widget.vendor.displayName}',
       type: _isCurrentUser ? StatusType.info : StatusType.info,
       showIcon: true,
     );
   }
-} 
+}

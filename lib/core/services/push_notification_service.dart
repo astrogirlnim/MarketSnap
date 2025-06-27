@@ -8,7 +8,10 @@ class PushNotificationService {
   final GlobalKey<NavigatorState> navigatorKey;
   final ProfileService profileService;
 
-  PushNotificationService({required this.navigatorKey, required this.profileService});
+  PushNotificationService({
+    required this.navigatorKey,
+    required this.profileService,
+  });
 
   Future<void> initialize() async {
     // Request permission
@@ -56,4 +59,3 @@ class PushNotificationService {
     }
   }
 }
-

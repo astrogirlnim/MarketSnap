@@ -175,7 +175,7 @@ class HiveService {
     debugPrint('[HiveService] - FilterType: "${item.filterType}"');
     debugPrint('[HiveService] - FilePath: ${item.filePath}');
     debugPrint('[HiveService] - Caption: ${item.caption}');
-    
+
     try {
       final File originalFile = File(item.filePath);
       if (!await originalFile.exists()) {
@@ -195,7 +195,8 @@ class HiveService {
         caption: item.caption,
         location: item.location,
         vendorId: item.vendorId,
-        filterType: item.filterType, // ✅ FIX: Include filterType in quarantined item
+        filterType:
+            item.filterType, // ✅ FIX: Include filterType in quarantined item
         id: item.id,
         createdAt: item.createdAt,
       );
@@ -207,17 +208,23 @@ class HiveService {
       final storedItem = pendingMediaQueueBox.get(quarantinedItem.id);
       debugPrint('[HiveService] ✅ FIX VERIFICATION:');
       debugPrint('[HiveService] - Original filterType: "${item.filterType}"');
-      debugPrint('[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"');
-      debugPrint('[HiveService] - Stored filterType: "${storedItem?.filterType}"');
-      
+      debugPrint(
+        '[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"',
+      );
+      debugPrint(
+        '[HiveService] - Stored filterType: "${storedItem?.filterType}"',
+      );
+
       // Additional validation
       if (item.filterType != storedItem?.filterType) {
         debugPrint('[HiveService] ❌ ERROR: FilterType mismatch detected!');
       } else {
         debugPrint('[HiveService] ✅ SUCCESS: FilterType preserved correctly');
       }
-      
-      debugPrint('[HiveService] Added pending media item: ${quarantinedItem.id}');
+
+      debugPrint(
+        '[HiveService] Added pending media item: ${quarantinedItem.id}',
+      );
     } catch (e) {
       rethrow;
     }
@@ -319,7 +326,7 @@ class HiveService {
     String? photoURL,
   }) async {
     debugPrint('[HiveService] Caching authenticated user: $uid');
-    
+
     final userData = {
       'uid': uid,
       'email': email,
@@ -328,7 +335,7 @@ class HiveService {
       'photoURL': photoURL,
       'cachedAt': DateTime.now().millisecondsSinceEpoch,
     };
-    
+
     await authCacheBox.put('current_user', userData);
     debugPrint('[HiveService] ✅ User authentication cached successfully');
   }
@@ -357,17 +364,19 @@ class HiveService {
   bool isCachedAuthenticationValid() {
     final userData = getCachedAuthenticatedUser();
     if (userData == null) return false;
-    
+
     final cachedAt = userData['cachedAt'] as int?;
     if (cachedAt == null) return false;
-    
+
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(cachedAt);
     final now = DateTime.now();
     final daysSinceCached = now.difference(cacheTime).inDays;
-    
+
     final isValid = daysSinceCached <= 30; // 30 day expiry
-    debugPrint('[HiveService] 📅 Cached auth validity: $isValid ($daysSinceCached days old)');
-    
+    debugPrint(
+      '[HiveService] 📅 Cached auth validity: $isValid ($daysSinceCached days old)',
+    );
+
     return isValid;
   }
 

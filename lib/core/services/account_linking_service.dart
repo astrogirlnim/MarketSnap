@@ -23,7 +23,9 @@ class AccountLinkingService {
   /// Checks if an existing vendor profile exists for the current user's contact info
   /// Returns the existing profile if found, null if no profile exists
   Future<VendorProfile?> findExistingProfileForCurrentUser() async {
-    debugPrint('[AccountLinkingService] Checking for existing profile for current user');
+    debugPrint(
+      '[AccountLinkingService] Checking for existing profile for current user',
+    );
 
     final currentUser = _authService.currentUser;
     if (currentUser == null) {
@@ -54,8 +56,13 @@ class AccountLinkingService {
           .get();
 
       if (currentUidProfile.exists) {
-        debugPrint('[AccountLinkingService] Profile already exists for current UID: ${currentUser.uid}');
-        return VendorProfile.fromFirestore(currentUidProfile.data()!, currentUser.uid);
+        debugPrint(
+          '[AccountLinkingService] Profile already exists for current UID: ${currentUser.uid}',
+        );
+        return VendorProfile.fromFirestore(
+          currentUidProfile.data()!,
+          currentUser.uid,
+        );
       }
 
       // Check for existing profiles with same phone number or email
@@ -68,10 +75,10 @@ class AccountLinkingService {
         debugPrint(
           '[AccountLinkingService] Found existing profile: ${existingProfile.stallName} (${existingProfile.uid})',
         );
-        
+
         // Copy the existing profile to the current user's UID
         await _copyProfileToCurrentUser(existingProfile);
-        
+
         return existingProfile;
       }
 
@@ -149,7 +156,9 @@ class AccountLinkingService {
       return;
     }
 
-    debugPrint('[AccountLinkingService] Copying profile to current user UID: ${currentUser.uid}');
+    debugPrint(
+      '[AccountLinkingService] Copying profile to current user UID: ${currentUser.uid}',
+    );
 
     try {
       // Update profile with current user's contact info and UID
@@ -169,8 +178,10 @@ class AccountLinkingService {
           .collection('vendors')
           .doc(currentUser.uid)
           .set(updatedProfile.toFirestore());
-      
-      debugPrint('[AccountLinkingService] Profile copied to current user UID: ${currentUser.uid}');
+
+      debugPrint(
+        '[AccountLinkingService] Profile copied to current user UID: ${currentUser.uid}',
+      );
 
       // Also save locally via ProfileService
       await _profileService.saveProfile(
@@ -181,9 +192,13 @@ class AccountLinkingService {
         localAvatarPath: updatedProfile.localAvatarPath,
       );
 
-      debugPrint('[AccountLinkingService] Profile saved locally via ProfileService');
+      debugPrint(
+        '[AccountLinkingService] Profile saved locally via ProfileService',
+      );
     } catch (e) {
-      debugPrint('[AccountLinkingService] Error copying profile to current user: $e');
+      debugPrint(
+        '[AccountLinkingService] Error copying profile to current user: $e',
+      );
       throw Exception('Failed to link existing profile: $e');
     }
   }
@@ -195,12 +210,16 @@ class AccountLinkingService {
 
     try {
       final existingProfile = await findExistingProfileForCurrentUser();
-      
+
       if (existingProfile != null) {
-        debugPrint('[AccountLinkingService] Successfully linked existing profile: ${existingProfile.stallName}');
+        debugPrint(
+          '[AccountLinkingService] Successfully linked existing profile: ${existingProfile.stallName}',
+        );
         return true;
       } else {
-        debugPrint('[AccountLinkingService] No existing profile found - user needs to create profile');
+        debugPrint(
+          '[AccountLinkingService] No existing profile found - user needs to create profile',
+        );
         return false;
       }
     } catch (e) {

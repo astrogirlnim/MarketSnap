@@ -2,7 +2,7 @@
 enum UserType {
   /// Vendor users who sell products at farmers markets
   vendor,
-  
+
   /// Regular users who browse and follow vendors
   regular,
 }
@@ -55,4 +55,4 @@ extension UserTypeExtension on UserType {
         throw ArgumentError('Invalid UserType value: $value');
     }
   }
-} 
+}

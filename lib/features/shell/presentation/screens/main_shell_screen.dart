@@ -41,11 +41,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void _determineUserType() {
     // Check if user has a vendor profile
     final vendorProfile = widget.profileService.getCurrentUserProfile();
-    
+
     // User is a vendor if they have a vendor profile
     _isVendor = vendorProfile != null;
-    
-    debugPrint('[MainShellScreen] User type detected: ${_isVendor ? 'Vendor' : 'Regular User'}');
+
+    debugPrint(
+      '[MainShellScreen] User type detected: ${_isVendor ? 'Vendor' : 'Regular User'}',
+    );
   }
 
   /// Sets up navigation tabs based on user type

@@ -31,7 +31,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       '[ConversationListScreen] Building conversation list screen',
       name: 'ConversationListScreen',
     );
-    
+
     // Get current user directly instead of using stream that might not emit properly
     final currentUser = _authService.currentUser;
     developer.log(
@@ -52,9 +52,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           elevation: 0,
         ),
         backgroundColor: AppColors.cornsilk,
-        body: const Center(
-          child: Text('Please log in to see messages.'),
-        ),
+        body: const Center(child: Text('Please log in to see messages.')),
       );
     }
 
@@ -90,7 +88,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
             '[ConversationListScreen] Messages stream - connection: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, error: ${snapshot.error}',
             name: 'ConversationListScreen',
           );
-          
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             developer.log(
               '[ConversationListScreen] Messages stream waiting - showing loading',
@@ -140,12 +138,13 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No conversations yet',
-                    style: AppTypography.bodyLG,
+                  const Icon(
+                    Icons.chat_bubble_outline,
+                    size: 64,
+                    color: Colors.grey,
                   ),
+                  const SizedBox(height: 16),
+                  Text('No conversations yet', style: AppTypography.bodyLG),
                   const SizedBox(height: 8),
                   Text(
                     'Tap the + button to start a new conversation',
@@ -171,8 +170,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   : lastMessage.fromUid;
 
               return FutureBuilder<VendorProfile?>(
-                future:
-                    _profileService.loadProfileFromFirestore(otherUserId),
+                future: _profileService.loadProfileFromFirestore(otherUserId),
                 builder: (context, profileSnapshot) {
                   if (profileSnapshot.connectionState ==
                       ConnectionState.waiting) {
@@ -201,8 +199,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     builder: (context, messagesSnapshot) {
                       final messages = messagesSnapshot.data ?? [];
                       final unreadCount = messages
-                          .where((msg) =>
-                              msg.toUid == currentUserId && !msg.isRead)
+                          .where(
+                            (msg) => msg.toUid == currentUserId && !msg.isRead,
+                          )
                           .length;
 
                       return ConversationListItem(

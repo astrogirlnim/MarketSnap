@@ -25,8 +25,8 @@ class ConversationListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool sentByMe = lastMessage.fromUid == currentUserId;
-    
-    final String messagePreview = sentByMe 
+
+    final String messagePreview = sentByMe
         ? 'You: ${lastMessage.text}'
         : lastMessage.text;
 
@@ -94,9 +94,7 @@ class ConversationListItem extends StatelessWidget {
       ),
       trailing: Text(
         timeago.format(lastMessage.createdAt),
-        style: AppTypography.caption.copyWith(
-          color: AppColors.textSecondary,
-        ),
+        style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
       ),
       onTap: onTap,
     );

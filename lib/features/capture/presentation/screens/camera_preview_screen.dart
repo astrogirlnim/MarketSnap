@@ -384,8 +384,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   void _handleVideoRecordingComplete({String? videoPath}) {
     debugPrint('[CameraPreviewScreen] _handleVideoRecordingComplete called');
     debugPrint('[CameraPreviewScreen] Passed videoPath: $videoPath');
-    debugPrint('[CameraPreviewScreen] Service lastVideoPath: ${_cameraService.lastVideoPath}');
-    
+    debugPrint(
+      '[CameraPreviewScreen] Service lastVideoPath: ${_cameraService.lastVideoPath}',
+    );
+
     // Cancel countdown subscription
     _countdownSubscription?.cancel();
     _countdownSubscription = null;
@@ -401,18 +403,22 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     // ✅ FIX: Navigate to review screen if a path is available.
     // This handles both manual stops (path passed directly) and automatic stops (path from service).
     final finalVideoPath = videoPath ?? _cameraService.lastVideoPath;
-    
-    debugPrint('[CameraPreviewScreen] Final video path to use: $finalVideoPath');
+
+    debugPrint(
+      '[CameraPreviewScreen] Final video path to use: $finalVideoPath',
+    );
 
     if (finalVideoPath != null) {
-      debugPrint('[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath');
+      debugPrint(
+        '[CameraPreviewScreen] Navigating to MediaReviewScreen with video: $finalVideoPath',
+      );
       // Use a post-frame callback to avoid navigation during build
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return; // Early return if widget is not mounted
-        
+
         // Capture context before async operations
         final navigator = Navigator.of(context);
-        
+
         // ✅ BUFFER OVERFLOW FIX: Pause camera before navigating
         await _cameraService.pauseCamera();
 
@@ -433,7 +439,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         await _cameraService.resumeCamera();
       });
     } else {
-      debugPrint('[CameraPreviewScreen] ERROR: No video path available for navigation');
+      debugPrint(
+        '[CameraPreviewScreen] ERROR: No video path available for navigation',
+      );
     }
   }
 
@@ -535,8 +543,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
         return Icons.flash_off;
     }
   }
-
-
 
   /// Build camera preview widget
   Widget _buildCameraPreview() {
@@ -1061,8 +1067,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                     ),
                   ),
                 ),
-
-
             ],
           ),
         ),

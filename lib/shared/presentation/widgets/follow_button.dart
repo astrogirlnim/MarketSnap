@@ -40,22 +40,33 @@ class _FollowButtonState extends State<FollowButton> {
   Future<void> _checkFollowStatus() async {
     if (!mounted) return;
 
-    developer.log('[FollowButton] Checking follow status for vendor: ${widget.vendorId}', name: 'FollowButton');
+    developer.log(
+      '[FollowButton] Checking follow status for vendor: ${widget.vendorId}',
+      name: 'FollowButton',
+    );
 
     try {
-      final isFollowing = await widget.followService.isFollowingVendor(widget.vendorId);
-      
+      final isFollowing = await widget.followService.isFollowingVendor(
+        widget.vendorId,
+      );
+
       if (mounted) {
         setState(() {
           _isFollowing = isFollowing;
           _isLoading = false;
         });
 
-        developer.log('[FollowButton] Follow status loaded: $_isFollowing', name: 'FollowButton');
+        developer.log(
+          '[FollowButton] Follow status loaded: $_isFollowing',
+          name: 'FollowButton',
+        );
       }
     } catch (e) {
-      developer.log('[FollowButton] Error checking follow status: $e', name: 'FollowButton');
-      
+      developer.log(
+        '[FollowButton] Error checking follow status: $e',
+        name: 'FollowButton',
+      );
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -72,7 +83,10 @@ class _FollowButtonState extends State<FollowButton> {
       _isActionInProgress = true;
     });
 
-    developer.log('[FollowButton] Toggling follow status: $_isFollowing -> ${!_isFollowing}', name: 'FollowButton');
+    developer.log(
+      '[FollowButton] Toggling follow status: $_isFollowing -> ${!_isFollowing}',
+      name: 'FollowButton',
+    );
 
     try {
       if (_isFollowing) {
@@ -87,18 +101,28 @@ class _FollowButtonState extends State<FollowButton> {
         });
 
         // Show success message
-        _showSuccessMessage(_isFollowing ? 'Following vendor!' : 'Unfollowed vendor');
+        _showSuccessMessage(
+          _isFollowing ? 'Following vendor!' : 'Unfollowed vendor',
+        );
 
         // Notify parent of status change
         widget.onFollowStatusChanged?.call();
 
-        developer.log('[FollowButton] ✅ Follow status updated successfully', name: 'FollowButton');
+        developer.log(
+          '[FollowButton] ✅ Follow status updated successfully',
+          name: 'FollowButton',
+        );
       }
     } catch (e) {
-      developer.log('[FollowButton] Error toggling follow status: $e', name: 'FollowButton');
-      
+      developer.log(
+        '[FollowButton] Error toggling follow status: $e',
+        name: 'FollowButton',
+      );
+
       if (mounted) {
-        _showErrorMessage('Failed to ${_isFollowing ? 'unfollow' : 'follow'} vendor');
+        _showErrorMessage(
+          'Failed to ${_isFollowing ? 'unfollow' : 'follow'} vendor',
+        );
       }
     } finally {
       if (mounted) {
@@ -174,30 +198,28 @@ class _FollowButtonState extends State<FollowButton> {
     return SizedBox(
       width: 120,
       height: 40,
-      child: _isFollowing 
-          ? _buildUnfollowButton()
-          : _buildFollowButton(),
+      child: _isFollowing ? _buildUnfollowButton() : _buildFollowButton(),
     );
   }
 
   /// Builds the follow button (when not following)
   Widget _buildFollowButton() {
     return MarketSnapPrimaryButton(
-        text: 'Follow',
-        onPressed: _isActionInProgress ? null : _toggleFollowStatus,
-        isLoading: _isActionInProgress,
-        icon: Icons.person_add,
-      );
+      text: 'Follow',
+      onPressed: _isActionInProgress ? null : _toggleFollowStatus,
+      isLoading: _isActionInProgress,
+      icon: Icons.person_add,
+    );
   }
 
   /// Builds the unfollow button (when following)
   Widget _buildUnfollowButton() {
     return MarketSnapSecondaryButton(
-        text: 'Following',
-        onPressed: _isActionInProgress ? null : _toggleFollowStatus,
-        isLoading: _isActionInProgress,
-        icon: Icons.check,
-      );
+      text: 'Following',
+      onPressed: _isActionInProgress ? null : _toggleFollowStatus,
+      isLoading: _isActionInProgress,
+      icon: Icons.check,
+    );
   }
 }
 
@@ -233,8 +255,10 @@ class _CompactFollowButtonState extends State<CompactFollowButton> {
     if (!mounted) return;
 
     try {
-      final isFollowing = await widget.followService.isFollowingVendor(widget.vendorId);
-      
+      final isFollowing = await widget.followService.isFollowingVendor(
+        widget.vendorId,
+      );
+
       if (mounted) {
         setState(() {
           _isFollowing = isFollowing;
@@ -318,7 +342,7 @@ class _CompactFollowButtonState extends State<CompactFollowButton> {
             ),
       tooltip: _isFollowing ? 'Unfollow' : 'Follow',
       style: IconButton.styleFrom(
-        backgroundColor: _isFollowing 
+        backgroundColor: _isFollowing
             ? AppColors.appleRed.withValues(alpha: 0.1)
             : AppColors.marketBlue.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
@@ -327,4 +351,4 @@ class _CompactFollowButtonState extends State<CompactFollowButton> {
       ),
     );
   }
-} 
+}

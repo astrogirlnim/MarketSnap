@@ -347,10 +347,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
-        title: Text(
-          'Sign Out',
-          style: AppTypography.h2,
-        ),
+        title: Text('Sign Out', style: AppTypography.h2),
         content: Text(
           'Are you sure you want to sign out?',
           style: AppTypography.body,
@@ -396,10 +393,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
               ),
               const SizedBox(width: 20),
-              Text(
-                'Signing out...',
-                style: AppTypography.body,
-              ),
+              Text('Signing out...', style: AppTypography.body),
             ],
           ),
         ),
@@ -413,7 +407,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       // Close loading dialog and navigate to auth
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
       }
     } catch (e) {
       debugPrint('[VendorProfileScreen] Error signing out: $e');

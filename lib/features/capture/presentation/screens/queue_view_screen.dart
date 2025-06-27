@@ -33,8 +33,10 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
   Future<void> _initializeQueue() async {
     try {
       _pendingBox = await Hive.openBox<PendingMediaItem>('pendingMediaQueue');
-      debugPrint('[QueueViewScreen] Loaded queue with ${_pendingBox.length} items');
-      
+      debugPrint(
+        '[QueueViewScreen] Loaded queue with ${_pendingBox.length} items',
+      );
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -53,8 +55,10 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
   /// Check current connectivity status
   Future<void> _checkConnectivity() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    final isOnline = connectivityResult.any((result) => result != ConnectivityResult.none);
-    
+    final isOnline = connectivityResult.any(
+      (result) => result != ConnectivityResult.none,
+    );
+
     if (mounted) {
       setState(() {
         _isOnline = isOnline;
@@ -103,7 +107,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
     try {
       final backgroundSyncService = BackgroundSyncService();
       await backgroundSyncService.triggerImmediateSync();
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -162,23 +166,27 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
         actions: [
           if (_isOnline && _pendingBox.isNotEmpty)
             IconButton(
-              icon: _isSyncing 
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
-                    ),
-                  )
-                : const Icon(Icons.sync, color: AppColors.marketBlue),
+              icon: _isSyncing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.marketBlue,
+                        ),
+                      ),
+                    )
+                  : const Icon(Icons.sync, color: AppColors.marketBlue),
               onPressed: _isSyncing ? null : _triggerManualSync,
               tooltip: 'Sync now',
             ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.marketBlue))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.marketBlue),
+            )
           : _buildQueueContent(),
     );
   }
@@ -189,12 +197,10 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
       children: [
         // Status header
         _buildStatusHeader(),
-        
+
         // Queue items list
         Expanded(
-          child: _pendingBox.isEmpty
-              ? _buildEmptyState()
-              : _buildQueueList(),
+          child: _pendingBox.isEmpty ? _buildEmptyState() : _buildQueueList(),
         ),
       ],
     );
@@ -230,15 +236,17 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
                 ),
               ),
               const Spacer(),
-                             if (_isSyncing) ...[
-                 const SizedBox(
-                   width: 16,
-                   height: 16,
-                   child: CircularProgressIndicator(
-                     strokeWidth: 2,
-                     valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
-                   ),
-                 ),
+              if (_isSyncing) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.marketBlue,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 const Text(
                   'Syncing...',
@@ -250,17 +258,13 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
               ],
             ],
           ),
-          
+
           const SizedBox(height: AppSpacing.sm),
-          
+
           // Queue count
           Row(
             children: [
-              Icon(
-                Icons.queue,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
+              Icon(Icons.queue, color: AppColors.textSecondary, size: 20),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 '${_pendingBox.length} ${_pendingBox.length == 1 ? 'item' : 'items'} in queue',
@@ -283,11 +287,11 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-                   Icon(
-           Icons.check_circle_outline,
-           size: 64,
-           color: AppColors.success.withValues(alpha: 0.5),
-         ),
+          Icon(
+            Icons.check_circle_outline,
+            size: 64,
+            color: AppColors.success.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: AppSpacing.lg),
           const Text(
             'Queue is empty',
@@ -300,10 +304,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
           const SizedBox(height: AppSpacing.sm),
           const Text(
             'All your posts have been uploaded!',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -317,7 +318,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
       valueListenable: _pendingBox.listenable(),
       builder: (context, box, _) {
         final items = box.values.toList();
-        
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           itemCount: items.length,
@@ -333,7 +334,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
   /// Build a single queue item
   Widget _buildQueueItem(PendingMediaItem item, int index) {
     final bool fileExists = File(item.filePath).existsSync();
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -341,7 +342,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: fileExists 
+          color: fileExists
               ? AppColors.seedBrown.withValues(alpha: 0.3)
               : AppColors.error.withValues(alpha: 0.5),
         ),
@@ -352,40 +353,42 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
           Container(
             width: 48,
             height: 48,
-                         decoration: BoxDecoration(
-               color: _getMediaTypeColor(item.mediaType).withValues(alpha: 0.1),
-               borderRadius: BorderRadius.circular(8),
-             ),
+            decoration: BoxDecoration(
+              color: _getMediaTypeColor(item.mediaType).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Icon(
               _getMediaTypeIcon(item.mediaType),
               color: _getMediaTypeColor(item.mediaType),
               size: 24,
             ),
           ),
-          
+
           const SizedBox(width: AppSpacing.md),
-          
+
           // Item details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                               // Caption
-                 Text(
-                   (item.caption?.isEmpty ?? true) ? 'No caption' : item.caption!,
-                   style: TextStyle(
-                     fontSize: 16,
-                     fontWeight: FontWeight.w500,
-                     color: (item.caption?.isEmpty ?? true)
-                         ? AppColors.textSecondary 
-                         : AppColors.textPrimary,
-                   ),
-                   maxLines: 2,
-                   overflow: TextOverflow.ellipsis,
-                 ),
-                
+                // Caption
+                Text(
+                  (item.caption?.isEmpty ?? true)
+                      ? 'No caption'
+                      : item.caption!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: (item.caption?.isEmpty ?? true)
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
                 const SizedBox(height: AppSpacing.xs),
-                
+
                 // Media type and filter
                 Row(
                   children: [
@@ -396,19 +399,23 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                                         if (item.filterType != null && item.filterType != 'none') ...[
-                       const Text(' • ', style: TextStyle(color: AppColors.textSecondary)),
-                       Text(
-                         '${item.filterType!.toUpperCase()} filter',
-                         style: const TextStyle(
-                           fontSize: 14,
-                           color: AppColors.textSecondary,
-                         ),
-                       ),
-                     ],
+                    if (item.filterType != null &&
+                        item.filterType != 'none') ...[
+                      const Text(
+                        ' • ',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      Text(
+                        '${item.filterType!.toUpperCase()} filter',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                
+
                 // File status
                 if (!fileExists) ...[
                   const SizedBox(height: AppSpacing.xs),
@@ -422,10 +429,7 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
                       const SizedBox(width: AppSpacing.xs),
                       const Text(
                         'File missing',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.error,
-                        ),
+                        style: TextStyle(fontSize: 12, color: AppColors.error),
                       ),
                     ],
                   ),
@@ -433,26 +437,26 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
               ],
             ),
           ),
-          
+
           // Queue position
-                     Container(
-             padding: const EdgeInsets.symmetric(
-               horizontal: AppSpacing.sm,
-               vertical: AppSpacing.xs,
-             ),
-             decoration: BoxDecoration(
-               color: AppColors.marketBlue.withValues(alpha: 0.1),
-               borderRadius: BorderRadius.circular(16),
-             ),
-             child: Text(
-               '#${index + 1}',
-               style: const TextStyle(
-                 fontSize: 12,
-                 fontWeight: FontWeight.w600,
-                 color: AppColors.marketBlue,
-               ),
-             ),
-           ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.marketBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '#${index + 1}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.marketBlue,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -483,4 +487,4 @@ class _QueueViewScreenState extends State<QueueViewScreen> {
     // Don't close the box here as it's shared across the app
     super.dispose();
   }
-} 
+}

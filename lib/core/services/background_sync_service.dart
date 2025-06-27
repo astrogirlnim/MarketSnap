@@ -205,7 +205,7 @@ Future<void> _uploadPendingItem(
   debugPrint('$logPrefix - FilterType: "${pendingItem.filterType}"');
   debugPrint('$logPrefix - FilePath: ${pendingItem.filePath}');
   debugPrint('$logPrefix - Caption: ${pendingItem.caption}');
-  
+
   debugPrint('$logPrefix Uploading media item: ${pendingItem.id}');
 
   final file = File(pendingItem.filePath);
@@ -225,8 +225,10 @@ Future<void> _uploadPendingItem(
   debugPrint('$logPrefix File size: ${await file.length()} bytes');
   debugPrint('$logPrefix User UID: ${user.uid}');
   debugPrint('$logPrefix User email: ${user.email}');
-  debugPrint('$logPrefix User providers: ${user.providerData.map((p) => p.providerId).toList()}');
-  
+  debugPrint(
+    '$logPrefix User providers: ${user.providerData.map((p) => p.providerId).toList()}',
+  );
+
   late final String downloadUrl;
   try {
     final uploadTask = storageRef.putFile(file);
@@ -238,7 +240,9 @@ Future<void> _uploadPendingItem(
     debugPrint('$logPrefix Error type: ${uploadError.runtimeType}');
     if (uploadError.toString().contains('unauthenticated')) {
       debugPrint('$logPrefix Authentication token issue detected');
-      debugPrint('$logPrefix Current user: ${FirebaseAuth.instance.currentUser?.uid}');
+      debugPrint(
+        '$logPrefix Current user: ${FirebaseAuth.instance.currentUser?.uid}',
+      );
       debugPrint('$logPrefix ID token: ${await user.getIdToken(true)}');
     }
     rethrow;
@@ -294,7 +298,9 @@ Future<void> _uploadPendingItem(
     'storyVendorId': user.uid,
   };
 
-  debugPrint('$logPrefix Creating Firestore document with filterType: "${pendingItem.filterType}"');
+  debugPrint(
+    '$logPrefix Creating Firestore document with filterType: "${pendingItem.filterType}"',
+  );
   debugPrint('$logPrefix Full snapData: $snapData');
 
   await FirebaseFirestore.instance.collection('snaps').add(snapData);

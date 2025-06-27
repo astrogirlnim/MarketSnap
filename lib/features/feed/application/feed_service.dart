@@ -38,35 +38,36 @@ class FeedService {
         .limit(20) // A user's own stories are limited
         .snapshots()
         .map((snapshot) {
-      developer.log(
-        '[FeedService] Received ${snapshot.docs.length} snaps for stories for user $userId',
-        name: 'FeedService',
-      );
+          developer.log(
+            '[FeedService] Received ${snapshot.docs.length} snaps for stories for user $userId',
+            name: 'FeedService',
+          );
 
-      final snaps =
-          snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
+          final snaps = snapshot.docs
+              .map((doc) => Snap.fromFirestore(doc))
+              .toList();
 
-      // Since we are only getting one user's stories, we can simplify the grouping
-      if (snaps.isEmpty) {
-        return [];
-      }
+          // Since we are only getting one user's stories, we can simplify the grouping
+          if (snaps.isEmpty) {
+            return [];
+          }
 
-      final storyItem = StoryItem(
-        vendorId: userId,
-        vendorName: snaps.first.vendorName,
-        vendorAvatarUrl: snaps.first.vendorAvatarUrl,
-        snaps: snaps,
-        hasUnseenSnaps: true, // Placeholder logic
-      );
+          final storyItem = StoryItem(
+            vendorId: userId,
+            vendorName: snaps.first.vendorName,
+            vendorAvatarUrl: snaps.first.vendorAvatarUrl,
+            snaps: snaps,
+            hasUnseenSnaps: true, // Placeholder logic
+          );
 
-      developer.log(
-        '[FeedService] Created 1 story item for user $userId with ${snaps.length} snaps',
-        name: 'FeedService',
-      );
+          developer.log(
+            '[FeedService] Created 1 story item for user $userId with ${snaps.length} snaps',
+            name: 'FeedService',
+          );
 
-      // Return a list containing the single story item for the current user
-      return [storyItem];
-    });
+          // Return a list containing the single story item for the current user
+          return [storyItem];
+        });
   }
 
   /// Real-time stream of feed snaps

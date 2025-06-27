@@ -32,7 +32,7 @@ class FeedPostWidget extends StatefulWidget {
 class _FeedPostWidgetState extends State<FeedPostWidget> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
-  
+
   // RAG Enhancement State
   final RAGService _ragService = RAGService();
   SnapEnhancementData? _enhancementData;
@@ -77,35 +77,50 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     });
 
     try {
-      debugPrint('[FeedPostWidget] ========== INITIALIZING RAG SERVICE ==========');
+      debugPrint(
+        '[FeedPostWidget] ========== INITIALIZING RAG SERVICE ==========',
+      );
       debugPrint('[FeedPostWidget] Snap ID: ${widget.snap.id}');
       debugPrint('[FeedPostWidget] Caption: "${widget.snap.caption}"');
       debugPrint('[FeedPostWidget] Vendor ID: ${widget.snap.vendorId}');
       debugPrint('[FeedPostWidget] Media Type: ${widget.snap.mediaType}');
-      
+
       await _ragService.initialize();
       debugPrint('[FeedPostWidget] RAG service initialized successfully');
-      
+
       final enhancementData = await _ragService.getSnapEnhancements(
         caption: widget.snap.caption!,
         vendorId: widget.snap.vendorId,
-        mediaType: widget.snap.mediaType.toString().split('.').last, // photo or video
+        mediaType: widget.snap.mediaType
+            .toString()
+            .split('.')
+            .last, // photo or video
       );
 
       debugPrint('[FeedPostWidget] ========== RAG SERVICE RESPONSE ==========');
       debugPrint('[FeedPostWidget] Enhancement data received:');
-      debugPrint('[FeedPostWidget] - Recipe: ${enhancementData.recipe != null}');
-      debugPrint('[FeedPostWidget] - Recipe name: ${enhancementData.recipe?.recipeName}');
-      debugPrint('[FeedPostWidget] - Recipe relevance: ${enhancementData.recipe?.relevanceScore}');
-      debugPrint('[FeedPostWidget] - FAQs count: ${enhancementData.faqs.length}');
+      debugPrint(
+        '[FeedPostWidget] - Recipe: ${enhancementData.recipe != null}',
+      );
+      debugPrint(
+        '[FeedPostWidget] - Recipe name: ${enhancementData.recipe?.recipeName}',
+      );
+      debugPrint(
+        '[FeedPostWidget] - Recipe relevance: ${enhancementData.recipe?.relevanceScore}',
+      );
+      debugPrint(
+        '[FeedPostWidget] - FAQs count: ${enhancementData.faqs.length}',
+      );
       debugPrint('[FeedPostWidget] - Has data: ${enhancementData.hasData}');
       debugPrint('[FeedPostWidget] - From cache: ${enhancementData.fromCache}');
-      
+
       if (enhancementData.faqs.isNotEmpty) {
         debugPrint('[FeedPostWidget] FAQ Details:');
         for (int i = 0; i < enhancementData.faqs.length; i++) {
           final faq = enhancementData.faqs[i];
-          debugPrint('[FeedPostWidget] FAQ $i: Q="${faq.question}" A="${faq.answer}" Score=${faq.score}');
+          debugPrint(
+            '[FeedPostWidget] FAQ $i: Q="${faq.question}" A="${faq.answer}" Score=${faq.score}',
+          );
         }
       } else {
         debugPrint('[FeedPostWidget] No FAQs in enhancement data');
@@ -117,12 +132,20 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           _isLoadingEnhancements = false;
         });
 
-        debugPrint('[FeedPostWidget] Enhancement data set in state - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}');
-        debugPrint('[FeedPostWidget] Valid recipe: ${enhancementData.hasValidRecipe}');
+        debugPrint(
+          '[FeedPostWidget] Enhancement data set in state - Recipe: ${enhancementData.recipe != null}, FAQs: ${enhancementData.faqs.length}',
+        );
+        debugPrint(
+          '[FeedPostWidget] Valid recipe: ${enhancementData.hasValidRecipe}',
+        );
         if (enhancementData.recipe != null) {
-          debugPrint('[FeedPostWidget] Recipe details - Name: "${enhancementData.recipe!.recipeName}", Category: ${enhancementData.recipe!.category}, Relevance: ${enhancementData.recipe!.relevanceScore}');
+          debugPrint(
+            '[FeedPostWidget] Recipe details - Name: "${enhancementData.recipe!.recipeName}", Category: ${enhancementData.recipe!.category}, Relevance: ${enhancementData.recipe!.relevanceScore}',
+          );
         }
-        debugPrint('[FeedPostWidget] UI will display: Recipe card=${enhancementData.hasValidRecipe}, FAQ card=${enhancementData.faqs.isNotEmpty}');
+        debugPrint(
+          '[FeedPostWidget] UI will display: Recipe card=${enhancementData.hasValidRecipe}, FAQ card=${enhancementData.faqs.isNotEmpty}',
+        );
       }
     } catch (e) {
       debugPrint('[FeedPostWidget] ========== RAG SERVICE ERROR ==========');
@@ -256,7 +279,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       // Different constraints for videos vs photos
       constraints: widget.snap.mediaType == MediaType.video
           ? null // No height constraint for videos - let them use natural aspect ratio
-          : const BoxConstraints(maxHeight: 400), // Keep height constraint for photos
+          : const BoxConstraints(
+              maxHeight: 400,
+            ), // Keep height constraint for photos
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(8),
@@ -286,7 +311,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     // Get video aspect ratio
     final videoAspectRatio = _videoController!.value.aspectRatio;
-    
+
     // Determine overlay color from the snap's filterType
     Color overlayColor = Colors.transparent;
     final filterType = widget.snap.filterType;
@@ -297,9 +322,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     debugPrint(
       '[FeedPostWidget] 📐 Video aspect ratio: $videoAspectRatio (${videoAspectRatio > 1 ? 'landscape' : 'portrait'})',
     );
-    debugPrint(
-      '[FeedPostWidget] 🎨 Video filterType: "$filterType"',
-    );
+    debugPrint('[FeedPostWidget] 🎨 Video filterType: "$filterType"');
 
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
@@ -323,11 +346,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           VideoPlayer(_videoController!),
 
           // Filter overlay
-          Positioned.fill(
-            child: Container(
-              color: overlayColor,
-            ),
-          ),
+          Positioned.fill(child: Container(color: overlayColor)),
 
           // Play/pause overlay
           GestureDetector(
@@ -421,7 +440,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             );
           },
         ),
-        
+
         // Filter overlay
         if (overlayColor != Colors.transparent)
           Container(
@@ -538,9 +557,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             const SizedBox(width: AppSpacing.sm),
             Text(
               'Loading suggestions...',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.soilTaupe,
-              ),
+              style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
             ),
           ],
         ),
@@ -557,12 +574,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     if (_enhancementData?.hasData == true) {
       return Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            _buildRecipeCard(),
-            _buildFAQCard(),
-          ],
-        ),
+        child: Column(children: [_buildRecipeCard(), _buildFAQCard()]),
       );
     }
 
@@ -573,23 +585,29 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   Widget _buildRecipeCard() {
     final recipe = _enhancementData?.recipe;
     if (recipe == null) return const SizedBox.shrink();
-    
+
     // Don't show recipe card for non-food items or empty recipes
-    if (recipe.recipeName.isEmpty || 
-        recipe.category == 'non_food' || 
+    if (recipe.recipeName.isEmpty ||
+        recipe.category == 'non_food' ||
         recipe.relevanceScore < 0.3) {
-      debugPrint('[FeedPostWidget] Skipping recipe card - non-food item or low relevance: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
+      debugPrint(
+        '[FeedPostWidget] Skipping recipe card - non-food item or low relevance: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})',
+      );
       return const SizedBox.shrink();
     }
 
-    debugPrint('[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})');
+    debugPrint(
+      '[FeedPostWidget] Rendering recipe card: "${recipe.recipeName}" (${recipe.category}, ${recipe.relevanceScore})',
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.harvestOrange.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: AppColors.harvestOrange.withValues(alpha: 0.3),
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.soilTaupe.withValues(alpha: 0.1),
@@ -690,12 +708,14 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    ...recipe.ingredients.map((ingredient) => Text(
-                      '• $ingredient',
-                      style: AppTypography.body.copyWith(
-                        color: AppColors.soilTaupe,
+                    ...recipe.ingredients.map(
+                      (ingredient) => Text(
+                        '• $ingredient',
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.soilTaupe,
+                        ),
                       ),
-                    )),
+                    ),
                   ],
                   if (recipe.fromCache) ...[
                     const SizedBox(height: AppSpacing.sm),
@@ -730,7 +750,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     final faqs = _enhancementData?.faqs ?? [];
     if (faqs.isEmpty) return const SizedBox.shrink();
 
-    debugPrint('[FeedPostWidget] Rendering FAQ card with ${faqs.length} results');
+    debugPrint(
+      '[FeedPostWidget] Rendering FAQ card with ${faqs.length} results',
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -791,52 +813,59 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
-                children: faqs.take(3).map((faq) => Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.eggshell.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Q: ${faq.question}',
-                        style: AppTypography.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.soilCharcoal,
+                children: faqs
+                    .take(3)
+                    .map(
+                      (faq) => Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.eggshell.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'A: ${faq.answer}',
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.soilTaupe,
-                        ),
-                      ),
-                      if (faq.score > 0) ...[
-                        const SizedBox(height: 4),
-                        Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.star,
-                              size: 12,
-                              color: AppColors.sunsetAmber,
-                            ),
-                            const SizedBox(width: 2),
                             Text(
-                              '${(faq.score * 100).toInt()}% match',
-                              style: AppTypography.caption.copyWith(
-                                color: AppColors.soilTaupe.withValues(alpha: 0.7),
+                              'Q: ${faq.question}',
+                              style: AppTypography.body.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.soilCharcoal,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'A: ${faq.answer}',
+                              style: AppTypography.body.copyWith(
+                                color: AppColors.soilTaupe,
+                              ),
+                            ),
+                            if (faq.score > 0) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.star,
+                                    size: 12,
+                                    color: AppColors.sunsetAmber,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${(faq.score * 100).toInt()}% match',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.soilTaupe.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                )).toList(),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],

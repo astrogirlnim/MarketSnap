@@ -29,16 +29,25 @@ class FollowService {
       throw Exception('User must be authenticated to follow vendors');
     }
 
-    developer.log('[FollowService] Following vendor: $vendorId', name: 'FollowService');
+    developer.log(
+      '[FollowService] Following vendor: $vendorId',
+      name: 'FollowService',
+    );
 
     try {
       // Get FCM token for push notifications
       String? fcmToken;
       try {
         fcmToken = await _messaging.getToken();
-        developer.log('[FollowService] FCM token obtained for notifications', name: 'FollowService');
+        developer.log(
+          '[FollowService] FCM token obtained for notifications',
+          name: 'FollowService',
+        );
       } catch (e) {
-        developer.log('[FollowService] Warning: Could not get FCM token: $e', name: 'FollowService');
+        developer.log(
+          '[FollowService] Warning: Could not get FCM token: $e',
+          name: 'FollowService',
+        );
         // Continue without FCM token - follow will still work
       }
 
@@ -56,9 +65,15 @@ class FollowService {
           .doc(uid)
           .set(followData);
 
-      developer.log('[FollowService] ✅ Successfully followed vendor: $vendorId', name: 'FollowService');
+      developer.log(
+        '[FollowService] ✅ Successfully followed vendor: $vendorId',
+        name: 'FollowService',
+      );
     } catch (e) {
-      developer.log('[FollowService] Error following vendor $vendorId: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error following vendor $vendorId: $e',
+        name: 'FollowService',
+      );
       throw Exception('Failed to follow vendor: $e');
     }
   }
@@ -70,7 +85,10 @@ class FollowService {
       throw Exception('User must be authenticated to unfollow vendors');
     }
 
-    developer.log('[FollowService] Unfollowing vendor: $vendorId', name: 'FollowService');
+    developer.log(
+      '[FollowService] Unfollowing vendor: $vendorId',
+      name: 'FollowService',
+    );
 
     try {
       await _firestore
@@ -80,9 +98,15 @@ class FollowService {
           .doc(uid)
           .delete();
 
-      developer.log('[FollowService] ✅ Successfully unfollowed vendor: $vendorId', name: 'FollowService');
+      developer.log(
+        '[FollowService] ✅ Successfully unfollowed vendor: $vendorId',
+        name: 'FollowService',
+      );
     } catch (e) {
-      developer.log('[FollowService] Error unfollowing vendor $vendorId: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error unfollowing vendor $vendorId: $e',
+        name: 'FollowService',
+      );
       throw Exception('Failed to unfollow vendor: $e');
     }
   }
@@ -103,10 +127,16 @@ class FollowService {
           .get();
 
       final isFollowing = doc.exists;
-      developer.log('[FollowService] User following vendor $vendorId: $isFollowing', name: 'FollowService');
+      developer.log(
+        '[FollowService] User following vendor $vendorId: $isFollowing',
+        name: 'FollowService',
+      );
       return isFollowing;
     } catch (e) {
-      developer.log('[FollowService] Error checking follow status for vendor $vendorId: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error checking follow status for vendor $vendorId: $e',
+        name: 'FollowService',
+      );
       return false; // Assume not following on error
     }
   }
@@ -118,7 +148,10 @@ class FollowService {
       return [];
     }
 
-    developer.log('[FollowService] Getting followed vendors for user: $uid', name: 'FollowService');
+    developer.log(
+      '[FollowService] Getting followed vendors for user: $uid',
+      name: 'FollowService',
+    );
 
     try {
       // Query all vendor collections to find where current user is a follower
@@ -137,12 +170,15 @@ class FollowService {
       }
 
       developer.log(
-        '[FollowService] User is following ${followedVendorIds.length} vendors', 
-        name: 'FollowService'
+        '[FollowService] User is following ${followedVendorIds.length} vendors',
+        name: 'FollowService',
       );
       return followedVendorIds;
     } catch (e) {
-      developer.log('[FollowService] Error getting followed vendors: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error getting followed vendors: $e',
+        name: 'FollowService',
+      );
       return [];
     }
   }
@@ -157,10 +193,16 @@ class FollowService {
           .get();
 
       final count = followersSnapshot.docs.length;
-      developer.log('[FollowService] Vendor $vendorId has $count followers', name: 'FollowService');
+      developer.log(
+        '[FollowService] Vendor $vendorId has $count followers',
+        name: 'FollowService',
+      );
       return count;
     } catch (e) {
-      developer.log('[FollowService] Error getting follower count for vendor $vendorId: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error getting follower count for vendor $vendorId: $e',
+        name: 'FollowService',
+      );
       return 0;
     }
   }
@@ -173,13 +215,19 @@ class FollowService {
       return;
     }
 
-    developer.log('[FollowService] Updating FCM token for followed vendors', name: 'FollowService');
+    developer.log(
+      '[FollowService] Updating FCM token for followed vendors',
+      name: 'FollowService',
+    );
 
     try {
       // Get new FCM token
       final fcmToken = await _messaging.getToken();
       if (fcmToken == null) {
-        developer.log('[FollowService] No FCM token available', name: 'FollowService');
+        developer.log(
+          '[FollowService] No FCM token available',
+          name: 'FollowService',
+        );
         return;
       }
 
@@ -188,7 +236,7 @@ class FollowService {
 
       // Update FCM token for each followed vendor
       final batch = _firestore.batch();
-      
+
       for (final vendorId in followedVendorIds) {
         final followerRef = _firestore
             .collection('vendors')
@@ -202,11 +250,14 @@ class FollowService {
       await batch.commit();
 
       developer.log(
-        '[FollowService] ✅ Updated FCM token for ${followedVendorIds.length} vendors', 
-        name: 'FollowService'
+        '[FollowService] ✅ Updated FCM token for ${followedVendorIds.length} vendors',
+        name: 'FollowService',
       );
     } catch (e) {
-      developer.log('[FollowService] Error updating FCM tokens: $e', name: 'FollowService');
+      developer.log(
+        '[FollowService] Error updating FCM tokens: $e',
+        name: 'FollowService',
+      );
       // Don't throw - this is not critical for app functionality
     }
   }
@@ -238,4 +289,4 @@ class FollowService {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
-} 
+}

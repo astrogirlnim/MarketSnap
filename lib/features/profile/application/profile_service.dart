@@ -80,7 +80,7 @@ class ProfileService {
 
     // Try to sync immediately if online - but don't block the UI
     _attemptImmediateSync(uid);
-    
+
     // Also try to save FCM token now that profile exists
     _attemptFCMTokenSave();
   }
@@ -108,7 +108,7 @@ class ProfileService {
   /// Attempts to save FCM token after profile creation
   void _attemptFCMTokenSave() {
     debugPrint('[ProfileService] Attempting to save pending FCM token');
-    
+
     // Try to get and save FCM token - this is async but we don't block on it
     _getFCMTokenAndSave().catchError((error) {
       debugPrint('[ProfileService] FCM token save failed: $error');
@@ -122,7 +122,7 @@ class ProfileService {
       // Import the push notification service from main
       final pushNotificationService = main.pushNotificationService;
       final token = await pushNotificationService.getFCMToken();
-      
+
       if (token != null) {
         debugPrint('[ProfileService] Got FCM token, saving to profile');
         await saveFCMToken(token);
@@ -287,25 +287,35 @@ class ProfileService {
       // Check if user has vendor or regular user profile to determine collection
       final vendorProfile = getCurrentUserProfile();
       final regularProfile = getCurrentRegularUserProfile();
-      
+
       if (vendorProfile != null) {
         // User is a vendor - save to vendors collection
         debugPrint('[ProfileService] Saving FCM token to vendors collection');
         await _firestore.collection('vendors').doc(uid).set(
           {'fcmToken': token},
-          SetOptions(merge: true), // Use merge to avoid overwriting existing data
+          SetOptions(
+            merge: true,
+          ), // Use merge to avoid overwriting existing data
         );
       } else if (regularProfile != null) {
         // User is a regular user - save to regularUsers collection
-        debugPrint('[ProfileService] Saving FCM token to regularUsers collection');
+        debugPrint(
+          '[ProfileService] Saving FCM token to regularUsers collection',
+        );
         await _firestore.collection('regularUsers').doc(uid).set(
           {'fcmToken': token},
-          SetOptions(merge: true), // Use merge to avoid overwriting existing data
+          SetOptions(
+            merge: true,
+          ), // Use merge to avoid overwriting existing data
         );
       } else {
         // User hasn't completed profile setup yet - skip FCM token saving for now
-        debugPrint('[ProfileService] User profile not complete yet, skipping FCM token save');
-        debugPrint('[ProfileService] FCM token will be saved when profile is created');
+        debugPrint(
+          '[ProfileService] User profile not complete yet, skipping FCM token save',
+        );
+        debugPrint(
+          '[ProfileService] FCM token will be saved when profile is created',
+        );
         return;
       }
 
@@ -452,9 +462,11 @@ class ProfileService {
       try {
         await syncRegularUserProfileToFirestore(uid);
       } catch (e) {
-        debugPrint('[ProfileService] Profile saved locally, will sync when online: $e');
+        debugPrint(
+          '[ProfileService] Profile saved locally, will sync when online: $e',
+        );
       }
-      
+
       // Also try to save FCM token now that profile exists
       _attemptFCMTokenSave();
     } catch (e) {
@@ -465,26 +477,36 @@ class ProfileService {
 
   /// Syncs a regular user profile from local storage to Firestore
   Future<void> syncRegularUserProfileToFirestore(String uid) async {
-    debugPrint('[ProfileService] Syncing regular user profile to Firestore for UID: $uid');
+    debugPrint(
+      '[ProfileService] Syncing regular user profile to Firestore for UID: $uid',
+    );
 
     final profile = _hiveService.getRegularUserProfile(uid);
     if (profile == null) {
-      debugPrint('[ProfileService] No regular user profile found locally for UID: $uid');
+      debugPrint(
+        '[ProfileService] No regular user profile found locally for UID: $uid',
+      );
       return;
     }
 
     if (!profile.needsSync) {
-      debugPrint('[ProfileService] Regular user profile already synced for UID: $uid');
+      debugPrint(
+        '[ProfileService] Regular user profile already synced for UID: $uid',
+      );
       return;
     }
 
     try {
-      debugPrint('[ProfileService] Starting regular user profile Firestore sync process...');
+      debugPrint(
+        '[ProfileService] Starting regular user profile Firestore sync process...',
+      );
 
       // Upload avatar if we have a local path but no URL
       String? avatarURL = profile.avatarURL;
       if (profile.localAvatarPath != null && profile.avatarURL == null) {
-        debugPrint('[ProfileService] Uploading avatar before regular user profile sync');
+        debugPrint(
+          '[ProfileService] Uploading avatar before regular user profile sync',
+        );
         avatarURL = await uploadAvatar(profile.localAvatarPath!);
       }
 
@@ -509,16 +531,22 @@ class ProfileService {
             ),
           );
 
-      debugPrint('[ProfileService] Regular user profile Firestore write completed successfully');
+      debugPrint(
+        '[ProfileService] Regular user profile Firestore write completed successfully',
+      );
 
       // Mark as synced locally
       await _hiveService.saveRegularUserProfile(
         profileToSync.copyWith(needsSync: false),
       );
 
-      debugPrint('[ProfileService] Regular user profile synced to Firestore successfully');
+      debugPrint(
+        '[ProfileService] Regular user profile synced to Firestore successfully',
+      );
     } catch (e) {
-      debugPrint('[ProfileService] Error syncing regular user profile to Firestore: $e');
+      debugPrint(
+        '[ProfileService] Error syncing regular user profile to Firestore: $e',
+      );
       throw Exception('Failed to sync regular user profile: $e');
     }
   }
@@ -531,8 +559,12 @@ class ProfileService {
   }
 
   /// Loads regular user profile from Firestore and caches locally
-  Future<RegularUserProfile?> loadRegularUserProfileFromFirestore(String uid) async {
-    debugPrint('[ProfileService] Loading regular user profile from Firestore for UID: $uid');
+  Future<RegularUserProfile?> loadRegularUserProfileFromFirestore(
+    String uid,
+  ) async {
+    debugPrint(
+      '[ProfileService] Loading regular user profile from Firestore for UID: $uid',
+    );
 
     try {
       final doc = await _firestore.collection('regularUsers').doc(uid).get();
@@ -550,10 +582,14 @@ class ProfileService {
       // Cache locally
       await _hiveService.saveRegularUserProfile(profile);
 
-      debugPrint('[ProfileService] Regular user profile loaded and cached successfully');
+      debugPrint(
+        '[ProfileService] Regular user profile loaded and cached successfully',
+      );
       return profile;
     } catch (e) {
-      debugPrint('[ProfileService] Error loading regular user profile from Firestore: $e');
+      debugPrint(
+        '[ProfileService] Error loading regular user profile from Firestore: $e',
+      );
       throw Exception('Failed to load regular user profile: $e');
     }
   }

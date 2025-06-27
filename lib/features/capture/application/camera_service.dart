@@ -635,7 +635,7 @@ class CameraService {
             '[CameraService] Maximum recording duration reached, stopping...',
           );
           await stopVideoRecording();
-          
+
           // ✅ FIX: Emit final countdown update AFTER stopping video
           // This ensures _lastVideoPath is set before UI tries to access it
           final remainingTime = _maxRecordingDuration - _recordingDuration;
@@ -684,7 +684,7 @@ class CameraService {
             '[CameraService] Simulator maximum recording duration reached, stopping...',
           );
           await stopVideoRecording();
-          
+
           // ✅ FIX: Emit final countdown update AFTER stopping video
           // This ensures _lastVideoPath is set before UI tries to access it
           final remainingTime = _maxRecordingDuration - _recordingDuration;
@@ -798,8 +798,9 @@ class CameraService {
       debugPrint(
         '[CameraService] Video size: ${(fileSize / 1024).toStringAsFixed(1)} KB',
       );
-      
-      _lastVideoPath = savedVideo.path; // ✅ FIX: Store the path before returning
+
+      _lastVideoPath =
+          savedVideo.path; // ✅ FIX: Store the path before returning
 
       // Clean up video recording state
       await _cleanupVideoRecording();

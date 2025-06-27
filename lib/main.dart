@@ -58,7 +58,9 @@ Future<void> main() async {
       // ✅ CRITICAL FIX: Clear any existing authentication state before connecting to emulators
       try {
         await FirebaseAuth.instance.signOut();
-        debugPrint('[main] Cleared existing authentication state for emulator setup.');
+        debugPrint(
+          '[main] Cleared existing authentication state for emulator setup.',
+        );
       } catch (signOutError) {
         debugPrint('[main] No existing auth to clear: $signOutError');
       }
@@ -101,9 +103,11 @@ Future<void> main() async {
         // ✅ FIX: Android configuration with proper host mapping
         const firestoreHost = '10.0.2.2';
         FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
-        debugPrint('Mapping Firestore Emulator host "localhost" to "$firestoreHost".');
+        debugPrint(
+          'Mapping Firestore Emulator host "localhost" to "$firestoreHost".',
+        );
         debugPrint('[main] Firestore emulator configured.');
-        
+
         // ✅ Additional configuration to ensure emulator persistence is disabled
         FirebaseFirestore.instance.settings = const Settings(
           persistenceEnabled: false,
@@ -118,7 +122,9 @@ Future<void> main() async {
         // ✅ FIX: Android configuration with proper host mapping
         const storageHost = '10.0.2.2';
         await FirebaseStorage.instance.useStorageEmulator(storageHost, 9199);
-        debugPrint('Mapping Storage Emulator host "localhost" to "$storageHost".');
+        debugPrint(
+          'Mapping Storage Emulator host "localhost" to "$storageHost".',
+        );
       } catch (e) {
         debugPrint('[main] Storage emulator configuration failed: $e');
       }
@@ -127,7 +133,9 @@ Future<void> main() async {
         // ✅ FIX: Configure Firebase Functions emulator
         const functionsHost = '10.0.2.2';
         FirebaseFunctions.instance.useFunctionsEmulator(functionsHost, 5001);
-        debugPrint('Mapping Functions Emulator host "localhost" to "$functionsHost".');
+        debugPrint(
+          'Mapping Functions Emulator host "localhost" to "$functionsHost".',
+        );
       } catch (e) {
         debugPrint('[main] Functions emulator configuration failed: $e');
       }
@@ -148,7 +156,9 @@ Future<void> main() async {
     // ./gradlew signingReport
     if (kDebugMode) {
       // ✅ FIX: Disable App Check entirely in debug mode to prevent authentication issues
-      debugPrint('[main] Debug mode: Skipping App Check initialization to prevent auth issues.');
+      debugPrint(
+        '[main] Debug mode: Skipping App Check initialization to prevent auth issues.',
+      );
       debugPrint('[main] App Check will be enabled in production builds only.');
     } else {
       // Use production providers for release builds
@@ -160,7 +170,7 @@ Future<void> main() async {
       debugPrint(
         '[main] Firebase App Check initialized with production providers.',
       );
-      
+
       // Verify App Check is working by trying to get a token
       try {
         final token = await FirebaseAppCheck.instance.getToken(true);
@@ -170,7 +180,9 @@ Future<void> main() async {
           debugPrint('[main] Warning: Firebase App Check token is null.');
         }
       } catch (tokenError) {
-        debugPrint('[main] Warning: Could not get App Check token: $tokenError');
+        debugPrint(
+          '[main] Warning: Could not get App Check token: $tokenError',
+        );
       }
     }
   } catch (e) {
@@ -191,7 +203,9 @@ Future<void> main() async {
     // Create minimal fallback Hive service
     try {
       hiveService = HiveService(SecureStorageService());
-      debugPrint('[main] Fallback Hive service created (may have limited functionality).');
+      debugPrint(
+        '[main] Fallback Hive service created (may have limited functionality).',
+      );
     } catch (fallbackError) {
       debugPrint('[main] CRITICAL: Cannot create Hive service: $fallbackError');
       rethrow;
@@ -209,7 +223,9 @@ Future<void> main() async {
       authService = AuthService();
       debugPrint('[main] Fallback auth service created without cached data.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Fallback auth service failed: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Fallback auth service failed: $fallbackError',
+      );
       // This should never happen, but if it does, we need to exit gracefully
       rethrow;
     }
@@ -226,7 +242,9 @@ Future<void> main() async {
       profileService = ProfileService(hiveService: hiveService);
       debugPrint('[main] Fallback profile service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create profile service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create profile service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -242,7 +260,9 @@ Future<void> main() async {
       backgroundSyncService = BackgroundSyncService(hiveService: hiveService);
       debugPrint('[main] Basic background sync service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create background sync service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create background sync service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -259,7 +279,9 @@ Future<void> main() async {
       lutFilterService = LutFilterService.instance;
       debugPrint('[main] Basic LUT filter service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create LUT filter service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create LUT filter service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -273,7 +295,9 @@ Future<void> main() async {
     debugPrint('[main] Account linking service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing account linking service: $e');
-    debugPrint('[main] Account linking will be limited without proper initialization.');
+    debugPrint(
+      '[main] Account linking will be limited without proper initialization.',
+    );
     // We'll continue without account linking service - it's not critical for basic auth
     // Create a minimal fallback that won't cause late initialization errors
     try {
@@ -281,46 +305,56 @@ Future<void> main() async {
         authService: authService,
         profileService: profileService,
       );
-      debugPrint('[main] Account linking service created despite initial error.');
+      debugPrint(
+        '[main] Account linking service created despite initial error.',
+      );
     } catch (finalError) {
-      debugPrint('[main] CRITICAL: Cannot initialize account linking service: $finalError');
+      debugPrint(
+        '[main] CRITICAL: Cannot initialize account linking service: $finalError',
+      );
       rethrow;
     }
   }
 
   // Initialize messaging service
   try {
-    messagingService = MessagingService(
-      firebaseAuth: FirebaseAuth.instance,
-    );
+    messagingService = MessagingService(firebaseAuth: FirebaseAuth.instance);
     debugPrint('[main] Messaging service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing messaging service: $e');
     // Create basic messaging service
     try {
-      messagingService = MessagingService(
-        firebaseAuth: FirebaseAuth.instance,
-      );
+      messagingService = MessagingService(firebaseAuth: FirebaseAuth.instance);
       debugPrint('[main] Basic messaging service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create messaging service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create messaging service: $fallbackError',
+      );
       rethrow;
     }
   }
 
   // Initialize push notification service
   try {
-    pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+    pushNotificationService = PushNotificationService(
+      navigatorKey: navigatorKey,
+      profileService: profileService,
+    );
     await pushNotificationService.initialize();
     debugPrint('[main] Push notification service initialized.');
   } catch (e) {
     debugPrint('[main] Error initializing push notification service: $e');
     // Create basic push notification service
     try {
-      pushNotificationService = PushNotificationService(navigatorKey: navigatorKey, profileService: profileService);
+      pushNotificationService = PushNotificationService(
+        navigatorKey: navigatorKey,
+        profileService: profileService,
+      );
       debugPrint('[main] Basic push notification service created.');
     } catch (fallbackError) {
-      debugPrint('[main] CRITICAL: Cannot create push notification service: $fallbackError');
+      debugPrint(
+        '[main] CRITICAL: Cannot create push notification service: $fallbackError',
+      );
       rethrow;
     }
   }
@@ -329,42 +363,54 @@ Future<void> main() async {
   try {
     // Monitor connectivity changes globally to trigger sync when coming back online
     bool wasOffline = false;
-    
+
     // Check initial connectivity state
     final initialConnectivity = await Connectivity().checkConnectivity();
     wasOffline = initialConnectivity.contains(ConnectivityResult.none);
-    debugPrint('[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}');
-    
+    debugPrint(
+      '[main] Initial connectivity: ${wasOffline ? 'OFFLINE' : 'ONLINE'}',
+    );
+
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
-      final isOnline = results.any((result) => result != ConnectivityResult.none);
-      
-      debugPrint('[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}');
-      
+    Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) async {
+      final isOnline = results.any(
+        (result) => result != ConnectivityResult.none,
+      );
+
+      debugPrint(
+        '[main] Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}',
+      );
+
       // If we just came back online from being offline, trigger sync
       if (isOnline && wasOffline) {
-        debugPrint('[main] 🌐 Back online! Triggering background sync for queued items...');
-        
+        debugPrint(
+          '[main] 🌐 Back online! Triggering background sync for queued items...',
+        );
+
         try {
           await backgroundSyncService.triggerImmediateSync();
           debugPrint('[main] ✅ Background sync completed successfully');
         } catch (e) {
           debugPrint('[main] ❌ Background sync failed: $e');
-          
+
           // Fallback: Schedule a one-time task for more reliable sync
           try {
             await backgroundSyncService.scheduleOneTimeSyncTask();
             debugPrint('[main] 📅 Scheduled one-time sync task as fallback');
           } catch (scheduleError) {
-            debugPrint('[main] ❌ Failed to schedule fallback sync: $scheduleError');
+            debugPrint(
+              '[main] ❌ Failed to schedule fallback sync: $scheduleError',
+            );
           }
         }
       }
-      
+
       // Update offline state
       wasOffline = !isOnline;
     });
-    
+
     debugPrint('[main] Global connectivity monitoring initialized.');
   } catch (e) {
     debugPrint('[main] Error setting up global connectivity monitoring: $e');
@@ -420,8 +466,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     try {
       // Handle account linking after sign-in
-      final hasExistingProfile = await accountLinkingService.handleSignInAccountLinking();
-      debugPrint('[AuthWrapper] Account linking flow completed. Has existing profile: $hasExistingProfile');
+      final hasExistingProfile = await accountLinkingService
+          .handleSignInAccountLinking();
+      debugPrint(
+        '[AuthWrapper] Account linking flow completed. Has existing profile: $hasExistingProfile',
+      );
 
       // Save FCM token
       final token = await pushNotificationService.getFCMToken();
@@ -445,10 +494,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
         debugPrint(
           '[AuthWrapper] Auth state changed: ${snapshot.hasData ? 'authenticated' : 'not authenticated'}',
         );
-        debugPrint('[AuthWrapper] Connection state: ${snapshot.connectionState}');
+        debugPrint(
+          '[AuthWrapper] Connection state: ${snapshot.connectionState}',
+        );
         debugPrint('[AuthWrapper] Has data: ${snapshot.hasData}');
         debugPrint('[AuthWrapper] Data: ${snapshot.data}');
-        debugPrint('[AuthWrapper] Is offline mode: ${authService.isOfflineMode}');
+        debugPrint(
+          '[AuthWrapper] Is offline mode: ${authService.isOfflineMode}',
+        );
 
         // Skip loading state check - auth service always emits initial state
         // Handle authentication state directly based on data
@@ -459,21 +512,29 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
           // OFFLINE OPTIMIZATION: Skip post-auth flow when offline to avoid loading screen
           if (authService.isOfflineMode) {
-            debugPrint('[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow');
-            
+            debugPrint(
+              '[AuthWrapper] 📱 Offline mode detected - skipping post-auth flow',
+            );
+
             // Go directly to profile check without network operations
             if (profileService.hasCompleteProfile()) {
-              debugPrint('[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen');
+              debugPrint(
+                '[AuthWrapper] 📱 Profile complete (offline) - navigating to MainShellScreen',
+              );
               return MainShellScreen(
                 profileService: profileService,
                 hiveService: hiveService,
               );
             } else {
-              debugPrint('[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen');
+              debugPrint(
+                '[AuthWrapper] 📱 Profile incomplete (offline) - navigating to VendorProfileScreen',
+              );
               return VendorProfileScreen(
                 profileService: profileService,
                 onProfileComplete: () {
-                  debugPrint('[AuthWrapper] Profile completed, triggering rebuild');
+                  debugPrint(
+                    '[AuthWrapper] Profile completed, triggering rebuild',
+                  );
                   setState(() {});
                 },
               );
@@ -501,10 +562,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
               // Account linking completed - check if existing profile was found
               final hasExistingProfile = authFuture.data ?? false;
-              
+
               if (hasExistingProfile) {
                 // User has an existing profile - go directly to main app
-                debugPrint('[AuthWrapper] User has existing profile - going to main app');
+                debugPrint(
+                  '[AuthWrapper] User has existing profile - going to main app',
+                );
                 return MainShellScreen(
                   profileService: profileService,
                   hiveService: hiveService,
@@ -512,22 +575,29 @@ class _AuthWrapperState extends State<AuthWrapper> {
               } else {
                 // No existing profile found - check if user has any profile (vendor or regular)
                 final hasVendorProfile = profileService.hasCompleteProfile();
-                final hasRegularProfile = profileService.hasCompleteRegularUserProfile();
-                
+                final hasRegularProfile = profileService
+                    .hasCompleteRegularUserProfile();
+
                 if (hasVendorProfile || hasRegularProfile) {
-                  debugPrint('[AuthWrapper] User has complete profile, navigating to MainShellScreen');
+                  debugPrint(
+                    '[AuthWrapper] User has complete profile, navigating to MainShellScreen',
+                  );
                   return MainShellScreen(
                     profileService: profileService,
                     hiveService: hiveService,
                   );
                 } else {
-                  debugPrint('[AuthWrapper] No profile found, navigating to UserTypeSelectionScreen');
-                  
+                  debugPrint(
+                    '[AuthWrapper] No profile found, navigating to UserTypeSelectionScreen',
+                  );
+
                   // Import the UserTypeSelectionScreen
                   return UserTypeSelectionScreen(
                     onUserTypeSelected: (userType) {
-                      debugPrint('[AuthWrapper] User selected type: ${userType.displayName}');
-                      
+                      debugPrint(
+                        '[AuthWrapper] User selected type: ${userType.displayName}',
+                      );
+
                       // Navigate to appropriate profile screen
                       if (userType == UserType.vendor) {
                         Navigator.of(context).pushReplacement(
@@ -535,7 +605,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                             builder: (context) => VendorProfileScreen(
                               profileService: profileService,
                               onProfileComplete: () {
-                                debugPrint('[AuthWrapper] Vendor profile completed');
+                                debugPrint(
+                                  '[AuthWrapper] Vendor profile completed',
+                                );
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
                                     builder: (context) => MainShellScreen(
@@ -554,7 +626,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                             builder: (context) => RegularUserProfileScreen(
                               profileService: profileService,
                               onProfileComplete: () {
-                                debugPrint('[AuthWrapper] Regular user profile completed');
+                                debugPrint(
+                                  '[AuthWrapper] Regular user profile completed',
+                                );
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
                                     builder: (context) => MainShellScreen(
@@ -1173,7 +1247,8 @@ class ProfileCompletionWrapper extends StatefulWidget {
   final HiveService hiveService;
 
   @override
-  State<ProfileCompletionWrapper> createState() => _ProfileCompletionWrapperState();
+  State<ProfileCompletionWrapper> createState() =>
+      _ProfileCompletionWrapperState();
 }
 
 class _ProfileCompletionWrapperState extends State<ProfileCompletionWrapper> {

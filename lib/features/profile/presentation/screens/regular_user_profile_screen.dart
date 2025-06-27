@@ -14,7 +14,6 @@ import '../../../settings/application/settings_service.dart';
 import '../../../auth/application/auth_service.dart';
 import '../../../../main.dart' as main;
 
-
 /// Regular User Profile Form Screen
 /// Simplified profile for regular users (no stall info, just basic profile)
 class RegularUserProfileScreen extends StatefulWidget {
@@ -30,7 +29,8 @@ class RegularUserProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<RegularUserProfileScreen> createState() => _RegularUserProfileScreenState();
+  State<RegularUserProfileScreen> createState() =>
+      _RegularUserProfileScreenState();
 }
 
 class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
@@ -58,7 +58,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
 
   /// Loads existing profile data if available
   Future<void> _loadExistingProfile() async {
-    developer.log('[RegularUserProfileScreen] Loading existing profile data', name: 'RegularUserProfileScreen');
+    developer.log(
+      '[RegularUserProfileScreen] Loading existing profile data',
+      name: 'RegularUserProfileScreen',
+    );
 
     setState(() {
       _isLoading = true;
@@ -66,7 +69,8 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     });
 
     try {
-      final regularProfile = widget.profileService.getCurrentRegularUserProfile();
+      final regularProfile = widget.profileService
+          .getCurrentRegularUserProfile();
       if (regularProfile != null) {
         developer.log(
           '[RegularUserProfileScreen] Found existing regular profile: ${regularProfile.displayName}',
@@ -77,10 +81,16 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           _localAvatarPath = regularProfile.localAvatarPath;
         });
       } else {
-        developer.log('[RegularUserProfileScreen] No existing regular profile found', name: 'RegularUserProfileScreen');
+        developer.log(
+          '[RegularUserProfileScreen] No existing regular profile found',
+          name: 'RegularUserProfileScreen',
+        );
       }
     } catch (e) {
-      developer.log('[RegularUserProfileScreen] Error loading profile: $e', name: 'RegularUserProfileScreen');
+      developer.log(
+        '[RegularUserProfileScreen] Error loading profile: $e',
+        name: 'RegularUserProfileScreen',
+      );
       setState(() {
         _errorMessage = 'Failed to load profile data';
       });
@@ -93,7 +103,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
 
   /// Handles avatar image selection
   Future<void> _pickAvatar({required bool fromCamera}) async {
-    developer.log('[RegularUserProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}', name: 'RegularUserProfileScreen');
+    developer.log(
+      '[RegularUserProfileScreen] Picking avatar from ${fromCamera ? 'camera' : 'gallery'}',
+      name: 'RegularUserProfileScreen',
+    );
 
     try {
       final XFile? image = await _imagePicker.pickImage(
@@ -107,10 +120,16 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         setState(() {
           _localAvatarPath = image.path;
         });
-        developer.log('[RegularUserProfileScreen] Avatar selected: ${image.path}', name: 'RegularUserProfileScreen');
+        developer.log(
+          '[RegularUserProfileScreen] Avatar selected: ${image.path}',
+          name: 'RegularUserProfileScreen',
+        );
       }
     } catch (e) {
-      developer.log('[RegularUserProfileScreen] Error picking avatar: $e', name: 'RegularUserProfileScreen');
+      developer.log(
+        '[RegularUserProfileScreen] Error picking avatar: $e',
+        name: 'RegularUserProfileScreen',
+      );
       _showErrorMessage('Failed to select avatar: $e');
     }
   }
@@ -189,7 +208,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       return;
     }
 
-    developer.log('[RegularUserProfileScreen] Saving regular user profile', name: 'RegularUserProfileScreen');
+    developer.log(
+      '[RegularUserProfileScreen] Saving regular user profile',
+      name: 'RegularUserProfileScreen',
+    );
 
     setState(() {
       _isSaving = true;
@@ -202,7 +224,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         localAvatarPath: _localAvatarPath,
       );
 
-      developer.log('[RegularUserProfileScreen] Regular profile saved successfully', name: 'RegularUserProfileScreen');
+      developer.log(
+        '[RegularUserProfileScreen] Regular profile saved successfully',
+        name: 'RegularUserProfileScreen',
+      );
 
       // Show success message
       if (mounted) {
@@ -223,7 +248,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         widget.onProfileComplete?.call();
       }
     } catch (e) {
-      developer.log('[RegularUserProfileScreen] Error saving profile: $e', name: 'RegularUserProfileScreen');
+      developer.log(
+        '[RegularUserProfileScreen] Error saving profile: $e',
+        name: 'RegularUserProfileScreen',
+      );
       _showErrorMessage('Failed to save profile: $e');
     } finally {
       if (mounted) {
@@ -321,10 +349,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
-        title: Text(
-          'Sign Out',
-          style: AppTypography.h2,
-        ),
+        title: Text('Sign Out', style: AppTypography.h2),
         content: Text(
           'Are you sure you want to sign out?',
           style: AppTypography.body,
@@ -370,10 +395,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
               ),
               const SizedBox(width: 20),
-              Text(
-                'Signing out...',
-                style: AppTypography.body,
-              ),
+              Text('Signing out...', style: AppTypography.body),
             ],
           ),
         ),
@@ -387,7 +409,9 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       // Close loading dialog and navigate to auth
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/', (route) => false); // Go to auth
       }
     } catch (e) {
       debugPrint('[RegularUserProfileScreen] Error signing out: $e');
@@ -429,7 +453,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
               centerTitle: true,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.settings, color: AppColors.soilCharcoal),
+                  icon: const Icon(
+                    Icons.settings,
+                    color: AppColors.soilCharcoal,
+                  ),
                   onPressed: _navigateToSettings,
                   tooltip: 'Settings',
                 ),
@@ -444,7 +471,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
               backgroundColor: AppColors.cornsilk,
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.soilCharcoal),
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: AppColors.soilCharcoal,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
@@ -519,7 +549,8 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
 
                       // Offline Notice
                       MarketSnapStatusMessage(
-                        message: 'Profile saved locally and will sync when connected to internet',
+                        message:
+                            'Profile saved locally and will sync when connected to internet',
                         type: StatusType.info,
                         showIcon: true,
                       ),
@@ -530,4 +561,4 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
             ),
     );
   }
-} 
+}
