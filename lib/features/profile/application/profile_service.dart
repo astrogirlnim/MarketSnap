@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/models/vendor_profile.dart';
 import '../../../core/models/regular_user_profile.dart';
 import '../../../core/services/hive_service.dart';
+import '../../../main.dart' as main;
 
 /// Service for managing vendor profiles with offline-first capabilities.
 /// Handles profile CRUD operations, avatar uploads, and Firebase sync.
@@ -79,6 +80,9 @@ class ProfileService {
 
     // Try to sync immediately if online - but don't block the UI
     _attemptImmediateSync(uid);
+    
+    // Also try to save FCM token now that profile exists
+    _attemptFCMTokenSave();
   }
 
   /// Attempts to sync profile immediately without blocking the UI
@@ -99,6 +103,35 @@ class ProfileService {
           debugPrint('[ProfileService] Immediate sync failed: $error');
           // Don't throw - offline-first means we save locally and sync when possible
         });
+  }
+
+  /// Attempts to save FCM token after profile creation
+  void _attemptFCMTokenSave() {
+    debugPrint('[ProfileService] Attempting to save pending FCM token');
+    
+    // Try to get and save FCM token - this is async but we don't block on it
+    _getFCMTokenAndSave().catchError((error) {
+      debugPrint('[ProfileService] FCM token save failed: $error');
+      // Don't throw - not critical for profile creation flow
+    });
+  }
+
+  /// Gets FCM token from push notification service and saves it
+  Future<void> _getFCMTokenAndSave() async {
+    try {
+      // Import the push notification service from main
+      final pushNotificationService = main.pushNotificationService;
+      final token = await pushNotificationService.getFCMToken();
+      
+      if (token != null) {
+        debugPrint('[ProfileService] Got FCM token, saving to profile');
+        await saveFCMToken(token);
+      } else {
+        debugPrint('[ProfileService] No FCM token available');
+      }
+    } catch (e) {
+      debugPrint('[ProfileService] Error getting/saving FCM token: $e');
+    }
   }
 
   /// Picks an image from gallery or camera for avatar
@@ -251,17 +284,32 @@ class ProfileService {
 
     debugPrint('[ProfileService] Saving FCM token for user $uid');
     try {
-      // Save to Firestore
-      await _firestore.collection('vendors').doc(uid).update({'fcmToken': token});
-
-      // Save locally to Hive
-      final profile = getCurrentUserProfile();
-      if (profile != null) {
-        // This is tricky as VendorProfile doesn't have an fcmToken field.
-        // For now, we only save to Firestore as that's what the cloud function uses.
-        // TODO: Add fcmToken to VendorProfile Hive model if needed for client-side logic.
+      // Check if user has vendor or regular user profile to determine collection
+      final vendorProfile = getCurrentUserProfile();
+      final regularProfile = getCurrentRegularUserProfile();
+      
+      if (vendorProfile != null) {
+        // User is a vendor - save to vendors collection
+        debugPrint('[ProfileService] Saving FCM token to vendors collection');
+        await _firestore.collection('vendors').doc(uid).set(
+          {'fcmToken': token},
+          SetOptions(merge: true), // Use merge to avoid overwriting existing data
+        );
+      } else if (regularProfile != null) {
+        // User is a regular user - save to regularUsers collection
+        debugPrint('[ProfileService] Saving FCM token to regularUsers collection');
+        await _firestore.collection('regularUsers').doc(uid).set(
+          {'fcmToken': token},
+          SetOptions(merge: true), // Use merge to avoid overwriting existing data
+        );
+      } else {
+        // User hasn't completed profile setup yet - skip FCM token saving for now
+        debugPrint('[ProfileService] User profile not complete yet, skipping FCM token save');
+        debugPrint('[ProfileService] FCM token will be saved when profile is created');
+        return;
       }
-      debugPrint('[ProfileService] FCM token saved to Firestore.');
+
+      debugPrint('[ProfileService] FCM token saved to Firestore successfully');
     } catch (e) {
       debugPrint('[ProfileService] Error saving FCM token: $e');
       // Don't rethrow, not a critical error for UI
@@ -406,6 +454,9 @@ class ProfileService {
       } catch (e) {
         debugPrint('[ProfileService] Profile saved locally, will sync when online: $e');
       }
+      
+      // Also try to save FCM token now that profile exists
+      _attemptFCMTokenSave();
     } catch (e) {
       debugPrint('[ProfileService] Error saving regular user profile: $e');
       throw Exception('Failed to save profile: $e');
