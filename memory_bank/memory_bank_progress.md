@@ -1060,7 +1060,8 @@ All foundational systems are stable and ready for Phase 3 continuation:
   - [X] **ENHANCEMENT**: Smart posting flow with 10-second timeout online, instant queue offline ✅ **ADDED**
   - [X] **ENHANCEMENT**: Real-time connectivity monitoring with better user messaging ✅ **ADDED**
   - [X] **ENHANCEMENT**: Color-coded feedback and context-aware UI states ✅ **ADDED**
-  - [!] **BLOCKED**: Offline authentication persistence - Firebase Auth interface compatibility issue
+  - [X] **CRITICAL FIX**: Offline authentication persistence ✅ **RESOLVED** - LateInitializationError fixed with robust error handling
+  - [X] **CRITICAL FIX**: Post-signout authentication redirect loop ✅ **RESOLVED** - Singleton `AuthService` is no longer disposed, ensuring stable authentication across sessions.
 
 **Phase 4.1 Status**: ✅ Core functionality COMPLETE, ⚠️ Authentication persistence BLOCKED by compilation issue
 

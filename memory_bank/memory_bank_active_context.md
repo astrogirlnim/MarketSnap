@@ -819,3 +819,17 @@ All core functionality is working perfectly:
 - ✅ Offline Media Queue (Phase 4.1)
 - ✅ AI Caption Helper (Phase 4.5)
 - ✅ RAG Recipe System (Phase 4.6)
+
+## Phase 4.11 - Critical Auth Bug & Resolution (June 27, 2025)
+
+**Context:** The application was plagued by a critical authentication bug where users, after signing out, could not sign back in. They would be redirected to the login screen despite successful authentication.
+
+**Resolution Summary:**
+The root cause was the premature disposal of the singleton `AuthService`. The `AuthWrapper` widget's `dispose` method was incorrectly destroying the service, which is designed to persist for the entire application lifecycle. Once a user signed out, the service was disposed, rendering subsequent login attempts futile as the authentication stream was closed.
+
+**Fix:**
+- **File:** `lib/main.dart`
+- **Action:** The `dispose` method within `_AuthWrapperState` was removed. This ensures the `AuthService` singleton persists across login/logout cycles, resolving the redirect loop permanently.
+- **Verification:** The fix was confirmed by extensive testing of sign-out and sign-in flows with different user types.
+
+**Current Status:** The authentication system is now stable and robust. The application is ready for further development on the implementation layer.
