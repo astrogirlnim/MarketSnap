@@ -150,10 +150,11 @@ Legend:
   - [X] On snap view, call `getRecipeSnippet` for produce keyword. ✅ **DONE** - Real GPT-4 recipe generation with context-aware prompts
   - [X] Render collapsible FAQ card below story. ✅ **DONE** - Vector similarity search with keyword fallback via Cloud Functions
 
-- [ ] **7. Ephemeral Messaging Logic**
-  - [ ] Message send service → write to `messages` + trigger push.
-  - [ ] TTL cleanup via Firestore TTL index or scheduled CF.
-  - [ ] Unit test: conversation auto-deletes after 24 h.
+- [X] **7. Ephemeral Messaging Logic** ✅ **COMPLETED WITH UI ENHANCEMENTS**
+  - [X] Message send service → write to `messages` + trigger push. ✅ **DONE** - MessagingService.sendMessage() + sendMessageNotification CF
+  - [X] TTL cleanup via Firestore TTL index or scheduled CF. ✅ **DONE** - Dual cleanup: Firestore TTL + manual cleanup
+  - [X] Unit test: conversation auto-deletes after 24 h. ✅ **DONE** - Comprehensive test suite with 9/9 tests passing
+  - [X] **ENHANCEMENT**: Ephemeral messaging UI indicators ✅ **ADDED** - Timestamps, expiry indicators, and user education banners
 
 - [X] **8. RAG Feedback & Analytics** ✅ **COMPLETED WITH UI FIX**
   - [X] Add upvote/skip/edit UI to recipe/FAQ cards.

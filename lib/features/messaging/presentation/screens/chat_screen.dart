@@ -190,6 +190,49 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: AppColors.cornsilk,
       body: Column(
         children: [
+          // Ephemeral messaging info banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.sunsetAmber.withValues(alpha: 0.1),
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.sunsetAmber.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.schedule,
+                  size: 16,
+                  color: AppColors.sunsetAmber,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Messages disappear after 24 hours',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: AppColors.sunsetAmber,
+                ),
+              ],
+            ),
+          ),
+          
           Expanded(
             child: StreamBuilder<List<Message>>(
               stream: _messagingService.getConversationMessages(
