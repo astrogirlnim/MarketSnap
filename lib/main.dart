@@ -31,6 +31,7 @@ import 'core/services/profile_update_notifier.dart';
 import 'features/feed/application/feed_service.dart';
 import 'core/services/account_deletion_service.dart';
 import 'core/services/follow_service.dart';
+import 'core/services/broadcast_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -46,6 +47,7 @@ late final PushNotificationService pushNotificationService;
 late final ProfileUpdateNotifier profileUpdateNotifier;
 late final FeedService feedService;
 late final AccountDeletionService accountDeletionService;
+late final BroadcastService broadcastService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -450,6 +452,30 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create account deletion service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize broadcast service
+  try {
+    broadcastService = BroadcastService(
+      hiveService: hiveService,
+      profileService: profileService,
+    );
+    debugPrint('[main] Broadcast service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing broadcast service: $e');
+    // Create fallback broadcast service
+    try {
+      broadcastService = BroadcastService(
+        hiveService: hiveService,
+        profileService: profileService,
+      );
+      debugPrint('[main] Fallback broadcast service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create broadcast service: $fallbackError',
       );
       rethrow;
     }

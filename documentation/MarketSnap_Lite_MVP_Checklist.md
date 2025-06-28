@@ -60,7 +60,7 @@ Legend:
 |---------|-----------|
 | **1. Offline Media Queue Logic** | - [ ] Serialize photo/video + metadata into Hive queue.<br> - [ ] WorkManager uploads when network available; writes `snaps` doc + Storage file.<br> - [ ] Delete queue item on 200 response; retry on failure. |
 | **2. Push Notification Flow** | - [ ] Request FCM permissions; save token in `followers` sub‑coll.<br> - [ ] On message click, deep‑link to snap/story.<br> - [ ] Fallback in‑app banner if system push disabled. |
-| **3. Broadcast Text & Location Tagging** | - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.<br> - [ ] Implement coarse location rounding (0.1°) before upload.<br> - [ ] Filter feed by distance if location data present. |
+| **3. Broadcast Text & Location Tagging** | - [X] UI modal to send ≤ 100 char broadcast; write to Firestore.<br> - [X] Implement coarse location rounding (0.1°) before upload.<br> - [X] Filter feed by distance if location data present. |
 | **4. Save‑to‑Device** | - [ ] Persist posted media to OS gallery via `image_gallery_saver`.<br> - [ ] Check free space ≥ 100 MB else show toast error.<br> - [ ] Unit test: saved file survives app uninstall. |
 | **5. AI Caption Helper (Phase 2)** | - [ ] Call `generateCaption` CF; display spinner max 2 s.<br> - [ ] Allow vendor edit before final post.<br> - [ ] Cache caption keyed by media hash. |
 | **6. Recipe & FAQ Snippets (Phase 2)** | - [ ] Vectorize vendor FAQ chunks → `faqVectors` via CF batch job.<br> - [ ] On snap view, call `getRecipeSnippet` for produce keyword.<br> - [ ] Render collapsible FAQ card below story. |
