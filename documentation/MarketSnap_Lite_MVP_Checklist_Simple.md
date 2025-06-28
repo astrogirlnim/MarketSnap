@@ -117,13 +117,13 @@ Legend:
   - [X] **ENHANCEMENT**: Smart posting flow with connectivity monitoring ✅ **ADDED** - 10s timeout online, instant queue offline
   - [X] **CRITICAL FIX**: Offline authentication persistence ✅ **RESOLVED** - LateInitializationError fixed with robust error handling
 
-- [ ] **2. Push Notification Flow**
-  - [ ] Request FCM permissions on app start/login
-  - [ ] On "Follow" action, save FCM token in `/vendors/{vendorId}/followers/{userId}`
-  - [ ] Handle FCM token refresh
-  - [ ] Update Firestore rules for followers sub-collection
-  - [ ] On message click, deep‑link to snap/story.
-  - [ ] Fallback in‑app banner if system push disabled.
+- [X] **2. Push Notification Flow** ✅ **COMPLETED** - Comprehensive FCM implementation with permissions, deep-linking, and fallbacks
+  - [X] Request FCM permissions on app start/login ✅ **DONE** - Enhanced PushNotificationService with proper permission settings
+  - [X] On "Follow" action, save FCM token in `/vendors/{vendorId}/followers/{userId}` ✅ **DONE** - Already implemented in FollowService
+  - [X] Handle FCM token refresh ✅ **DONE** - Automatic refresh with profile and vendor updates via FollowService
+  - [X] Update Firestore rules for followers sub-collection ✅ **DONE** - Already configured in firestore.rules
+  - [X] On message click, deep‑link to snap/story ✅ **DONE** - Complete deep-linking for snaps, stories, broadcasts, and messages
+  - [X] Fallback in‑app banner if system push disabled ✅ **DONE** - In-app overlay notifications with auto-dismiss
 
 - [ ] **3. Broadcast Text & Location Tagging**
   - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.
