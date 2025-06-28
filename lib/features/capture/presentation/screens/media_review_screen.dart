@@ -15,6 +15,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/services/background_sync_service.dart';
 import '../../../../features/profile/application/profile_service.dart';
 import '../../../../main.dart' as main;
+import 'package:permission_handler/permission_handler.dart';
 
 /// Review screen for captured media with filter application and post functionality
 /// Allows users to apply LUT filters and post their captured content
@@ -323,11 +324,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         '[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})',
       );
 
-      await widget.hiveService.addPendingMedia(pendingItem);
+      // Phase 4.4: Save to device gallery BEFORE adding to queue 
+      // This ensures the file still exists at the original path
+      await _attemptSaveToGallery(mediaPath, mediaType, caption);
 
-      // Phase 4.4: Save to device gallery if enabled in settings
-      // This runs independently of the posting/sync process to avoid blocking it
-      _attemptSaveToGallery(mediaPath, mediaType, caption);
+      await widget.hiveService.addPendingMedia(pendingItem);
 
       // Show different behavior based on connectivity
       if (_hasConnectivity) {
@@ -405,12 +406,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   }
 
   /// Phase 4.4: Attempt to save media to device gallery if enabled
-  /// Runs independently to avoid blocking the posting process
-  void _attemptSaveToGallery(String mediaPath, MediaType mediaType, String caption) {
-    // Run asynchronously to avoid blocking the posting flow
-    Future.delayed(const Duration(milliseconds: 100), () async {
-      try {
-        debugPrint('[MediaReviewScreen] 💾 Attempting to save media to gallery...');
+  /// Runs immediately before file gets moved to pending queue
+  Future<void> _attemptSaveToGallery(String mediaPath, MediaType mediaType, String caption) async {
+    try {
+      debugPrint('[MediaReviewScreen] 💾 Attempting to save media to gallery...');
         
         final success = await main.deviceGallerySaveService.saveMediaToGalleryIfEnabled(
           filePath: mediaPath,
@@ -439,56 +438,61 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         } else if (!success) {
           debugPrint('[MediaReviewScreen] ⏭️ Gallery save skipped (disabled in settings or conditions not met)');
         }
-      } catch (e) {
-        debugPrint('[MediaReviewScreen] ❌ Gallery save failed: $e');
-        
-        // Only show error message for actual failures, not when disabled
-        if (mounted && e.toString().contains('permissions')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.warning, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Gallery permissions needed for "Save to Device" feature',
-                      style: const TextStyle(fontSize: 13),
-                    ),
+    } catch (e) {
+      debugPrint('[MediaReviewScreen] ❌ Gallery save failed: $e');
+      
+      // Only show error message for actual failures, not when disabled
+      if (mounted && e.toString().contains('permissions')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Gallery permissions needed for "Save to Device" feature',
+                    style: const TextStyle(fontSize: 13),
                   ),
-                ],
-              ),
-              backgroundColor: Colors.orange.shade600,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: 'Settings',
-                textColor: Colors.white,
-                onPressed: () {
-                  // Future enhancement: Navigate to app settings
-                },
-              ),
+                ),
+              ],
             ),
-          );
-        } else if (mounted && e.toString().contains('storage')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.storage, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('⚠️ Not enough storage space to save to gallery'),
-                ],
-              ),
-              backgroundColor: Colors.red.shade600,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.orange.shade600,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () async {
+                // Navigate to device settings for permission management
+                debugPrint('[MediaReviewScreen] Opening app settings for photo permissions...');
+                try {
+                  await openAppSettings();
+                } catch (e) {
+                  debugPrint('[MediaReviewScreen] Failed to open app settings: $e');
+                }
+              },
             ),
-          );
-        }
-        // For other errors (file not found, etc.), fail silently to avoid confusing users
+          ),
+        );
+      } else if (mounted && e.toString().contains('storage')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.storage, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('⚠️ Not enough storage space to save to gallery'),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    });
+      // For other errors (file not found, etc.), fail silently to avoid confusing users
+    }
   }
 
   /// Build media preview (image or video)

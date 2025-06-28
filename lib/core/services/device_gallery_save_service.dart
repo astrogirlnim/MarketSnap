@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:developer' as developer;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/pending_media.dart';
 import 'hive_service.dart';
@@ -80,8 +80,8 @@ class DeviceGallerySaveService {
         name: 'DeviceGallerySaveService',
       );
 
-      // Step 4: Request permissions
-      final hasPermission = await _requestGalleryPermissions();
+      // Step 4: Check and request gallery permissions
+      final hasPermission = await _checkGalleryPermissions();
       if (!hasPermission) {
         developer.log(
           '[DeviceGallerySaveService] ❌ Gallery permissions denied',
@@ -124,66 +124,70 @@ class DeviceGallerySaveService {
     }
   }
 
-  /// Request necessary permissions for saving to gallery
-  /// Returns true if permissions are granted
-  Future<bool> _requestGalleryPermissions() async {
-    try {
-      developer.log(
-        '[DeviceGallerySaveService] 🔐 Requesting gallery permissions...',
-        name: 'DeviceGallerySaveService',
-      );
-
-      PermissionStatus status;
-
-      if (Platform.isAndroid) {
-        // Android: Request storage permissions
-        // For Android 13+ (API 33+), we need different permissions
-        if (Platform.version.contains('API 33') || 
-            Platform.version.contains('API 34') ||
-            Platform.version.contains('API 35')) {
-          // Android 13+ uses granular media permissions
-          status = await Permission.photos.request();
-          developer.log(
-            '[DeviceGallerySaveService] 📱 Android 13+ photos permission status: $status',
-            name: 'DeviceGallerySaveService',
-          );
-        } else {
-          // Android 12 and below uses storage permission
-          status = await Permission.storage.request();
-          developer.log(
-            '[DeviceGallerySaveService] 📱 Android storage permission status: $status',
-            name: 'DeviceGallerySaveService',
-          );
-        }
-      } else if (Platform.isIOS) {
-        // iOS: Request photo library add permissions
-        status = await Permission.photosAddOnly.request();
-        developer.log(
-          '[DeviceGallerySaveService] 🍎 iOS photosAddOnly permission status: $status',
-          name: 'DeviceGallerySaveService',
-        );
+  /// Check and request gallery permissions
+  Future<bool> _checkGalleryPermissions() async {
+    debugPrint('[DeviceGallerySaveService] 🔐 Checking gallery permissions...');
+    debugPrint('[DeviceGallerySaveService] 📱 Platform: ${Platform.operatingSystem}');
+    debugPrint('[DeviceGallerySaveService] 📱 Platform version: ${Platform.version}');
+    
+    Permission permission;
+    if (Platform.isIOS) {
+      // iOS: Use photos permission for adding to gallery
+      permission = Permission.photos;
+      debugPrint('[DeviceGallerySaveService] 🍎 iOS detected - using Permission.photos');
+    } else {
+      // Android: Use appropriate storage permission based on API level
+      if (await _isAndroid13OrHigher()) {
+        permission = Permission.photos; // Android 13+ granular permission
+        debugPrint('[DeviceGallerySaveService] 🤖 Android 13+ detected - using Permission.photos');
       } else {
-        developer.log(
-          '[DeviceGallerySaveService] ⚠️ Unsupported platform: ${Platform.operatingSystem}',
-          name: 'DeviceGallerySaveService',
-        );
+        permission = Permission.storage; // Legacy storage permission
+        debugPrint('[DeviceGallerySaveService] 🤖 Android <13 detected - using Permission.storage');
+      }
+    }
+
+    // Check current permission status
+    debugPrint('[DeviceGallerySaveService] 🔍 Checking current permission status...');
+    PermissionStatus status = await permission.status;
+    debugPrint('[DeviceGallerySaveService] 📱 Current permission status: $status');
+    debugPrint('[DeviceGallerySaveService] 📱 Is granted: ${status.isGranted}');
+    debugPrint('[DeviceGallerySaveService] 📱 Is denied: ${status.isDenied}');
+    debugPrint('[DeviceGallerySaveService] 📱 Is permanently denied: ${status.isPermanentlyDenied}');
+    debugPrint('[DeviceGallerySaveService] 📱 Is restricted: ${status.isRestricted}');
+    debugPrint('[DeviceGallerySaveService] 📱 Is limited: ${status.isLimited}');
+
+    // If permission is denied, request it
+    if (status.isDenied || status.isPermanentlyDenied) {
+      debugPrint('[DeviceGallerySaveService] 🔐 Permission denied, requesting permission...');
+      debugPrint('[DeviceGallerySaveService] 🔐 About to call permission.request()...');
+      
+      try {
+        status = await permission.request();
+        debugPrint('[DeviceGallerySaveService] 📱 Permission request completed');
+        debugPrint('[DeviceGallerySaveService] 📱 New permission status: $status');
+        debugPrint('[DeviceGallerySaveService] 📱 New status is granted: ${status.isGranted}');
+      } catch (e) {
+        debugPrint('[DeviceGallerySaveService] ❌ Error during permission request: $e');
+        debugPrint('[DeviceGallerySaveService] ❌ Error type: ${e.runtimeType}');
         return false;
       }
-
-      final isGranted = status == PermissionStatus.granted;
-      developer.log(
-        '[DeviceGallerySaveService] 🔐 Permission granted: $isGranted',
-        name: 'DeviceGallerySaveService',
-      );
-
-      return isGranted;
-    } catch (e) {
-      developer.log(
-        '[DeviceGallerySaveService] ❌ Error requesting permissions: $e',
-        name: 'DeviceGallerySaveService',
-      );
-      return false;
+    } else if (status.isGranted) {
+      debugPrint('[DeviceGallerySaveService] ✅ Permission already granted');
+    } else {
+      debugPrint('[DeviceGallerySaveService] ⚠️ Permission status is neither denied nor granted: $status');
     }
+
+    // Log platform-specific permission status
+    if (Platform.isIOS) {
+      debugPrint('[DeviceGallerySaveService] 🍎 Final iOS photos permission status: $status');
+      debugPrint('[DeviceGallerySaveService] 🍎 iOS permission will appear in Settings: ${status.isGranted || status.isDenied || status.isPermanentlyDenied}');
+    } else {
+      debugPrint('[DeviceGallerySaveService] 🤖 Final Android storage permission status: $status');
+    }
+
+    final result = status.isGranted;
+    debugPrint('[DeviceGallerySaveService] 🏁 Permission check result: $result');
+    return result;
   }
 
   /// Save the actual file to gallery using image_gallery_saver
@@ -297,6 +301,15 @@ class DeviceGallerySaveService {
   /// Check if device has sufficient storage for saving media
   Future<bool> hasSufficientStorageForSave() async {
     return await _settingsService.hasSufficientStorage();
+  }
+
+  /// Check if the device is running Android 13 or higher
+  Future<bool> _isAndroid13OrHigher() async {
+    if (Platform.isAndroid) {
+      final version = Platform.version;
+      return version.contains('API 33') || version.contains('API 34') || version.contains('API 35');
+    }
+    return false;
   }
 }
 
