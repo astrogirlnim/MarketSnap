@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/vendor_profile.dart';
 import '../../features/auth/application/auth_service.dart';
 import '../../features/profile/application/profile_service.dart';
+import '../../main.dart' as main;
 
 /// Service for handling account linking and profile discovery
 /// Finds existing vendor profiles by phone/email to prevent duplicates
@@ -77,7 +78,10 @@ class AccountLinkingService {
         );
       }
 
-      // Check for existing vendor profiles with same phone number or email
+      // ✅ CRITICAL ENHANCEMENT: Enhanced cross-platform profile search
+      // This provides robust fallback when Firebase Auth UIDs are inconsistent across platforms
+      debugPrint('[AccountLinkingService] Searching for existing profiles by contact info');
+      
       if (phoneNumber != null || email != null) {
         final existingProfile = await _findExistingProfileByContact(
           phoneNumber,
@@ -86,7 +90,10 @@ class AccountLinkingService {
 
         if (existingProfile != null) {
           debugPrint(
-            '[AccountLinkingService] Found existing vendor profile: ${existingProfile.stallName} (${existingProfile.uid})',
+            '[AccountLinkingService] ✅ Found existing vendor profile: ${existingProfile.stallName} (${existingProfile.uid})',
+          );
+          debugPrint(
+            '[AccountLinkingService] 🔗 This resolves cross-platform authentication issues',
           );
 
           // Copy the existing profile to the current user's UID
@@ -102,6 +109,33 @@ class AccountLinkingService {
       debugPrint(
         '[AccountLinkingService] Error checking for existing profiles: $e',
       );
+      
+      // ✅ ENHANCEMENT: Add retry logic for transient Firestore errors
+      if (e.toString().contains('unavailable') || e.toString().contains('deadline-exceeded')) {
+        debugPrint('[AccountLinkingService] 🔄 Retrying due to transient error...');
+        await Future.delayed(const Duration(seconds: 2));
+        
+        try {
+          // Retry the contact-based search only (most critical for cross-platform linking)
+          if (phoneNumber != null || email != null) {
+            final existingProfile = await _findExistingProfileByContact(
+              phoneNumber,
+              email,
+            );
+            
+            if (existingProfile != null) {
+              debugPrint(
+                '[AccountLinkingService] ✅ Retry successful: Found profile ${existingProfile.stallName}',
+              );
+              await _copyProfileToCurrentUser(existingProfile);
+              return existingProfile;
+            }
+          }
+        } catch (retryError) {
+          debugPrint('[AccountLinkingService] ❌ Retry also failed: $retryError');
+        }
+      }
+      
       return null;
     }
   }
@@ -229,11 +263,48 @@ class AccountLinkingService {
         debugPrint(
           '[AccountLinkingService] Successfully linked existing profile: ${existingProfile.stallName}',
         );
+        
+        // ✅ CRITICAL FIX: Trigger comprehensive data sync after successful profile linking
+        debugPrint('[AccountLinkingService] 🚀 Triggering comprehensive data sync for cross-platform consistency');
+        
+        try {
+          // Check if user needs full data sync (first time on this device, or stale data)
+          if (main.userDataSyncService.needsFullSync()) {
+            debugPrint('[AccountLinkingService] 📊 Full data sync needed - downloading all user data');
+            final syncResult = await main.userDataSyncService.performFullDataSync();
+            
+            if (syncResult.isSuccess) {
+              debugPrint('[AccountLinkingService] ✅ Data sync completed successfully');
+              debugPrint('[AccountLinkingService] 📊 Sync summary: ${syncResult.summary}');
+            } else {
+              debugPrint('[AccountLinkingService] ❌ Data sync failed: ${syncResult.errorMessage}');
+              // Continue anyway - user can still use the app with just profile data
+            }
+          } else {
+            debugPrint('[AccountLinkingService] ✅ Recent sync found - skipping full data sync');
+          }
+        } catch (syncError) {
+          debugPrint('[AccountLinkingService] ❌ Error during data sync: $syncError');
+          // Don't throw - profile linking succeeded, sync is secondary
+        }
+        
         return true;
       } else {
         debugPrint(
           '[AccountLinkingService] No existing profile found - user needs to create profile',
         );
+        
+        // Still check if we need to sync data for new profile creation
+        try {
+          if (main.userDataSyncService.needsFullSync()) {
+            debugPrint('[AccountLinkingService] 🆕 New user - performing initial data sync check');
+            await main.userDataSyncService.performFullDataSync();
+          }
+        } catch (syncError) {
+          debugPrint('[AccountLinkingService] Warning: Initial sync failed for new user: $syncError');
+          // Non-critical for new users
+        }
+        
         return false;
       }
     } catch (e) {

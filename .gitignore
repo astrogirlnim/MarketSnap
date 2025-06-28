@@ -20,6 +20,9 @@ package-lock.json
 !/marketsnap/ios/Pods/Pods.xcodeproj/
 !/marketsnap/ios/Pods/Target\ Support\ Files/
 
+# emulator data
+emulator-data/
+
 # backup files for local development
 backup/
 backup_before_test/

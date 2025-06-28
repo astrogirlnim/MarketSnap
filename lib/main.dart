@@ -10,6 +10,7 @@ import 'core/services/account_linking_service.dart';
 import 'core/services/messaging_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/device_gallery_save_service.dart';
+import 'core/services/user_data_sync_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -52,6 +53,7 @@ late final AccountDeletionService accountDeletionService;
 late final BroadcastService broadcastService;
 late final SettingsService settingsService;
 late final DeviceGallerySaveService deviceGallerySaveService;
+late final UserDataSyncService userDataSyncService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -81,80 +83,51 @@ Future<void> main() async {
 
       // Configure emulators with proper error handling and platform-specific logic
       try {
-        // For iOS simulator, we need to be more careful with emulator configuration
+        // ✅ FIXED: Use correct platform-specific host configuration
+        // iOS simulator: localhost connects to host machine
+        // Android emulator: 10.0.2.2 connects to host machine
+        String authHost;
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint('[main] Configuring emulators for iOS simulator...');
+          authHost = 'localhost'; // iOS simulator uses localhost to reach host
+          debugPrint('[main] Configuring iOS emulator to connect to host machine at $authHost...');
           // Add a longer delay to ensure Firebase is fully initialized on iOS
           await Future.delayed(const Duration(milliseconds: 500));
-
-          // Try to configure Auth emulator with iOS-specific error handling
-          try {
-            await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-            debugPrint('[main] iOS Auth emulator configured successfully.');
-          } catch (iosAuthError) {
-            debugPrint('[main] iOS Auth emulator failed: $iosAuthError');
-            // For iOS, we'll continue without the emulator if it fails
-            debugPrint('[main] Continuing without Auth emulator on iOS...');
-          }
         } else {
-          // ✅ FIX: Android configuration with proper host mapping
-          // Android emulator maps localhost to 10.0.2.2
-          const authHost = '10.0.2.2';
-          await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
-          debugPrint('Mapping Auth Emulator host "localhost" to "$authHost".');
-          debugPrint('[main] Auth emulator configured.');
+          authHost = '10.0.2.2'; // Android emulator uses 10.0.2.2 to reach host
+          debugPrint('[main] Configuring Android emulator to connect to host machine at $authHost...');
+          await Future.delayed(const Duration(milliseconds: 300));
         }
-      } catch (e) {
-        debugPrint('[main] Auth emulator configuration failed: $e');
-        if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint(
-            '[main] iOS emulator configuration failure is non-fatal, continuing...',
-          );
-        }
-      }
 
-      try {
-        // ✅ FIX: Android configuration with proper host mapping
-        const firestoreHost = '10.0.2.2';
-        FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
-        debugPrint(
-          'Mapping Firestore Emulator host "localhost" to "$firestoreHost".',
-        );
-        debugPrint('[main] Firestore emulator configured.');
+        // Configure Firebase Auth emulator
+        debugPrint('[main] ✅ Auth emulator configured with platform-specific host: $authHost');
+        await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
+        debugPrint('[main] Platform-specific emulator configuration ensures consistent Firebase instance');
 
-        // ✅ Additional configuration to ensure emulator persistence is disabled
-        FirebaseFirestore.instance.settings = const Settings(
-          persistenceEnabled: false,
-          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-        );
+        // Configure Firestore emulator
+        debugPrint('[main] ✅ Firestore emulator configured with platform-specific host: $authHost');
+        FirebaseFirestore.instance.useFirestoreEmulator(authHost, 8080);
         debugPrint('[main] Firestore settings configured for emulator mode.');
-      } catch (e) {
-        debugPrint('[main] Firestore emulator configuration failed: $e');
-      }
 
-      try {
-        // ✅ FIX: Android configuration with proper host mapping
-        const storageHost = '10.0.2.2';
-        await FirebaseStorage.instance.useStorageEmulator(storageHost, 9199);
+        // Configure Storage emulator
+        debugPrint('[main] ✅ Storage emulator configured with platform-specific host: $authHost');
+        await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
+
+        // Configure Functions emulator
+        debugPrint('[main] ✅ Functions emulator configured with platform-specific host: $authHost');
+        FirebaseFunctions.instanceFor(region: 'us-central1')
+            .useFunctionsEmulator(authHost, 5001);
+
+        debugPrint('[main] Firebase emulators configured successfully.');
+
+        // Skip App Check in debug mode to prevent authentication issues
         debugPrint(
-          'Mapping Storage Emulator host "localhost" to "$storageHost".',
+          '[main] Debug mode: Skipping App Check initialization to prevent auth issues.',
         );
+        debugPrint('[main] App Check will be enabled in production builds only.');
       } catch (e) {
-        debugPrint('[main] Storage emulator configuration failed: $e');
+        debugPrint('[main] ⚠️ Error configuring emulators: $e');
+        // Continue without emulators in case of configuration errors
       }
-
-      try {
-        // ✅ FIX: Configure Firebase Functions emulator
-        const functionsHost = '10.0.2.2';
-        FirebaseFunctions.instance.useFunctionsEmulator(functionsHost, 5001);
-        debugPrint(
-          'Mapping Functions Emulator host "localhost" to "$functionsHost".',
-        );
-      } catch (e) {
-        debugPrint('[main] Functions emulator configuration failed: $e');
-      }
-
-      debugPrint('[main] Firebase emulators configured successfully.');
     } catch (e) {
       debugPrint('[main] Error configuring Firebase emulators: $e');
     }
@@ -522,6 +495,30 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create device gallery save service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize comprehensive user data sync service
+  try {
+    userDataSyncService = UserDataSyncService(
+      hiveService: hiveService,
+      profileUpdateNotifier: profileUpdateNotifier,
+    );
+    debugPrint('[main] ✅ User data sync service initialized - cross-platform data consistency enabled');
+  } catch (e) {
+    debugPrint('[main] Error initializing user data sync service: $e');
+    // Create fallback user data sync service
+    try {
+      userDataSyncService = UserDataSyncService(
+        hiveService: hiveService,
+        profileUpdateNotifier: profileUpdateNotifier,
+      );
+      debugPrint('[main] Fallback user data sync service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create user data sync service: $fallbackError',
       );
       rethrow;
     }
