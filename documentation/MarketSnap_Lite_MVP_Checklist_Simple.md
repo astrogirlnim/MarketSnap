@@ -125,10 +125,10 @@ Legend:
   - [X] On message click, deep‑link to snap/story ✅ **DONE** - Complete deep-linking for snaps, stories, broadcasts, and messages
   - [X] Fallback in‑app banner if system push disabled ✅ **DONE** - In-app overlay notifications with auto-dismiss
 
-- [ ] **3. Broadcast Text & Location Tagging**
-  - [ ] UI modal to send ≤ 100 char broadcast; write to Firestore.
-  - [ ] Implement coarse location rounding (0.1°) before upload.
-  - [ ] Filter feed by distance if location data present.
+- [X] **3. Broadcast Text & Location Tagging** ✅ **COMPLETED**
+  - [X] UI modal to send ≤ 100 char broadcast; write to Firestore. ✅ **DONE** - Complete modal with 100-character validation and real-time feedback
+  - [X] Implement coarse location rounding (0.1°) before upload. ✅ **DONE** - Privacy-preserving location service with 0.1° precision (11km accuracy)
+  - [X] Filter feed by distance if location data present. ✅ **DONE** - Distance-based filtering with user location preferences
 
 - [ ] **4. Save‑to‑Device**
   - [ ] Persist posted media to OS gallery via `image_gallery_saver`.
