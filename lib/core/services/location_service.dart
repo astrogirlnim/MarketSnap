@@ -104,6 +104,24 @@ class LocationService {
 
       developer.log('[LocationService] 📍 Getting fresh location...');
 
+      // 🧪 TESTING MODE: Use mock location for emulator testing
+      // Remove this section when done testing
+      if (false) { // Set to false to disable mock location
+        developer.log('[LocationService] 🧪 Using mock location for testing');
+        final mockLocation = CoarseLocation.fromPrecise(
+          37.4220, // Googleplex latitude
+          -122.0841, // Googleplex longitude
+          name: 'Mountain View Farmers Market',
+        );
+        
+        // Cache the mock result
+        _cachedLocation = mockLocation;
+        _lastLocationUpdate = DateTime.now();
+        
+        developer.log('[LocationService] ✅ Mock coarse location: $mockLocation');
+        return mockLocation;
+      }
+
       // Ensure we have permission
       bool hasPermission = await isLocationAvailable();
       if (!hasPermission) {

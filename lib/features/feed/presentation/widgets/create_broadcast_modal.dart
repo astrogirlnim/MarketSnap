@@ -35,14 +35,14 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
   
   bool _includeLocation = false;
   bool _isPosting = false;
-  bool _locationAvailable = false;
+  bool _checkingLocation = false;
   String _locationStatus = '';
 
   @override
   void initState() {
     super.initState();
     _messageController.addListener(_onTextChanged);
-    _checkLocationAvailability();
+    _initializeLocationStatus();
   }
 
   @override
@@ -56,26 +56,29 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
     setState(() {}); // Rebuild to update character counter
   }
 
-  /// Check if location services are available and update UI accordingly
-  Future<void> _checkLocationAvailability() async {
+  /// Check if location is enabled in user settings
+  bool _isLocationEnabledInSettings() {
+    final settings = widget.hiveService.getUserSettings();
+    return settings?.enableCoarseLocation ?? false;
+  }
+
+  /// Initialize location status message without checking permissions
+  Future<void> _initializeLocationStatus() async {
     try {
-      final available = await _locationService.isLocationAvailable();
       final status = await _locationService.getLocationStatusMessage();
       
       if (mounted) {
         setState(() {
-          _locationAvailable = available;
           _locationStatus = status;
         });
       }
 
-      developer.log('[CreateBroadcastModal] Location available: $available, status: $status');
+      developer.log('[CreateBroadcastModal] Initial location status: $status');
     } catch (e) {
-      developer.log('[CreateBroadcastModal] Error checking location: $e');
+      developer.log('[CreateBroadcastModal] Error getting location status: $e');
       if (mounted) {
         setState(() {
-          _locationAvailable = false;
-          _locationStatus = 'Location status unknown';
+          _locationStatus = 'Location permission needed to tag broadcasts with your market area.';
         });
       }
     }
@@ -100,24 +103,35 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
       return;
     }
 
-    // Request permission if needed
-    if (!_locationAvailable) {
+    // Show loading state
+    setState(() {
+      _checkingLocation = true;
+    });
+
+    try {
       developer.log('[CreateBroadcastModal] Requesting location permission...');
       
       final granted = await _locationService.requestLocationPermission();
       
       if (granted) {
-        await _checkLocationAvailability(); // Refresh status
+        await _initializeLocationStatus(); // Refresh status
         setState(() {
           _includeLocation = true;
+          _checkingLocation = false;
         });
+        developer.log('[CreateBroadcastModal] ✅ Location permission granted, toggle enabled');
       } else {
+        setState(() {
+          _checkingLocation = false;
+        });
         _showLocationPermissionDialog();
       }
-    } else {
+    } catch (e) {
+      developer.log('[CreateBroadcastModal] ❌ Error requesting location permission: $e');
       setState(() {
-        _includeLocation = true;
+        _checkingLocation = false;
       });
+      _showLocationPermissionDialog();
     }
   }
 
@@ -155,8 +169,19 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              await _locationService.requestLocationPermission();
-              await _checkLocationAvailability();
+              
+              final granted = await _locationService.requestLocationPermission();
+              if (granted) {
+                await _initializeLocationStatus();
+                setState(() {
+                  _includeLocation = true;
+                });
+                developer.log('[CreateBroadcastModal] ✅ Location permission granted on retry');
+              } else {
+                developer.log('[CreateBroadcastModal] ❌ Location permission denied again');
+                // Could show another dialog or open app settings
+                await _locationService.requestLocationPermission(); // This might open settings
+              }
             },
             child: const Text('Try Again'),
           ),
@@ -396,11 +421,21 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                                 ),
                               ),
                             ),
-                            Switch(
-                              value: _includeLocation,
-                              onChanged: _onLocationToggled,
-                              activeColor: AppColors.leafGreen,
-                            ),
+                            if (_checkingLocation) 
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
+                                ),
+                              )
+                            else 
+                              Switch(
+                                value: _includeLocation,
+                                onChanged: _isLocationEnabledInSettings() ? _onLocationToggled : null,
+                                activeColor: AppColors.leafGreen,
+                              ),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
