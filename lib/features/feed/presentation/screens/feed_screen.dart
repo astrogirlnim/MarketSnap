@@ -228,12 +228,13 @@ class _FeedScreenState extends State<FeedScreen> {
               broadcast: broadcast,
               isCurrentUserPost: broadcast.vendorUid == _feedService.currentUserId,
                              onDelete: () async {
+                 // Capture context before async operation
+                 final messenger = ScaffoldMessenger.of(context);
                  try {
                    await broadcastService.deleteBroadcast(broadcast.id);
                    developer.log('[FeedScreen] Broadcast deleted: ${broadcast.id}');
                  } catch (e) {
                    developer.log('[FeedScreen] Error deleting broadcast: $e');
-                   final messenger = ScaffoldMessenger.of(context);
                    if (mounted) {
                      messenger.showSnackBar(
                        SnackBar(content: Text('Failed to delete broadcast: $e')),

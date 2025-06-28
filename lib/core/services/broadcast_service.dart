@@ -216,9 +216,6 @@ class BroadcastService {
   /// Update broadcasts with fresh profile data from cache
   Future<List<Broadcast>> _updateBroadcastsWithFreshProfiles(List<Broadcast> broadcasts) async {
     try {
-      // Get all unique vendor UIDs
-      final vendorUids = broadcasts.map((b) => b.vendorUid).toSet();
-      
       // Update broadcasts with cached profile data
       final updatedBroadcasts = <Broadcast>[];
       
