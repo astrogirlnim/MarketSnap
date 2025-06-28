@@ -126,6 +126,45 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         backgroundColor: AppColors.eggshell,
         foregroundColor: AppColors.soilCharcoal,
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(40),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.sunsetAmber.withValues(alpha: 0.1),
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.sunsetAmber.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.auto_delete,
+                  size: 16,
+                  color: AppColors.sunsetAmber,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'All conversations are ephemeral and expire after 24h',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       backgroundColor: AppColors.cornsilk,
       floatingActionButton: FloatingActionButton(
