@@ -30,6 +30,7 @@ import 'core/models/user_type.dart';
 import 'core/services/profile_update_notifier.dart';
 import 'features/feed/application/feed_service.dart';
 import 'core/services/account_deletion_service.dart';
+import 'core/services/follow_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -40,6 +41,7 @@ late final LutFilterService lutFilterService;
 late final ProfileService profileService;
 late final AccountLinkingService accountLinkingService;
 late final MessagingService messagingService;
+late final FollowService followService;
 late final PushNotificationService pushNotificationService;
 late final ProfileUpdateNotifier profileUpdateNotifier;
 late final FeedService feedService;
@@ -364,11 +366,30 @@ Future<void> main() async {
     }
   }
 
+  // Initialize follow service
+  try {
+    followService = FollowService();
+    debugPrint('[main] Follow service initialized.');
+  } catch (e) {
+    debugPrint('[main] Error initializing follow service: $e');
+    // Create basic follow service
+    try {
+      followService = FollowService();
+      debugPrint('[main] Basic follow service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create follow service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
   // Initialize push notification service
   try {
     pushNotificationService = PushNotificationService(
       navigatorKey: navigatorKey,
       profileService: profileService,
+      followService: followService,
     );
     await pushNotificationService.initialize();
     debugPrint('[main] Push notification service initialized.');
@@ -379,6 +400,7 @@ Future<void> main() async {
       pushNotificationService = PushNotificationService(
         navigatorKey: navigatorKey,
         profileService: profileService,
+        followService: followService,
       );
       debugPrint('[main] Basic push notification service created.');
     } catch (fallbackError) {
