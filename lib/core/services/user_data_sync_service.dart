@@ -2,12 +2,8 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:marketsnap/core/models/broadcast.dart';
 import 'package:marketsnap/core/models/vendor_profile.dart';
 import 'package:marketsnap/core/models/regular_user_profile.dart';
-import 'package:marketsnap/features/feed/domain/models/snap_model.dart';
-import 'package:marketsnap/core/models/message.dart';
-import 'package:marketsnap/features/messaging/domain/models/conversation.dart';
 import 'package:marketsnap/core/services/hive_service.dart';
 import 'package:marketsnap/core/services/profile_update_notifier.dart';
 

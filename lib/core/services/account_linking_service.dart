@@ -1,12 +1,9 @@
-import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/vendor_profile.dart';
 import '../../features/auth/application/auth_service.dart';
 import '../../features/profile/application/profile_service.dart';
-import '../../core/services/user_data_sync_service.dart';
 import '../../main.dart' as main;
 
 /// Service for handling account linking and profile discovery
