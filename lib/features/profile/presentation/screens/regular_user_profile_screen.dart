@@ -10,9 +10,7 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
-import '../../../settings/application/settings_service.dart';
 import '../../../auth/application/auth_service.dart';
-import '../../../../main.dart' as main;
 
 /// Regular User Profile Form Screen
 /// Simplified profile for regular users (no stall info, just basic profile)
@@ -329,11 +327,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   void _navigateToSettings() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SettingsScreen(
-          settingsService: SettingsService(hiveService: main.hiveService),
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
     );
   }
 

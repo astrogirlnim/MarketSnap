@@ -12,11 +12,12 @@ class Broadcast {
   final String message;
   final DateTime createdAt;
   final DateTime expiresAt;
-  
+
   // Optional location data (coarse rounded to 0.1° precision)
   final double? latitude;
   final double? longitude;
-  final String? locationName; // Human readable location (e.g., "Springfield Farmers Market")
+  final String?
+  locationName; // Human readable location (e.g., "Springfield Farmers Market")
 
   const Broadcast({
     required this.id,
@@ -43,8 +44,12 @@ class Broadcast {
       stallName: data['stallName'] ?? '',
       message: data['message'] ?? '',
       createdAt: (data['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
-      expiresAt: (data['expiresAt'] as Timestamp? ?? 
-          Timestamp.fromDate(DateTime.now().add(const Duration(hours: 24)))).toDate(),
+      expiresAt:
+          (data['expiresAt'] as Timestamp? ??
+                  Timestamp.fromDate(
+                    DateTime.now().add(const Duration(hours: 24)),
+                  ))
+              .toDate(),
       latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
       locationName: data['locationName'],
@@ -74,16 +79,19 @@ class Broadcast {
   /// Uses Haversine formula for accurate distance calculation
   double? distanceToKm(double? otherLat, double? otherLng) {
     if (!hasLocation || otherLat == null || otherLng == null) return null;
-    
+
     const double earthRadiusKm = 6371.0;
     final lat1Rad = latitude! * (3.14159265359 / 180);
     final lat2Rad = otherLat * (3.14159265359 / 180);
     final deltaLatRad = (otherLat - latitude!) * (3.14159265359 / 180);
     final deltaLngRad = (otherLng - longitude!) * (3.14159265359 / 180);
 
-    final a = sin(deltaLatRad / 2) * sin(deltaLatRad / 2) +
-        cos(lat1Rad) * cos(lat2Rad) * 
-        sin(deltaLngRad / 2) * sin(deltaLngRad / 2);
+    final a =
+        sin(deltaLatRad / 2) * sin(deltaLatRad / 2) +
+        cos(lat1Rad) *
+            cos(lat2Rad) *
+            sin(deltaLngRad / 2) *
+            sin(deltaLngRad / 2);
     final c = 2 * asin(sqrt(a));
 
     return earthRadiusKm * c;
@@ -155,7 +163,7 @@ class CoarseLocation {
     // Round to 0.1 degree precision (roughly 11km at equator)
     final roundedLat = (lat * 10).round() / 10;
     final roundedLng = (lng * 10).round() / 10;
-    
+
     return CoarseLocation(
       latitude: roundedLat,
       longitude: roundedLng,
@@ -167,4 +175,4 @@ class CoarseLocation {
   String toString() {
     return 'CoarseLocation(lat: $latitude, lng: $longitude, name: $name)';
   }
-} 
+}

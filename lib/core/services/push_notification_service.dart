@@ -16,7 +16,7 @@ class PushNotificationService {
   // Track notification permission status
   NotificationSettings? _notificationSettings;
   bool _hasRequestedPermissions = false;
-  
+
   // In-app notification overlay key for fallback banners
   OverlayEntry? _currentInAppNotification;
 
@@ -28,24 +28,30 @@ class PushNotificationService {
 
   /// Initialize push notification service with comprehensive setup
   Future<void> initialize() async {
-    debugPrint('[PushNotificationService] 🚀 Initializing push notification service');
-    
+    debugPrint(
+      '[PushNotificationService] 🚀 Initializing push notification service',
+    );
+
     try {
       // Request permissions with proper settings
       await requestPermissions();
-      
+
       // Set up message handlers
       await _setupMessageHandlers();
-      
+
       // Set up token refresh listener
       _setupTokenRefreshListener();
-      
+
       // Set up foreground message handler
       _setupForegroundMessageHandler();
-      
-      debugPrint('[PushNotificationService] ✅ Push notification service initialized successfully');
+
+      debugPrint(
+        '[PushNotificationService] ✅ Push notification service initialized successfully',
+      );
     } catch (e) {
-      debugPrint('[PushNotificationService] ❌ Error initializing push notification service: $e');
+      debugPrint(
+        '[PushNotificationService] ❌ Error initializing push notification service: $e',
+      );
       rethrow;
     }
   }
@@ -53,12 +59,15 @@ class PushNotificationService {
   /// Request FCM permissions with comprehensive settings
   Future<bool> requestPermissions() async {
     if (_hasRequestedPermissions) {
-      debugPrint('[PushNotificationService] 📱 Permissions already requested, returning cached result');
-      return _notificationSettings?.authorizationStatus == AuthorizationStatus.authorized;
+      debugPrint(
+        '[PushNotificationService] 📱 Permissions already requested, returning cached result',
+      );
+      return _notificationSettings?.authorizationStatus ==
+          AuthorizationStatus.authorized;
     }
 
     debugPrint('[PushNotificationService] 📱 Requesting FCM permissions');
-    
+
     try {
       _notificationSettings = await _fcm.requestPermission(
         alert: true,
@@ -71,23 +80,39 @@ class PushNotificationService {
       );
 
       _hasRequestedPermissions = true;
-      
-      final isAuthorized = _notificationSettings?.authorizationStatus == AuthorizationStatus.authorized;
-      
-      debugPrint('[PushNotificationService] 📱 Permission status: ${_notificationSettings?.authorizationStatus}');
-      debugPrint('[PushNotificationService] 🔔 Alert enabled: ${_notificationSettings?.alert}');
-      debugPrint('[PushNotificationService] 🔊 Sound enabled: ${_notificationSettings?.sound}');
-      debugPrint('[PushNotificationService] 🔢 Badge enabled: ${_notificationSettings?.badge}');
-      
+
+      final isAuthorized =
+          _notificationSettings?.authorizationStatus ==
+          AuthorizationStatus.authorized;
+
+      debugPrint(
+        '[PushNotificationService] 📱 Permission status: ${_notificationSettings?.authorizationStatus}',
+      );
+      debugPrint(
+        '[PushNotificationService] 🔔 Alert enabled: ${_notificationSettings?.alert}',
+      );
+      debugPrint(
+        '[PushNotificationService] 🔊 Sound enabled: ${_notificationSettings?.sound}',
+      );
+      debugPrint(
+        '[PushNotificationService] 🔢 Badge enabled: ${_notificationSettings?.badge}',
+      );
+
       if (isAuthorized) {
-        debugPrint('[PushNotificationService] ✅ Push notifications are authorized');
+        debugPrint(
+          '[PushNotificationService] ✅ Push notifications are authorized',
+        );
       } else {
-        debugPrint('[PushNotificationService] ⚠️ Push notifications not authorized - will use in-app fallback');
+        debugPrint(
+          '[PushNotificationService] ⚠️ Push notifications not authorized - will use in-app fallback',
+        );
       }
 
       return isAuthorized;
     } catch (e) {
-      debugPrint('[PushNotificationService] ❌ Error requesting permissions: $e');
+      debugPrint(
+        '[PushNotificationService] ❌ Error requesting permissions: $e',
+      );
       _hasRequestedPermissions = true; // Prevent infinite retry
       return false;
     }
@@ -95,26 +120,32 @@ class PushNotificationService {
 
   /// Check if push notifications are currently authorized
   bool get isAuthorized {
-    return _notificationSettings?.authorizationStatus == AuthorizationStatus.authorized;
+    return _notificationSettings?.authorizationStatus ==
+        AuthorizationStatus.authorized;
   }
 
   /// Check if the user has denied push notifications
   bool get isDenied {
-    return _notificationSettings?.authorizationStatus == AuthorizationStatus.denied;
+    return _notificationSettings?.authorizationStatus ==
+        AuthorizationStatus.denied;
   }
 
   /// Set up message handlers for background and terminated app states
   Future<void> _setupMessageHandlers() async {
     // Handler for when a message is opened from a notification (app in background)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('[PushNotificationService] 📱 Notification opened from background: ${message.data}');
+      debugPrint(
+        '[PushNotificationService] 📱 Notification opened from background: ${message.data}',
+      );
       _handleMessage(message.data);
     });
 
     // Handler for when the app is opened from a terminated state
     final RemoteMessage? initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('[PushNotificationService] 📱 Notification opened from terminated state: ${initialMessage.data}');
+      debugPrint(
+        '[PushNotificationService] 📱 Notification opened from terminated state: ${initialMessage.data}',
+      );
       // Delay handling to ensure app is fully initialized
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleMessage(initialMessage.data);
@@ -125,8 +156,10 @@ class PushNotificationService {
   /// Set up foreground message handler with in-app banner fallback
   void _setupForegroundMessageHandler() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('[PushNotificationService] 📱 Foreground message received: ${message.notification?.title}');
-      
+      debugPrint(
+        '[PushNotificationService] 📱 Foreground message received: ${message.notification?.title}',
+      );
+
       // Show in-app banner for foreground messages
       _showInAppNotificationBanner(message);
     });
@@ -134,28 +167,38 @@ class PushNotificationService {
 
   /// Set up FCM token refresh listener
   void _setupTokenRefreshListener() {
-    _fcm.onTokenRefresh.listen((String newToken) {
-      debugPrint('[PushNotificationService] 🔄 FCM token refreshed: ${newToken.substring(0, 20)}...');
-      _handleTokenRefresh(newToken);
-    }).onError((error) {
-      debugPrint('[PushNotificationService] ❌ Error in token refresh listener: $error');
-    });
+    _fcm.onTokenRefresh
+        .listen((String newToken) {
+          debugPrint(
+            '[PushNotificationService] 🔄 FCM token refreshed: ${newToken.substring(0, 20)}...',
+          );
+          _handleTokenRefresh(newToken);
+        })
+        .onError((error) {
+          debugPrint(
+            '[PushNotificationService] ❌ Error in token refresh listener: $error',
+          );
+        });
   }
 
   /// Handle FCM token refresh by updating all user profiles and followed vendors
   Future<void> _handleTokenRefresh(String newToken) async {
     try {
       debugPrint('[PushNotificationService] 🔄 Handling token refresh');
-      
+
       // Save new token to user profile
       await profileService.saveFCMToken(newToken);
-      
+
       // Update token for all followed vendors
       await followService.updateFCMTokenForFollowedVendors();
-      
-      debugPrint('[PushNotificationService] ✅ Token refresh handled successfully');
+
+      debugPrint(
+        '[PushNotificationService] ✅ Token refresh handled successfully',
+      );
     } catch (e) {
-      debugPrint('[PushNotificationService] ❌ Error handling token refresh: $e');
+      debugPrint(
+        '[PushNotificationService] ❌ Error handling token refresh: $e',
+      );
     }
   }
 
@@ -180,7 +223,9 @@ class PushNotificationService {
           await _handleNewBroadcastDeepLink(data);
           break;
         default:
-          debugPrint('[PushNotificationService] ⚠️ Unknown notification type: $type');
+          debugPrint(
+            '[PushNotificationService] ⚠️ Unknown notification type: $type',
+          );
       }
     } catch (e) {
       debugPrint('[PushNotificationService] ❌ Error handling message: $e');
@@ -191,22 +236,30 @@ class PushNotificationService {
   Future<void> _handleNewMessageDeepLink(Map<String, dynamic> data) async {
     final fromUid = data['fromUid'];
     if (fromUid == null) {
-      debugPrint('[PushNotificationService] ❌ Missing fromUid in new_message notification');
+      debugPrint(
+        '[PushNotificationService] ❌ Missing fromUid in new_message notification',
+      );
       return;
     }
 
     // Fetch the user profile to navigate to the chat screen
-    final fromUser = await profileService.loadAnyUserProfileFromFirestore(fromUid);
+    final fromUser = await profileService.loadAnyUserProfileFromFirestore(
+      fromUid,
+    );
 
     if (fromUser != null) {
-      debugPrint('[PushNotificationService] 📱 Navigating to chat with ${fromUser.displayName}');
+      debugPrint(
+        '[PushNotificationService] 📱 Navigating to chat with ${fromUser.displayName}',
+      );
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => ChatScreen(otherUser: fromUser),
         ),
       );
     } else {
-      debugPrint('[PushNotificationService] ❌ Could not load user profile for fromUid: $fromUid');
+      debugPrint(
+        '[PushNotificationService] ❌ Could not load user profile for fromUid: $fromUid',
+      );
     }
   }
 
@@ -214,63 +267,69 @@ class PushNotificationService {
   Future<void> _handleNewSnapDeepLink(Map<String, dynamic> data) async {
     final vendorId = data['vendorId'];
     final snapId = data['snapId'];
-    
+
     if (vendorId == null || snapId == null) {
-      debugPrint('[PushNotificationService] ❌ Missing vendorId or snapId in new_snap notification');
+      debugPrint(
+        '[PushNotificationService] ❌ Missing vendorId or snapId in new_snap notification',
+      );
       return;
     }
 
-    debugPrint('[PushNotificationService] 📱 Navigating to snap $snapId from vendor $vendorId');
-    
+    debugPrint(
+      '[PushNotificationService] 📱 Navigating to snap $snapId from vendor $vendorId',
+    );
+
     // Navigate to feed screen and focus on the specific vendor's content
     navigatorKey.currentState?.pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const FeedScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const FeedScreen()),
       (route) => false, // Remove all previous routes
     );
-    
+
     // TODO: Add logic to scroll to specific snap once feed screen supports it
   }
 
-  /// Handle deep-link for new story notifications  
+  /// Handle deep-link for new story notifications
   Future<void> _handleNewStoryDeepLink(Map<String, dynamic> data) async {
     final vendorId = data['vendorId'];
-    
+
     if (vendorId == null) {
-      debugPrint('[PushNotificationService] ❌ Missing vendorId in new_story notification');
+      debugPrint(
+        '[PushNotificationService] ❌ Missing vendorId in new_story notification',
+      );
       return;
     }
 
-    debugPrint('[PushNotificationService] 📱 Navigating to story from vendor $vendorId');
-    
+    debugPrint(
+      '[PushNotificationService] 📱 Navigating to story from vendor $vendorId',
+    );
+
     // Navigate to feed screen where stories are displayed
     navigatorKey.currentState?.pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const FeedScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const FeedScreen()),
       (route) => false,
     );
-    
+
     // TODO: Add logic to focus on specific vendor's story once story carousel supports it
   }
 
   /// Handle deep-link for new broadcast notifications
   Future<void> _handleNewBroadcastDeepLink(Map<String, dynamic> data) async {
     final vendorId = data['vendorId'];
-    
+
     if (vendorId == null) {
-      debugPrint('[PushNotificationService] ❌ Missing vendorId in new_broadcast notification');
+      debugPrint(
+        '[PushNotificationService] ❌ Missing vendorId in new_broadcast notification',
+      );
       return;
     }
 
-    debugPrint('[PushNotificationService] 📱 Navigating to broadcast from vendor $vendorId');
-    
+    debugPrint(
+      '[PushNotificationService] 📱 Navigating to broadcast from vendor $vendorId',
+    );
+
     // Navigate to feed screen where broadcasts would be displayed
     navigatorKey.currentState?.pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const FeedScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const FeedScreen()),
       (route) => false,
     );
   }
@@ -279,7 +338,9 @@ class PushNotificationService {
   void _showInAppNotificationBanner(RemoteMessage message) {
     final context = navigatorKey.currentContext;
     if (context == null) {
-      debugPrint('[PushNotificationService] ❌ No context available for in-app banner');
+      debugPrint(
+        '[PushNotificationService] ❌ No context available for in-app banner',
+      );
       return;
     }
 
@@ -288,11 +349,15 @@ class PushNotificationService {
 
     final notification = message.notification;
     if (notification == null) {
-      debugPrint('[PushNotificationService] ❌ No notification content for in-app banner');
+      debugPrint(
+        '[PushNotificationService] ❌ No notification content for in-app banner',
+      );
       return;
     }
 
-    debugPrint('[PushNotificationService] 📱 Showing in-app notification banner: ${notification.title}');
+    debugPrint(
+      '[PushNotificationService] 📱 Showing in-app notification banner: ${notification.title}',
+    );
 
     // Create overlay entry for in-app notification banner
     _currentInAppNotification = OverlayEntry(
@@ -309,7 +374,9 @@ class PushNotificationService {
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
             child: GestureDetector(
@@ -332,9 +399,8 @@ class PushNotificationService {
                       children: [
                         Text(
                           notification.title ?? 'New Notification',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -378,7 +444,9 @@ class PushNotificationService {
   /// Clear current in-app notification banner
   void _clearInAppNotification() {
     if (_currentInAppNotification != null) {
-      debugPrint('[PushNotificationService] 📱 Clearing in-app notification banner');
+      debugPrint(
+        '[PushNotificationService] 📱 Clearing in-app notification banner',
+      );
       _currentInAppNotification!.remove();
       _currentInAppNotification = null;
     }
@@ -389,7 +457,9 @@ class PushNotificationService {
     try {
       final token = await _fcm.getToken();
       if (token != null) {
-        debugPrint('[PushNotificationService] 📱 FCM token obtained: ${token.substring(0, 20)}...');
+        debugPrint(
+          '[PushNotificationService] 📱 FCM token obtained: ${token.substring(0, 20)}...',
+        );
       } else {
         debugPrint('[PushNotificationService] ❌ No FCM token available');
       }
@@ -403,8 +473,10 @@ class PushNotificationService {
   /// Check if FCM token refresh is needed and handle it
   Future<void> refreshTokenIfNeeded() async {
     try {
-      debugPrint('[PushNotificationService] 🔄 Checking if token refresh is needed');
-      
+      debugPrint(
+        '[PushNotificationService] 🔄 Checking if token refresh is needed',
+      );
+
       final currentToken = await getFCMToken();
       if (currentToken != null) {
         await _handleTokenRefresh(currentToken);
@@ -416,7 +488,9 @@ class PushNotificationService {
 
   /// Dispose resources
   void dispose() {
-    debugPrint('[PushNotificationService] 🧹 Disposing push notification service');
+    debugPrint(
+      '[PushNotificationService] 🧹 Disposing push notification service',
+    );
     _clearInAppNotification();
   }
 }

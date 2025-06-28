@@ -96,10 +96,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
 
                   // Wicker Mascot - Bigger and more prominent with welcome blink animation
                   const Center(
-                    child: BasketIcon(
-                      size: 240,
-                      enableWelcomeAnimation: true,
-                    ),
+                    child: BasketIcon(size: 240, enableWelcomeAnimation: true),
                   ),
 
                   const SizedBox(height: AppSpacing.lg),
@@ -109,9 +106,7 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     text: 'Sign Up',
                     icon: Icons.storefront_outlined,
                     onPressed: () {
-                      debugPrint(
-                        '[AuthWelcomeScreen] Sign Up tapped',
-                      );
+                      debugPrint('[AuthWelcomeScreen] Sign Up tapped');
                       _navigateToAuth(context, isIOSEmulator, true);
                     },
                   ),

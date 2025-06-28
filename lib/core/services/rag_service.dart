@@ -274,7 +274,7 @@ class RAGService {
         userPreferences = await _feedbackService.getUserPreferences(
           userId: currentUserId,
         );
-        
+
         if (userPreferences.isNotEmpty) {
           developer.log(
             '[RAGService] User preferences loaded: ${userPreferences['preferredContentType']} content, ${userPreferences['preferredKeywords']?.length ?? 0} preferred keywords',
@@ -467,7 +467,7 @@ class RAGService {
         '[RAGService] ========== ENHANCEMENT REQUEST COMPLETE ==========',
         name: 'RAGService',
       );
-      
+
       return enhancementData;
     } catch (e) {
       developer.log(
@@ -492,7 +492,7 @@ class RAGService {
       if (enhancementData.hasValidRecipe) {
         final recipe = enhancementData.recipe!;
         final recipeHash = _generateRecipeHash(recipe);
-        
+
         _feedbackService.recordRecipeFeedback(
           snapId: snapId,
           vendorId: vendorId,

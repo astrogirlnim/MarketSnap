@@ -26,7 +26,7 @@ class StoryCarouselWidget extends StatefulWidget {
 class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
   // Use global feed service instance
   final FeedService _feedService = feedService;
-  
+
   // Track which stories are being deleted
   final Set<String> _deletingStoryIds = {};
 
@@ -173,24 +173,18 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
   /// Show delete options for the current user's story
   Future<void> _showStoryDeleteOptions(StoryItem story) async {
     HapticFeedback.mediumImpact();
-    
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Delete Story?',
-          style: AppTypography.h2.copyWith(
-            color: AppColors.soilCharcoal,
-          ),
+          style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
         ),
         content: Text(
           'This will delete all ${story.snaps.length} ${story.snaps.length == 1 ? 'post' : 'posts'} in this story. This action cannot be undone.',
-          style: AppTypography.body.copyWith(
-            color: AppColors.soilTaupe,
-          ),
+          style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
         ),
         actions: [
           TextButton(
@@ -226,9 +220,13 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
 
   /// Delete all snaps in a story
   Future<void> _deleteStory(StoryItem story) async {
-    debugPrint('[StoryCarouselWidget] 🗑️ Starting story deletion for vendor: ${story.vendorId}');
-    debugPrint('[StoryCarouselWidget] 📝 Story contains ${story.snaps.length} snaps');
-    
+    debugPrint(
+      '[StoryCarouselWidget] 🗑️ Starting story deletion for vendor: ${story.vendorId}',
+    );
+    debugPrint(
+      '[StoryCarouselWidget] 📝 Story contains ${story.snaps.length} snaps',
+    );
+
     setState(() {
       _deletingStoryIds.add(story.vendorId);
     });
@@ -240,15 +238,21 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
       // Delete each snap in the story
       for (int i = 0; i < story.snaps.length; i++) {
         final snap = story.snaps[i];
-        debugPrint('[StoryCarouselWidget] 🗑️ Deleting snap ${i + 1}/${story.snaps.length}: ${snap.id}');
-        
+        debugPrint(
+          '[StoryCarouselWidget] 🗑️ Deleting snap ${i + 1}/${story.snaps.length}: ${snap.id}',
+        );
+
         final success = await _feedService.deleteSnap(snap.id);
         if (success) {
           successCount++;
-          debugPrint('[StoryCarouselWidget] ✅ Successfully deleted snap: ${snap.id}');
+          debugPrint(
+            '[StoryCarouselWidget] ✅ Successfully deleted snap: ${snap.id}',
+          );
         } else {
           failureCount++;
-          debugPrint('[StoryCarouselWidget] ❌ Failed to delete snap: ${snap.id}');
+          debugPrint(
+            '[StoryCarouselWidget] ❌ Failed to delete snap: ${snap.id}',
+          );
         }
       }
 
@@ -259,8 +263,10 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
 
         if (failureCount == 0) {
           // All snaps deleted successfully
-          debugPrint('[StoryCarouselWidget] 🎉 Story deletion completed successfully');
-          
+          debugPrint(
+            '[StoryCarouselWidget] 🎉 Story deletion completed successfully',
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -288,8 +294,10 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
           );
         } else if (successCount > 0) {
           // Partial success
-          debugPrint('[StoryCarouselWidget] ⚠️ Story deletion partially completed: $successCount/$successCount+$failureCount');
-          
+          debugPrint(
+            '[StoryCarouselWidget] ⚠️ Story deletion partially completed: $successCount/$successCount+$failureCount',
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -319,8 +327,10 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
           );
         } else {
           // Complete failure
-          debugPrint('[StoryCarouselWidget] ❌ Story deletion completely failed');
-          
+          debugPrint(
+            '[StoryCarouselWidget] ❌ Story deletion completely failed',
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -353,24 +363,19 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
           );
         }
       }
-
     } catch (error) {
       debugPrint('[StoryCarouselWidget] ❌ Story deletion error: $error');
-      
+
       if (mounted) {
         setState(() {
           _deletingStoryIds.remove(story.vendorId);
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'An error occurred while deleting. Please try again.',

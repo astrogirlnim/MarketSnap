@@ -9,6 +9,7 @@ import 'core/services/background_sync_service.dart';
 import 'core/services/account_linking_service.dart';
 import 'core/services/messaging_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/device_gallery_save_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,6 +33,7 @@ import 'features/feed/application/feed_service.dart';
 import 'core/services/account_deletion_service.dart';
 import 'core/services/follow_service.dart';
 import 'core/services/broadcast_service.dart';
+import 'features/settings/application/settings_service.dart';
 
 // It's better to use a service locator like get_it, but for this stage,
 // a global variable is simple and effective.
@@ -48,6 +50,8 @@ late final ProfileUpdateNotifier profileUpdateNotifier;
 late final FeedService feedService;
 late final AccountDeletionService accountDeletionService;
 late final BroadcastService broadcastService;
+late final SettingsService settingsService;
+late final DeviceGallerySaveService deviceGallerySaveService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -424,9 +428,7 @@ Future<void> main() async {
       feedService = FeedService(profileUpdateNotifier: profileUpdateNotifier);
       debugPrint('[main] Basic feed service created.');
     } catch (fallbackError) {
-      debugPrint(
-        '[main] CRITICAL: Cannot create feed service: $fallbackError',
-      );
+      debugPrint('[main] CRITICAL: Cannot create feed service: $fallbackError');
       rethrow;
     }
   }
@@ -476,6 +478,50 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create broadcast service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize settings service for Phase 4.4 Save-to-Device functionality
+  try {
+    settingsService = SettingsService(hiveService: hiveService);
+    debugPrint('[main] ✅ Settings service initialized for Phase 4.4');
+  } catch (e) {
+    debugPrint('[main] Error initializing settings service: $e');
+    // Create fallback settings service
+    try {
+      settingsService = SettingsService(hiveService: hiveService);
+      debugPrint('[main] Fallback settings service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create settings service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize device gallery save service for Phase 4.4 Save-to-Device functionality
+  try {
+    deviceGallerySaveService = DeviceGallerySaveService(
+      hiveService: hiveService,
+      settingsService: settingsService,
+    );
+    debugPrint(
+      '[main] ✅ Device gallery save service initialized for Phase 4.4',
+    );
+  } catch (e) {
+    debugPrint('[main] Error initializing device gallery save service: $e');
+    // Create fallback device gallery save service
+    try {
+      deviceGallerySaveService = DeviceGallerySaveService(
+        hiveService: hiveService,
+        settingsService: settingsService,
+      );
+      debugPrint('[main] Fallback device gallery save service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create device gallery save service: $fallbackError',
       );
       rethrow;
     }

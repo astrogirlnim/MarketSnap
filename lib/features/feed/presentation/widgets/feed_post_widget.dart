@@ -35,7 +35,7 @@ class FeedPostWidget extends StatefulWidget {
 class _FeedPostWidgetState extends State<FeedPostWidget> {
   // Use global feed service instance
   final FeedService _feedService = feedService;
-  
+
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
   bool _isDeleting = false; // Track deletion state
@@ -630,9 +630,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.harvestOrange.withAlpha(77),
-        ),
+        border: Border.all(color: AppColors.harvestOrange.withAlpha(77)),
         boxShadow: [
           BoxShadow(
             color: AppColors.soilTaupe.withAlpha(26),
@@ -805,7 +803,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
               if (faqs.isNotEmpty) {
                 _trackAction(
                   contentType: 'faq',
-                  contentId: faqs.first.vendorId, // Using vendorId as FAQ ID for now
+                  contentId:
+                      faqs.first.vendorId, // Using vendorId as FAQ ID for now
                   contentTitle: faqs.first.question,
                   action: RAGFeedbackAction.expand,
                   relevanceScore: faqs.first.score,
@@ -819,13 +818,16 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           if (_isFAQExpanded) ...[
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: Column(
                 children: faqs
                     .take(3)
-                    .map(
-                      (faq) => _buildFAQItem(faq),
-                    )
+                    .map((faq) => _buildFAQItem(faq))
                     .toList(),
               ),
             ),
@@ -859,9 +861,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           const SizedBox(height: 4),
           Text(
             'A: ${faq.answer}',
-            style: AppTypography.body.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
           ),
           const SizedBox(height: AppSpacing.md),
           _FeedbackInteraction(
@@ -903,7 +903,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       snapId: widget.snap.id,
       vendorId: widget.snap.vendorId,
       action: action,
-      contentType: contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentType: contentType == 'recipe'
+          ? RAGContentType.recipe
+          : RAGContentType.faq,
       contentId: contentId,
       contentTitle: contentTitle,
       relevanceScore: relevanceScore,
@@ -927,8 +929,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       snapId: widget.snap.id,
       vendorId: widget.snap.vendorId,
       action: action,
-      contentType:
-          contentType == 'recipe' ? RAGContentType.recipe : RAGContentType.faq,
+      contentType: contentType == 'recipe'
+          ? RAGContentType.recipe
+          : RAGContentType.faq,
       contentId: contentId,
       contentTitle: contentTitle,
       relevanceScore: relevanceScore,
@@ -950,9 +953,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
     }
@@ -960,31 +961,26 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Generate consistent recipe hash for tracking
   String _generateRecipeHash(RecipeSnippet recipe) {
-    final combinedString = '${recipe.recipeName}_${recipe.ingredients.join('_')}';
+    final combinedString =
+        '${recipe.recipeName}_${recipe.ingredients.join('_')}';
     return combinedString.hashCode.toString();
   }
 
   /// Show confirmation dialog before deleting the snap
   Future<void> _showDeleteConfirmation() async {
     HapticFeedback.mediumImpact();
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Delete ${widget.snap.mediaType == MediaType.video ? 'Video' : 'Photo'}?',
-          style: AppTypography.h2.copyWith(
-            color: AppColors.soilCharcoal,
-          ),
+          style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
         ),
         content: Text(
           'This action cannot be undone. Your ${widget.snap.mediaType == MediaType.video ? 'video' : 'photo'} and caption will be permanently deleted.',
-          style: AppTypography.body.copyWith(
-            color: AppColors.soilTaupe,
-          ),
+          style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
         ),
         actions: [
           TextButton(
@@ -1021,19 +1017,21 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Delete the snap using FeedService
   Future<void> _deleteSnap() async {
-    debugPrint('[FeedPostWidget] 🗑️ Starting snap deletion for ${widget.snap.id}');
-    
+    debugPrint(
+      '[FeedPostWidget] 🗑️ Starting snap deletion for ${widget.snap.id}',
+    );
+
     setState(() {
       _isDeleting = true;
     });
 
     try {
       final success = await _feedService.deleteSnap(widget.snap.id);
-      
+
       if (mounted) {
         if (success) {
           debugPrint('[FeedPostWidget] ✅ Snap deletion successful');
-          
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1060,13 +1058,12 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
               ),
             ),
           );
-          
+
           // Note: The UI will automatically update via the FeedService streams
           // No need to manually remove this widget from the UI
-          
         } else {
           debugPrint('[FeedPostWidget] ❌ Snap deletion failed');
-          
+
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1099,30 +1096,25 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
           );
         }
-        
+
         setState(() {
           _isDeleting = false;
         });
       }
-      
     } catch (error) {
       debugPrint('[FeedPostWidget] ❌ Snap deletion error: $error');
-      
+
       if (mounted) {
         setState(() {
           _isDeleting = false;
         });
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'An error occurred while deleting. Please try again.',
@@ -1182,13 +1174,9 @@ class _FeedbackInteractionState extends State<_FeedbackInteraction> {
       decoration: BoxDecoration(
         color: AppColors.cornsilk.withAlpha(128),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.seedBrown.withAlpha(51),
-        ),
+        border: Border.all(color: AppColors.seedBrown.withAlpha(51)),
       ),
-      child: _feedbackGiven
-          ? _buildThanksWidget()
-          : _buildPromptWidget(),
+      child: _feedbackGiven ? _buildThanksWidget() : _buildPromptWidget(),
     );
   }
 
@@ -1228,11 +1216,7 @@ class _FeedbackInteractionState extends State<_FeedbackInteraction> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.check_circle,
-          size: 18,
-          color: AppColors.leafGreen,
-        ),
+        Icon(Icons.check_circle, size: 18, color: AppColors.leafGreen),
         const SizedBox(width: 6),
         Text(
           'Thanks for your feedback!',
@@ -1260,10 +1244,7 @@ class _FeedbackInteractionState extends State<_FeedbackInteraction> {
         ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: color.withAlpha(128),
-            width: 1.5,
-          ),
+          border: Border.all(color: color.withAlpha(128), width: 1.5),
         ),
         child: Row(
           children: [

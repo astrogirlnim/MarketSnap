@@ -1,20 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Feedback actions that users can take on RAG suggestions
-enum RAGFeedbackAction {
-  upvote,
-  downvote, 
-  skip,
-  edit,
-  view,
-  expand,
-}
+enum RAGFeedbackAction { upvote, downvote, skip, edit, view, expand }
 
 /// Type of RAG content being rated
-enum RAGContentType {
-  recipe,
-  faq,
-}
+enum RAGContentType { recipe, faq }
 
 /// User feedback on RAG suggestions for analytics and personalization
 /// Stores user interactions with recipe and FAQ suggestions to improve future recommendations
@@ -29,7 +19,8 @@ class RAGFeedback {
   final String? contentTitle; // Recipe name or FAQ question
   final double? relevanceScore; // Original AI relevance score
   final String? userComment; // Optional user comment for edit actions
-  final Map<String, dynamic>? metadata; // Additional context (keywords, category, etc.)
+  final Map<String, dynamic>?
+  metadata; // Additional context (keywords, category, etc.)
   final DateTime createdAt;
 
   RAGFeedback({
@@ -124,7 +115,7 @@ class RAGFeedback {
       contentTitle: data['contentTitle'],
       relevanceScore: data['relevanceScore']?.toDouble(),
       userComment: data['userComment'],
-      metadata: data['metadata'] != null 
+      metadata: data['metadata'] != null
           ? Map<String, dynamic>.from(data['metadata'])
           : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -187,14 +178,10 @@ class RAGFeedback {
   ].contains(action);
 
   /// Check if this feedback is negative (downvote, skip)
-  bool get isNegative => [
-    RAGFeedbackAction.downvote,
-    RAGFeedbackAction.skip,
-  ].contains(action);
+  bool get isNegative =>
+      [RAGFeedbackAction.downvote, RAGFeedbackAction.skip].contains(action);
 
   /// Check if this feedback is engagement (view, expand)
-  bool get isEngagement => [
-    RAGFeedbackAction.view,
-    RAGFeedbackAction.expand,
-  ].contains(action);
-} 
+  bool get isEngagement =>
+      [RAGFeedbackAction.view, RAGFeedbackAction.expand].contains(action);
+}

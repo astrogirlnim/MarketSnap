@@ -33,7 +33,8 @@ class ProfileService {
        _storage = storage ?? FirebaseStorage.instance,
        _auth = auth ?? FirebaseAuth.instance,
        _imagePicker = imagePicker ?? ImagePicker(),
-       _profileUpdateNotifier = profileUpdateNotifier ?? ProfileUpdateNotifier();
+       _profileUpdateNotifier =
+           profileUpdateNotifier ?? ProfileUpdateNotifier();
 
   /// Gets the current user's UID
   String? get currentUserUid => _auth.currentUser?.uid;
@@ -84,7 +85,9 @@ class ProfileService {
 
     // 📢 Broadcast profile update to all listeners
     _profileUpdateNotifier.notifyVendorProfileUpdate(profile);
-    debugPrint('[ProfileService] 📢 Profile update broadcasted for: ${profile.displayName}');
+    debugPrint(
+      '[ProfileService] 📢 Profile update broadcasted for: ${profile.displayName}',
+    );
 
     // Try to sync immediately if online - but don't block the UI
     _attemptImmediateSync(uid);
@@ -257,10 +260,12 @@ class ProfileService {
       if (avatarURL != null) {
         final finalProfile = profileToSync.copyWith(needsSync: false);
         await _hiveService.saveVendorProfile(finalProfile);
-        
+
         // 📢 Broadcast profile update since avatar URL was updated
         _profileUpdateNotifier.notifyVendorProfileUpdate(finalProfile);
-        debugPrint('[ProfileService] 📢 Profile update broadcasted after avatar sync for: ${finalProfile.displayName}');
+        debugPrint(
+          '[ProfileService] 📢 Profile update broadcasted after avatar sync for: ${finalProfile.displayName}',
+        );
       }
 
       debugPrint('[ProfileService] Profile synced to Firestore successfully');
@@ -422,7 +427,9 @@ class ProfileService {
 
       // 📢 Broadcast profile deletion to all listeners
       _profileUpdateNotifier.notifyProfileDelete(uid);
-      debugPrint('[ProfileService] 📢 Profile deletion broadcasted for UID: $uid');
+      debugPrint(
+        '[ProfileService] 📢 Profile deletion broadcasted for UID: $uid',
+      );
 
       debugPrint('[ProfileService] Profile deleted successfully');
     } catch (e) {
@@ -475,7 +482,9 @@ class ProfileService {
 
       // 📢 Broadcast profile update to all listeners
       _profileUpdateNotifier.notifyRegularUserProfileUpdate(profile);
-      debugPrint('[ProfileService] 📢 Regular user profile update broadcasted for: ${profile.displayName}');
+      debugPrint(
+        '[ProfileService] 📢 Regular user profile update broadcasted for: ${profile.displayName}',
+      );
 
       // Try to sync to Firestore if online
       try {
@@ -561,7 +570,9 @@ class ProfileService {
       // 📢 Broadcast profile update if avatar was updated
       if (avatarURL != null) {
         _profileUpdateNotifier.notifyRegularUserProfileUpdate(finalProfile);
-        debugPrint('[ProfileService] 📢 Regular user profile update broadcasted after avatar sync for: ${finalProfile.displayName}');
+        debugPrint(
+          '[ProfileService] 📢 Regular user profile update broadcasted after avatar sync for: ${finalProfile.displayName}',
+        );
       }
 
       debugPrint(
@@ -645,7 +656,9 @@ class ProfileService {
 
       // 📢 Broadcast profile deletion to all listeners
       _profileUpdateNotifier.notifyProfileDelete(uid);
-      debugPrint('[ProfileService] 📢 Profile deletion broadcasted for UID: $uid');
+      debugPrint(
+        '[ProfileService] 📢 Profile deletion broadcasted for UID: $uid',
+      );
 
       debugPrint('[ProfileService] Regular user profile deleted successfully');
     } catch (e) {

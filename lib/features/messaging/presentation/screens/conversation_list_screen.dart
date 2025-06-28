@@ -45,12 +45,14 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   void _listenToProfileUpdates() {
     _profileUpdateNotifier.allProfileUpdates.listen((update) {
       final uid = update['uid'] as String;
-      
+
       if (update['type'] == 'delete') {
         setState(() {
           _profileCache.remove(uid);
         });
-        developer.log('[ConversationListScreen] 🗑️ Removed profile from cache: $uid');
+        developer.log(
+          '[ConversationListScreen] 🗑️ Removed profile from cache: $uid',
+        );
       } else {
         // Update profile cache and refresh UI
         _refreshProfileInCache(uid).then((_) {
@@ -65,13 +67,19 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   /// Refresh a specific profile in the cache
   Future<void> _refreshProfileInCache(String uid) async {
     try {
-      final profile = await _profileService.loadAnyUserProfileFromFirestore(uid);
+      final profile = await _profileService.loadAnyUserProfileFromFirestore(
+        uid,
+      );
       if (profile != null) {
         _profileCache[uid] = profile;
-        developer.log('[ConversationListScreen] 🔄 Updated profile cache for: ${profile.displayName}');
+        developer.log(
+          '[ConversationListScreen] 🔄 Updated profile cache for: ${profile.displayName}',
+        );
       }
     } catch (e) {
-      developer.log('[ConversationListScreen] Error refreshing profile cache for $uid: $e');
+      developer.log(
+        '[ConversationListScreen] Error refreshing profile cache for $uid: $e',
+      );
     }
   }
 
@@ -221,7 +229,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
               // Check cache first, then load from Firestore if needed
               VendorProfile? cachedProfile = _profileCache[otherUserId];
-              
+
               if (cachedProfile != null) {
                 // Use cached profile data
                 return StreamBuilder<List<Message>>(
@@ -257,7 +265,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
               // Load from Firestore and cache the result
               return FutureBuilder<VendorProfile?>(
-                future: _profileService.loadAnyUserProfileFromFirestore(otherUserId),
+                future: _profileService.loadAnyUserProfileFromFirestore(
+                  otherUserId,
+                ),
                 builder: (context, profileSnapshot) {
                   if (profileSnapshot.connectionState ==
                       ConnectionState.waiting) {

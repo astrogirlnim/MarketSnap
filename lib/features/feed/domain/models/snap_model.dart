@@ -78,10 +78,7 @@ class Snap {
     required String vendorName,
     required String vendorAvatarUrl,
   }) {
-    return copyWith(
-      vendorName: vendorName,
-      vendorAvatarUrl: vendorAvatarUrl,
-    );
+    return copyWith(vendorName: vendorName, vendorAvatarUrl: vendorAvatarUrl);
   }
 
   @override

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
-
-import '../../application/settings_service.dart';
 import '../../../../core/models/user_settings.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
@@ -16,9 +14,7 @@ import '../../../../main.dart' as main;
 /// - External link to support email
 /// - Display free-storage indicator (≥ 100 MB check)
 class SettingsScreen extends StatefulWidget {
-  final SettingsService settingsService;
-
-  const SettingsScreen({super.key, required this.settingsService});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -56,12 +52,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       // Load current settings
-      final settings = widget.settingsService.getCurrentSettings();
+      final settings = main.settingsService.getCurrentSettings();
 
       // ✅ PERFORMANCE FIX: Load storage status using cached values
-      final storageStatus = await widget.settingsService
+      final storageStatus = await main.settingsService
           .getStorageStatusMessage();
-      final hasSufficientStorage = await widget.settingsService
+      final hasSufficientStorage = await main.settingsService
           .hasSufficientStorage();
 
       setState(() {
@@ -109,14 +105,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      await widget.settingsService.updateSettings(
+      await main.settingsService.updateSettings(
         enableCoarseLocation: enableCoarseLocation,
         autoCompressVideo: autoCompressVideo,
         saveToDeviceDefault: saveToDeviceDefault,
       );
 
       // Reload settings to get updated values
-      final updatedSettings = widget.settingsService.getCurrentSettings();
+      final updatedSettings = main.settingsService.getCurrentSettings();
 
       setState(() {
         _currentSettings = updatedSettings;
@@ -163,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      final success = await widget.settingsService.openSupportEmail();
+      final success = await main.settingsService.openSupportEmail();
 
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,12 +214,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       // ✅ PERFORMANCE FIX: Force refresh storage cache
-      await widget.settingsService.refreshStorageCache();
+      await main.settingsService.refreshStorageCache();
 
       // Get updated values from refreshed cache
-      final storageStatus = await widget.settingsService
+      final storageStatus = await main.settingsService
           .getStorageStatusMessage();
-      final hasSufficientStorage = await widget.settingsService
+      final hasSufficientStorage = await main.settingsService
           .hasSufficientStorage();
 
       setState(() {
@@ -751,8 +747,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       // Get user data summary
-      final dataSummary = await main.accountDeletionService.getUserDataSummary();
-      
+      final dataSummary = await main.accountDeletionService
+          .getUserDataSummary();
+
       if (!mounted) return;
 
       // Show confirmation dialog
@@ -810,9 +807,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Text(
               'Delete Account',
-              style: AppTypography.h2.copyWith(
-                color: AppColors.appleRed,
-              ),
+              style: AppTypography.h2.copyWith(color: AppColors.appleRed),
             ),
           ),
         ],
@@ -829,7 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          
+
           // User profile info
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -857,7 +852,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                
+
                 Text(
                   'Data to be deleted:',
                   style: AppTypography.body.copyWith(
@@ -866,10 +861,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                
+
                 _buildDataItem('📸 Snaps', snapsCount),
                 _buildDataItem('💬 Messages', messagesCount),
-                if (profileType == 'vendor') _buildDataItem('👥 Followers', followersCount),
+                if (profileType == 'vendor')
+                  _buildDataItem('👥 Followers', followersCount),
                 _buildDataItem('📱 Local data', 1),
                 _buildDataItem('🔐 Account', 1),
               ],
@@ -915,9 +911,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(
             'Cancel',
-            style: AppTypography.body.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
           ),
         ),
         ElevatedButton(
@@ -947,9 +941,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             label,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.soilTaupe,
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
           Text(
             count.toString(),
@@ -994,7 +986,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             backgroundColor: AppColors.appleRed,
-            duration: const Duration(minutes: 2), // Long duration for deletion process
+            duration: const Duration(
+              minutes: 2,
+            ), // Long duration for deletion process
           ),
         );
       }
@@ -1010,15 +1004,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Clear snackbar and show success message
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account deleted successfully. Redirecting to login...'),
+            content: Text(
+              'Account deleted successfully. Redirecting to login...',
+            ),
             backgroundColor: AppColors.leafGreen,
             duration: Duration(seconds: 3),
           ),
         );
-        
+
         // The AuthWrapper will automatically detect the user is signed out
         // and redirect to AuthWelcomeScreen - no manual navigation needed
         developer.log(
@@ -1043,12 +1039,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '[SettingsScreen] Force navigating to root - user is null after delay',
               name: 'SettingsScreen',
             );
-            
+
             // Navigate to the root and let AuthWrapper handle the auth state
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              '/',
-              (route) => false,
-            );
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/', (route) => false);
           }
         });
       }

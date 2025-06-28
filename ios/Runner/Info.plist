@@ -59,6 +59,9 @@
 	<string>MarketSnap needs access to your camera to take photos and videos for your market stall posts.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>MarketSnap needs access to your photo library to save and share your market stall photos.</string>
+	<!-- iOS permission for adding photos to gallery (Phase 4.4 Save-to-Device) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MarketSnap needs permission to save your photos and videos to your photo library when you enable the "Save to Device" feature in settings.</string>
 	<!-- Google Sign-In URL Schemes -->
 	<key>CFBundleURLTypes</key>
 	<array>

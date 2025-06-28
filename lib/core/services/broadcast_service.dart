@@ -18,7 +18,7 @@ class BroadcastService {
   final LocationService _locationService = LocationService();
   final HiveService _hiveService;
   final ProfileService _profileService;
-  
+
   static const _uuid = Uuid();
 
   BroadcastService({
@@ -50,11 +50,15 @@ class BroadcastService {
       }
 
       if (message.trim().length > 100) {
-        developer.log('[BroadcastService] ❌ Message too long: ${message.length} chars');
+        developer.log(
+          '[BroadcastService] ❌ Message too long: ${message.length} chars',
+        );
         throw Exception('Broadcast message must be 100 characters or less');
       }
 
-      developer.log('[BroadcastService] 📢 Creating broadcast with ${message.length} chars, includeLocation: $includeLocation');
+      developer.log(
+        '[BroadcastService] 📢 Creating broadcast with ${message.length} chars, includeLocation: $includeLocation',
+      );
 
       // Get user profile for vendor info
       final profile = _profileService.getCurrentUserProfile();
@@ -68,17 +72,23 @@ class BroadcastService {
       if (includeLocation) {
         final settings = _hiveService.getUserSettings();
         final locationEnabled = settings?.enableCoarseLocation ?? false;
-        
+
         if (locationEnabled) {
-          developer.log('[BroadcastService] 📍 Getting location for broadcast...');
+          developer.log(
+            '[BroadcastService] 📍 Getting location for broadcast...',
+          );
           location = await _locationService.getCurrentCoarseLocation();
           if (location == null) {
-            developer.log('[BroadcastService] ⚠️ Could not get location, proceeding without it');
+            developer.log(
+              '[BroadcastService] ⚠️ Could not get location, proceeding without it',
+            );
           } else {
             developer.log('[BroadcastService] ✅ Location obtained: $location');
           }
         } else {
-          developer.log('[BroadcastService] ⚠️ Location not enabled in settings');
+          developer.log(
+            '[BroadcastService] ⚠️ Location not enabled in settings',
+          );
         }
       }
 
@@ -109,9 +119,10 @@ class BroadcastService {
           .doc(broadcastId)
           .set(broadcast.toFirestore());
 
-      developer.log('[BroadcastService] ✅ Broadcast created successfully: $broadcastId');
+      developer.log(
+        '[BroadcastService] ✅ Broadcast created successfully: $broadcastId',
+      );
       return broadcastId;
-
     } catch (e) {
       developer.log('[BroadcastService] ❌ Error creating broadcast: $e');
       rethrow;
@@ -124,7 +135,9 @@ class BroadcastService {
     int limit = 50,
   }) {
     try {
-      developer.log('[BroadcastService] 📡 Setting up broadcasts stream with limit: $limit, maxDistance: $maxDistanceKm km');
+      developer.log(
+        '[BroadcastService] 📡 Setting up broadcasts stream with limit: $limit, maxDistance: $maxDistanceKm km',
+      );
 
       // Get base query for unexpired broadcasts
       Query query = _firestore
@@ -145,43 +158,55 @@ class BroadcastService {
             .map((doc) => Broadcast.fromFirestore(doc))
             .toList();
 
-        developer.log('[BroadcastService] 📡 Loaded ${broadcasts.length} broadcasts from Firestore');
+        developer.log(
+          '[BroadcastService] 📡 Loaded ${broadcasts.length} broadcasts from Firestore',
+        );
 
         // Apply distance filtering if requested
         if (maxDistanceKm != null) {
-          broadcasts = await _filterBroadcastsByDistance(broadcasts, maxDistanceKm);
-          developer.log('[BroadcastService] 📍 After distance filtering: ${broadcasts.length} broadcasts');
+          broadcasts = await _filterBroadcastsByDistance(
+            broadcasts,
+            maxDistanceKm,
+          );
+          developer.log(
+            '[BroadcastService] 📍 After distance filtering: ${broadcasts.length} broadcasts',
+          );
         }
 
         // Update with fresh profile data
         broadcasts = await _updateBroadcastsWithFreshProfiles(broadcasts);
 
-        developer.log('[BroadcastService] ✅ Returning ${broadcasts.length} broadcasts');
+        developer.log(
+          '[BroadcastService] ✅ Returning ${broadcasts.length} broadcasts',
+        );
         return broadcasts;
       });
-
     } catch (e) {
-      developer.log('[BroadcastService] ❌ Error setting up broadcasts stream: $e');
+      developer.log(
+        '[BroadcastService] ❌ Error setting up broadcasts stream: $e',
+      );
       return Stream.error(e);
     }
   }
 
   /// Filter broadcasts by distance from user's current location
   Future<List<Broadcast>> _filterBroadcastsByDistance(
-    List<Broadcast> broadcasts, 
-    double maxDistanceKm
+    List<Broadcast> broadcasts,
+    double maxDistanceKm,
   ) async {
     try {
       // Get user's current location
       final userLocation = await _locationService.getCurrentCoarseLocation();
       if (userLocation == null) {
-        developer.log('[BroadcastService] 📍 No user location for distance filtering, returning all');
+        developer.log(
+          '[BroadcastService] 📍 No user location for distance filtering, returning all',
+        );
         return broadcasts;
       }
 
       // Filter broadcasts by distance
       final filteredBroadcasts = <Broadcast>[];
-      
+
       for (final broadcast in broadcasts) {
         if (!broadcast.hasLocation) {
           // Include broadcasts without location (don't discriminate)
@@ -200,29 +225,37 @@ class BroadcastService {
 
         if (distance != null && distance <= maxDistanceKm) {
           filteredBroadcasts.add(broadcast);
-          developer.log('[BroadcastService] 📍 Included broadcast ${broadcast.id} (${distance.toStringAsFixed(1)} km away)');
+          developer.log(
+            '[BroadcastService] 📍 Included broadcast ${broadcast.id} (${distance.toStringAsFixed(1)} km away)',
+          );
         } else {
-          developer.log('[BroadcastService] 📍 Excluded broadcast ${broadcast.id} (${distance?.toStringAsFixed(1) ?? 'unknown'} km away)');
+          developer.log(
+            '[BroadcastService] 📍 Excluded broadcast ${broadcast.id} (${distance?.toStringAsFixed(1) ?? 'unknown'} km away)',
+          );
         }
       }
 
       return filteredBroadcasts;
     } catch (e) {
-      developer.log('[BroadcastService] ❌ Error filtering broadcasts by distance: $e');
+      developer.log(
+        '[BroadcastService] ❌ Error filtering broadcasts by distance: $e',
+      );
       return broadcasts; // Return unfiltered on error
     }
   }
 
   /// Update broadcasts with fresh profile data from cache
-  Future<List<Broadcast>> _updateBroadcastsWithFreshProfiles(List<Broadcast> broadcasts) async {
+  Future<List<Broadcast>> _updateBroadcastsWithFreshProfiles(
+    List<Broadcast> broadcasts,
+  ) async {
     try {
       // Update broadcasts with cached profile data
       final updatedBroadcasts = <Broadcast>[];
-      
+
       for (final broadcast in broadcasts) {
         // Try to get fresh profile data from cache
         final profile = _hiveService.getVendorProfile(broadcast.vendorUid);
-        
+
         if (profile != null) {
           // Update with fresh profile data
           final updatedBroadcast = broadcast.updateProfileData(
@@ -239,7 +272,9 @@ class BroadcastService {
 
       return updatedBroadcasts;
     } catch (e) {
-      developer.log('[BroadcastService] ❌ Error updating broadcasts with profiles: $e');
+      developer.log(
+        '[BroadcastService] ❌ Error updating broadcasts with profiles: $e',
+      );
       return broadcasts; // Return original on error
     }
   }
@@ -255,7 +290,10 @@ class BroadcastService {
       developer.log('[BroadcastService] 🗑️ Deleting broadcast: $broadcastId');
 
       // Get broadcast to verify ownership
-      final doc = await _firestore.collection('broadcasts').doc(broadcastId).get();
+      final doc = await _firestore
+          .collection('broadcasts')
+          .doc(broadcastId)
+          .get();
       if (!doc.exists) {
         throw Exception('Broadcast not found');
       }
@@ -268,8 +306,9 @@ class BroadcastService {
       // Delete the broadcast
       await _firestore.collection('broadcasts').doc(broadcastId).delete();
 
-      developer.log('[BroadcastService] ✅ Broadcast deleted successfully: $broadcastId');
-
+      developer.log(
+        '[BroadcastService] ✅ Broadcast deleted successfully: $broadcastId',
+      );
     } catch (e) {
       developer.log('[BroadcastService] ❌ Error deleting broadcast: $e');
       rethrow;
@@ -277,9 +316,14 @@ class BroadcastService {
   }
 
   /// Get broadcasts for a specific vendor
-  Stream<List<Broadcast>> getVendorBroadcastsStream(String vendorId, {int limit = 20}) {
+  Stream<List<Broadcast>> getVendorBroadcastsStream(
+    String vendorId, {
+    int limit = 20,
+  }) {
     try {
-      developer.log('[BroadcastService] 📡 Setting up vendor broadcasts stream for: $vendorId');
+      developer.log(
+        '[BroadcastService] 📡 Setting up vendor broadcasts stream for: $vendorId',
+      );
 
       return _firestore
           .collection('broadcasts')
@@ -293,13 +337,16 @@ class BroadcastService {
             final broadcasts = snapshot.docs
                 .map((doc) => Broadcast.fromFirestore(doc))
                 .toList();
-            
-            developer.log('[BroadcastService] 📡 Vendor broadcasts loaded: ${broadcasts.length}');
+
+            developer.log(
+              '[BroadcastService] 📡 Vendor broadcasts loaded: ${broadcasts.length}',
+            );
             return broadcasts;
           });
-
     } catch (e) {
-      developer.log('[BroadcastService] ❌ Error setting up vendor broadcasts stream: $e');
+      developer.log(
+        '[BroadcastService] ❌ Error setting up vendor broadcasts stream: $e',
+      );
       return Stream.error(e);
     }
   }
@@ -313,7 +360,9 @@ class BroadcastService {
       final profile = _profileService.getCurrentUserProfile();
       return profile != null && profile.isComplete;
     } catch (e) {
-      developer.log('[BroadcastService] ❌ Error checking broadcast permissions: $e');
+      developer.log(
+        '[BroadcastService] ❌ Error checking broadcast permissions: $e',
+      );
       return false;
     }
   }
@@ -344,10 +393,9 @@ class BroadcastService {
         'totalBroadcasts': totalBroadcasts.count ?? 0,
         'lastUpdated': DateTime.now().toIso8601String(),
       };
-
     } catch (e) {
       developer.log('[BroadcastService] ❌ Error getting broadcast stats: $e');
       return {};
     }
   }
-} 
+}

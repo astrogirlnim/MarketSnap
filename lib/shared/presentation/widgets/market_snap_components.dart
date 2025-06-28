@@ -36,7 +36,9 @@ class MarketSnapPrimaryButton extends StatelessWidget {
           elevation: AppSpacing.elevationSm,
           shadowColor: AppColors.marketBlue.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
+            borderRadius: BorderRadius.circular(
+              AppSpacing.preferredTouchTarget / 2,
+            ), // More rounded
           ),
         ),
         child: isLoading
@@ -93,7 +95,9 @@ class MarketSnapSecondaryButton extends StatelessWidget {
           backgroundColor: AppColors.eggshell,
           side: const BorderSide(color: AppColors.seedBrown, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2), // More rounded
+            borderRadius: BorderRadius.circular(
+              AppSpacing.preferredTouchTarget / 2,
+            ), // More rounded
           ),
         ),
         child: isLoading
@@ -461,8 +465,8 @@ class BasketIcon extends StatelessWidget {
   final bool enableWelcomeAnimation;
 
   const BasketIcon({
-    super.key, 
-    this.size = 64, // Increased from 48 to 64 for better visibility 
+    super.key,
+    this.size = 64, // Increased from 48 to 64 for better visibility
     this.color,
     this.enableWelcomeAnimation = false,
   });
@@ -472,7 +476,7 @@ class BasketIcon extends StatelessWidget {
     if (enableWelcomeAnimation) {
       return _AnimatedBasketIcon(size: size, color: color);
     }
-    
+
     return Image.asset(
       'assets/images/icons/wicker_mascot.png',
       width: size,
@@ -493,10 +497,7 @@ class _AnimatedBasketIcon extends StatefulWidget {
   final double size;
   final Color? color;
 
-  const _AnimatedBasketIcon({
-    required this.size,
-    this.color,
-  });
+  const _AnimatedBasketIcon({required this.size, this.color});
 
   @override
   State<_AnimatedBasketIcon> createState() => _AnimatedBasketIconState();
@@ -516,7 +517,7 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
     try {
       // Start the blinking animation after a short delay
       await Future.delayed(const Duration(milliseconds: 800));
-      
+
       if (mounted && !_hasAnimated) {
         await _performBlinkAnimation();
       }
@@ -527,7 +528,7 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
 
   Future<void> _performBlinkAnimation() async {
     if (!mounted || _hasAnimated) return;
-    
+
     setState(() {
       _hasAnimated = true;
     });
@@ -536,22 +537,22 @@ class _AnimatedBasketIconState extends State<_AnimatedBasketIcon> {
 
     // Single blink sequence: normal -> blink -> normal
     if (!mounted) return;
-    
+
     // Switch to blinking
     setState(() {
       _isBlinking = true;
     });
-    
+
     debugPrint('[AnimatedBasketIcon] 😉 Wicker is blinking');
     await Future.delayed(const Duration(milliseconds: 250));
-    
+
     if (!mounted) return;
-    
+
     // Switch back to normal
     setState(() {
       _isBlinking = false;
     });
-    
+
     debugPrint('[AnimatedBasketIcon] 😊 Wicker blink complete');
   }
 
