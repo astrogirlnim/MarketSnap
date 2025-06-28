@@ -421,10 +421,36 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   /// Build image display widget
   Widget _buildImageDisplay() {
     final filterType = widget.snap.filterType;
+    final mediaUrl = widget.snap.mediaUrl;
+    final snapId = widget.snap.id;
 
     debugPrint(
-      '[FeedPostWidget] 🖼️ Processing image for snap ${widget.snap.id} with filterType: "$filterType"',
+      '[FeedPostWidget] 🖼️ Processing image for snap $snapId with filterType: "$filterType"',
     );
+    
+    debugPrint(
+      '[FeedPostWidget] 📸 Image URL: "$mediaUrl"'
+    );
+    
+    // Check if mediaUrl is valid
+    if (mediaUrl.isEmpty) {
+      debugPrint('[FeedPostWidget] ❌ ERROR: Empty mediaUrl for snap $snapId');
+      return Container(
+        width: double.infinity,
+        height: 300,
+        color: Colors.grey[300],
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error, color: Colors.red, size: 48),
+              SizedBox(height: 8),
+              Text('Empty Image URL', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      );
+    }
     
     // ✅ FIX: Images are already processed with LUT filters during capture
     // The mediaUrl points to the filtered image, so no additional overlay is needed
@@ -436,28 +462,71 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       children: [
         // Main image (already filtered during capture/upload)
         Image.network(
-          widget.snap.mediaUrl,
+          mediaUrl,
           width: double.infinity,
           height: double.infinity,
           fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
+            if (loadingProgress == null) {
+              debugPrint('[FeedPostWidget] ✅ Image loaded successfully for snap $snapId');
+              return child;
+            }
+            final progress = loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                : null;
+            debugPrint('[FeedPostWidget] ⏳ Loading image for snap $snapId: ${(progress ?? 0.0) * 100}%');
+            
             return Container(
               width: double.infinity,
-              height: double.infinity,
-              color: Colors.grey[300],
-              child: const Center(
-                child: CircularProgressIndicator(color: AppColors.marketBlue),
+              height: 300,
+              color: Colors.grey[200],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: AppColors.marketBlue),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Loading image...',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  if (progress != null)
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                ],
               ),
             );
           },
           errorBuilder: (context, error, stackTrace) {
+            debugPrint('[FeedPostWidget] ❌ ERROR loading image for snap $snapId: $error');
+            debugPrint('[FeedPostWidget] 🔗 Failed URL: $mediaUrl');
+            debugPrint('[FeedPostWidget] 📚 Stack trace: $stackTrace');
             return Container(
               width: double.infinity,
-              height: double.infinity,
+              height: 300,
               color: Colors.grey[300],
-              child: const Center(
-                child: Icon(Icons.error, color: Colors.red, size: 48),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red, size: 48),
+                  const SizedBox(height: 8),
+                  const Text('Failed to load image', style: TextStyle(color: Colors.red)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'URL: ${mediaUrl.length > 50 ? '${mediaUrl.substring(0, 50)}...' : mediaUrl}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Error: ${error.toString()}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             );
           },
