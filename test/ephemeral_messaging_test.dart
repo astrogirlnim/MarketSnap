@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
@@ -71,7 +72,7 @@ void main() {
         final timeDiff = message.createdAt.difference(beforeCreation);
         expect(timeDiff.inSeconds, lessThan(5)); // Allow 5 seconds for test execution
 
-        print('✅ Message created with proper TTL: ${message.expiresAt}');
+        debugPrint('✅ Message created with proper TTL: ${message.expiresAt}');
       });
 
       test('should detect expired messages using hasExpired property', () {
@@ -109,7 +110,7 @@ void main() {
         expect(expiredMessage.timeUntilExpiry.isNegative, isTrue);
         expect(activeMessage.timeUntilExpiry.isNegative, isFalse);
 
-        print('✅ Message expiration detection working correctly');
+        debugPrint('✅ Message expiration detection working correctly');
       });
 
       test('should filter out expired messages in conversation streams', () async {
@@ -156,10 +157,10 @@ void main() {
         expect(filteredMessages.length, equals(1));
         expect(filteredMessages.first.text, equals('Active message'));
 
-        print('✅ Conversation stream correctly filters out expired messages');
-        print('   - Message filtering logic verified directly');
-        print('   - Active messages: ${filteredMessages.length}');
-        print('   - Expired messages filtered out: ${messages.length - filteredMessages.length}');
+        debugPrint('✅ Conversation stream correctly filters out expired messages');
+        debugPrint('   - Message filtering logic verified directly');
+        debugPrint('   - Active messages: ${filteredMessages.length}');
+        debugPrint('   - Expired messages filtered out: ${messages.length - filteredMessages.length}');
       });
     });
 
@@ -220,7 +221,7 @@ void main() {
         expect(remainingMessage.text, equals('Active message'));
         expect(remainingMessage.hasExpired, isFalse);
 
-        print('✅ Manual cleanup successfully removed ${expiredMessages.length} expired messages');
+        debugPrint('✅ Manual cleanup successfully removed ${expiredMessages.length} expired messages');
       });
 
       test('should handle cleanup when no expired messages exist', () async {
@@ -253,7 +254,7 @@ void main() {
         final afterCleanup = await fakeFirestore.collection('messages').get();
         expect(afterCleanup.docs.length, equals(2));
 
-        print('✅ Cleanup gracefully handles collections with no expired messages');
+        debugPrint('✅ Cleanup gracefully handles collections with no expired messages');
       });
     });
 
@@ -342,11 +343,11 @@ void main() {
         final afterCleanup = await fakeFirestore.collection('messages').get();
         expect(afterCleanup.docs.length, equals(0));
 
-        print('✅ Conversation auto-deletion after 24h successfully verified');
-        print('   - 3 messages created 25 hours ago');
-        print('   - All messages correctly identified as expired');
-        print('   - Conversation appears empty in streams');
-        print('   - Manual cleanup removes expired messages');
+        debugPrint('✅ Conversation auto-deletion after 24h successfully verified');
+        debugPrint('   - 3 messages created 25 hours ago');
+        debugPrint('   - All messages correctly identified as expired');
+        debugPrint('   - Conversation appears empty in streams');
+        debugPrint('   - Manual cleanup removes expired messages');
       });
 
       test('should preserve active conversations while cleaning up expired ones', () async {
@@ -395,7 +396,7 @@ void main() {
         expect(remainingMessage.text, equals('This is a recent message'));
         expect(remainingMessage.hasExpired, isFalse);
 
-        print('✅ Mixed conversation cleanup preserves active conversations');
+        debugPrint('✅ Mixed conversation cleanup preserves active conversations');
       });
     });
 
@@ -424,7 +425,7 @@ void main() {
         // Assert - Should return null for expired message
         expect(retrievedMessage, isNull);
 
-        print('✅ getMessage correctly returns null for expired messages');
+        debugPrint('✅ getMessage correctly returns null for expired messages');
       });
 
       test('should filter expired messages from unread count', () async {
@@ -463,7 +464,7 @@ void main() {
           emits(equals(1)), // Only the active message should be counted
         );
 
-        print('✅ Unread count correctly filters out expired messages');
+        debugPrint('✅ Unread count correctly filters out expired messages');
       });
     });
   });
