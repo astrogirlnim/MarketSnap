@@ -10,6 +10,7 @@ import 'core/services/account_linking_service.dart';
 import 'core/services/messaging_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/device_gallery_save_service.dart';
+import 'core/services/user_data_sync_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -52,6 +53,7 @@ late final AccountDeletionService accountDeletionService;
 late final BroadcastService broadcastService;
 late final SettingsService settingsService;
 late final DeviceGallerySaveService deviceGallerySaveService;
+late final UserDataSyncService userDataSyncService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -493,6 +495,30 @@ Future<void> main() async {
     } catch (fallbackError) {
       debugPrint(
         '[main] CRITICAL: Cannot create device gallery save service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
+  // Initialize comprehensive user data sync service
+  try {
+    userDataSyncService = UserDataSyncService(
+      hiveService: hiveService,
+      profileUpdateNotifier: profileUpdateNotifier,
+    );
+    debugPrint('[main] ✅ User data sync service initialized - cross-platform data consistency enabled');
+  } catch (e) {
+    debugPrint('[main] Error initializing user data sync service: $e');
+    // Create fallback user data sync service
+    try {
+      userDataSyncService = UserDataSyncService(
+        hiveService: hiveService,
+        profileUpdateNotifier: profileUpdateNotifier,
+      );
+      debugPrint('[main] Fallback user data sync service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create user data sync service: $fallbackError',
       );
       rethrow;
     }
