@@ -5,7 +5,11 @@ import 'package:marketsnap/features/feed/domain/models/snap_model.dart';
 import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/feed_post_widget.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/story_carousel_widget.dart';
+import 'package:marketsnap/features/feed/presentation/widgets/broadcast_widget.dart';
+import 'package:marketsnap/features/feed/presentation/widgets/create_broadcast_modal.dart';
+import 'package:marketsnap/core/models/broadcast.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
+import 'package:marketsnap/shared/presentation/theme/app_spacing.dart';
 import 'package:marketsnap/main.dart'; // Import to access global services
 
 class FeedScreen extends StatefulWidget {
@@ -18,6 +22,13 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   // Use global feed service instance with profile update notifier
   final FeedService _feedService = feedService;
+  
+  /// Check if current user is a vendor (can create broadcasts)
+  bool get _canCreateBroadcasts {
+    final profile = profileService.getCurrentUserProfile();
+    // If profile is a VendorProfile, user is a vendor and can create broadcasts
+    return profile != null && profile.runtimeType.toString() == 'VendorProfile';
+  }
 
   @override
   void initState() {
@@ -42,10 +53,13 @@ class _FeedScreenState extends State<FeedScreen> {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _buildStoriesSection()),
+            SliverToBoxAdapter(child: _buildBroadcastsSection()),
             _buildSnapsList(),
           ],
         ),
       ),
+      // Add floating action button for vendors to create broadcasts
+      floatingActionButton: _canCreateBroadcasts ? _buildBroadcastFAB() : null,
     );
   }
 
@@ -146,6 +160,123 @@ class _FeedScreenState extends State<FeedScreen> {
           }, childCount: snaps.length),
         );
       },
+    );
+  }
+
+  Widget _buildBroadcastsSection() {
+    return StreamBuilder<List<Broadcast>>(
+      stream: broadcastService.getBroadcastsStream(limit: 10),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          developer.log(
+            '[FeedScreen] Broadcasts stream: waiting for data',
+            name: 'FeedScreen',
+          );
+          return const SizedBox.shrink(); // Don't show loading for broadcasts
+        }
+        if (snapshot.hasError) {
+          developer.log(
+            '[FeedScreen] Broadcasts stream error: ${snapshot.error}',
+            name: 'FeedScreen',
+          );
+          return const SizedBox.shrink(); // Hide on error
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          developer.log(
+            '[FeedScreen] Broadcasts stream: no data available',
+            name: 'FeedScreen',
+          );
+          return const SizedBox.shrink(); // Hide when no broadcasts
+        }
+
+        final broadcasts = snapshot.data!;
+        developer.log(
+          '[FeedScreen] Broadcasts stream: displaying ${broadcasts.length} broadcasts',
+          name: 'FeedScreen',
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.campaign,
+                    color: AppColors.marketBlue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Market Broadcasts',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Broadcasts list
+            ...broadcasts.map((broadcast) => BroadcastWidget(
+              broadcast: broadcast,
+              isCurrentUserPost: broadcast.vendorUid == _feedService.currentUserId,
+                             onDelete: () async {
+                 try {
+                   await broadcastService.deleteBroadcast(broadcast.id);
+                   developer.log('[FeedScreen] Broadcast deleted: ${broadcast.id}');
+                 } catch (e) {
+                   developer.log('[FeedScreen] Error deleting broadcast: $e');
+                   final messenger = ScaffoldMessenger.of(context);
+                   if (mounted) {
+                     messenger.showSnackBar(
+                       SnackBar(content: Text('Failed to delete broadcast: $e')),
+                     );
+                   }
+                 }
+               },
+            )),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget? _buildBroadcastFAB() {
+    return FloatingActionButton.extended(
+      onPressed: _showCreateBroadcastModal,
+      backgroundColor: AppColors.marketBlue,
+      foregroundColor: Colors.white,
+      icon: const Icon(Icons.campaign),
+      label: const Text('Broadcast'),
+    );
+  }
+
+  void _showCreateBroadcastModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: CreateBroadcastModal(
+          broadcastService: broadcastService,
+          hiveService: hiveService,
+          onBroadcastCreated: () {
+            developer.log('[FeedScreen] Broadcast created successfully');
+            // Feed will automatically update via stream
+          },
+        ),
+      ),
     );
   }
 }
