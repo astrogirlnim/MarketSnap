@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:gal/gal.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/pending_media.dart';
@@ -124,73 +123,54 @@ class DeviceGallerySaveService {
     }
   }
 
-  /// Check and request gallery permissions
+  /// Check and request gallery permissions using gal package
   Future<bool> _checkGalleryPermissions() async {
-    debugPrint('[DeviceGallerySaveService] 🔐 Checking gallery permissions...');
-    debugPrint('[DeviceGallerySaveService] 📱 Platform: ${Platform.operatingSystem}');
-    debugPrint('[DeviceGallerySaveService] 📱 Platform version: ${Platform.version}');
+    developer.log(
+      '[DeviceGallerySaveService] 🔐 Checking gallery permissions using gal package...',
+      name: 'DeviceGallerySaveService',
+    );
     
-    Permission permission;
-    if (Platform.isIOS) {
-      // iOS: Use photos permission for adding to gallery
-      permission = Permission.photos;
-      debugPrint('[DeviceGallerySaveService] 🍎 iOS detected - using Permission.photos');
-    } else {
-      // Android: Use appropriate storage permission based on API level
-      if (await _isAndroid13OrHigher()) {
-        permission = Permission.photos; // Android 13+ granular permission
-        debugPrint('[DeviceGallerySaveService] 🤖 Android 13+ detected - using Permission.photos');
-      } else {
-        permission = Permission.storage; // Legacy storage permission
-        debugPrint('[DeviceGallerySaveService] 🤖 Android <13 detected - using Permission.storage');
-      }
-    }
-
-    // Check current permission status
-    debugPrint('[DeviceGallerySaveService] 🔍 Checking current permission status...');
-    PermissionStatus status = await permission.status;
-    debugPrint('[DeviceGallerySaveService] 📱 Current permission status: $status');
-    debugPrint('[DeviceGallerySaveService] 📱 Is granted: ${status.isGranted}');
-    debugPrint('[DeviceGallerySaveService] 📱 Is denied: ${status.isDenied}');
-    debugPrint('[DeviceGallerySaveService] 📱 Is permanently denied: ${status.isPermanentlyDenied}');
-    debugPrint('[DeviceGallerySaveService] 📱 Is restricted: ${status.isRestricted}');
-    debugPrint('[DeviceGallerySaveService] 📱 Is limited: ${status.isLimited}');
-
-    // If permission is denied, request it
-    if (status.isDenied || status.isPermanentlyDenied) {
-      debugPrint('[DeviceGallerySaveService] 🔐 Permission denied, requesting permission...');
-      debugPrint('[DeviceGallerySaveService] 🔐 About to call permission.request()...');
+    try {
+      // Use gal package's built-in permission checking
+      final hasAccess = await Gal.hasAccess();
       
-      try {
-        status = await permission.request();
-        debugPrint('[DeviceGallerySaveService] 📱 Permission request completed');
-        debugPrint('[DeviceGallerySaveService] 📱 New permission status: $status');
-        debugPrint('[DeviceGallerySaveService] 📱 New status is granted: ${status.isGranted}');
-      } catch (e) {
-        debugPrint('[DeviceGallerySaveService] ❌ Error during permission request: $e');
-        debugPrint('[DeviceGallerySaveService] ❌ Error type: ${e.runtimeType}');
-        return false;
+      developer.log(
+        '[DeviceGallerySaveService] 📱 Current gallery access status: $hasAccess',
+        name: 'DeviceGallerySaveService',
+      );
+
+      if (!hasAccess) {
+        developer.log(
+          '[DeviceGallerySaveService] 🔐 Gallery access denied, requesting permission...',
+          name: 'DeviceGallerySaveService',
+        );
+        
+        // Request access using gal package
+        final granted = await Gal.requestAccess();
+        
+        developer.log(
+          '[DeviceGallerySaveService] 📱 Permission request result: $granted',
+          name: 'DeviceGallerySaveService',
+        );
+        
+        return granted;
+      } else {
+        developer.log(
+          '[DeviceGallerySaveService] ✅ Gallery access already granted',
+          name: 'DeviceGallerySaveService',
+        );
+        return true;
       }
-    } else if (status.isGranted) {
-      debugPrint('[DeviceGallerySaveService] ✅ Permission already granted');
-    } else {
-      debugPrint('[DeviceGallerySaveService] ⚠️ Permission status is neither denied nor granted: $status');
+    } catch (e) {
+      developer.log(
+        '[DeviceGallerySaveService] ❌ Error checking gallery permissions: $e',
+        name: 'DeviceGallerySaveService',
+      );
+      return false;
     }
-
-    // Log platform-specific permission status
-    if (Platform.isIOS) {
-      debugPrint('[DeviceGallerySaveService] 🍎 Final iOS photos permission status: $status');
-      debugPrint('[DeviceGallerySaveService] 🍎 iOS permission will appear in Settings: ${status.isGranted || status.isDenied || status.isPermanentlyDenied}');
-    } else {
-      debugPrint('[DeviceGallerySaveService] 🤖 Final Android storage permission status: $status');
-    }
-
-    final result = status.isGranted;
-    debugPrint('[DeviceGallerySaveService] 🏁 Permission check result: $result');
-    return result;
   }
 
-  /// Save the actual file to gallery using image_gallery_saver
+  /// Save the actual file to gallery using gal package
   /// Returns true if successful
   Future<bool> _saveFileToGallery({
     required String filePath,
@@ -204,61 +184,84 @@ class DeviceGallerySaveService {
       );
 
       final file = File(filePath);
-      final fileBytes = await file.readAsBytes();
-
-      // Generate a meaningful name for the saved file
-      final fileName = _generateFileName(mediaType, caption);
-
-      dynamic result;
-
-      if (mediaType == MediaType.photo) {
-        // Save image to gallery
-        result = await ImageGallerySaver.saveImage(
-          Uint8List.fromList(fileBytes),
-          quality: 85, // Good quality for photos
-          name: fileName,
+      if (!await file.exists()) {
+        developer.log(
+          '[DeviceGallerySaveService] ❌ File does not exist: $filePath',
+          name: 'DeviceGallerySaveService',
         );
-      } else {
-        // Save video to gallery
-        result = await ImageGallerySaver.saveFile(
-          filePath,
-          name: fileName,
-        );
+        return false;
       }
 
+      // Log file details
+      final fileSize = await file.length();
       developer.log(
-        '[DeviceGallerySaveService] 📱 Gallery save result: $result',
+        '[DeviceGallerySaveService] 📁 File exists - size: ${fileSize} bytes',
         name: 'DeviceGallerySaveService',
       );
 
-      // Check if the result indicates success
-      if (result is Map && result.containsKey('isSuccess')) {
-        final isSuccess = result['isSuccess'] as bool? ?? false;
-        if (isSuccess) {
+      try {
+        if (mediaType == MediaType.photo) {
+          // Save image to gallery using gal package
           developer.log(
-            '[DeviceGallerySaveService] ✅ Media saved successfully with name: $fileName',
+            '[DeviceGallerySaveService] 📷 Calling Gal.putImage() for: $filePath',
             name: 'DeviceGallerySaveService',
           );
-          return true;
+          await Gal.putImage(filePath);
+          developer.log(
+            '[DeviceGallerySaveService] ✅ Gal.putImage() completed successfully',
+            name: 'DeviceGallerySaveService',
+          );
         } else {
+          // Save video to gallery using gal package
           developer.log(
-            '[DeviceGallerySaveService] ❌ Gallery save failed: ${result['errorMessage'] ?? 'Unknown error'}',
+            '[DeviceGallerySaveService] 🎥 Calling Gal.putVideo() for: $filePath',
             name: 'DeviceGallerySaveService',
           );
-          return false;
+          await Gal.putVideo(filePath);
+          developer.log(
+            '[DeviceGallerySaveService] ✅ Gal.putVideo() completed successfully',
+            name: 'DeviceGallerySaveService',
+          );
         }
-      } else if (result != null) {
-        // Some versions return the file path on success
+
         developer.log(
-          '[DeviceGallerySaveService] ✅ Media saved successfully (path result)',
+          '[DeviceGallerySaveService] ✅ Media saved successfully to gallery',
           name: 'DeviceGallerySaveService',
         );
         return true;
-      } else {
+      } on GalException catch (galError) {
         developer.log(
-          '[DeviceGallerySaveService] ❌ Gallery save returned null result',
+          '[DeviceGallerySaveService] ❌ Gal package error: ${galError.type.message}',
           name: 'DeviceGallerySaveService',
         );
+        
+        // Handle specific gal errors
+        switch (galError.type) {
+          case GalExceptionType.accessDenied:
+            developer.log(
+              '[DeviceGallerySaveService] ❌ Access denied error from Gal package',
+              name: 'DeviceGallerySaveService',
+            );
+            throw GalleryPermissionException('Gallery access denied');
+          case GalExceptionType.notEnoughSpace:
+            developer.log(
+              '[DeviceGallerySaveService] ❌ Not enough space error from Gal package',
+              name: 'DeviceGallerySaveService',
+            );
+            throw InsufficientStorageException('Not enough storage space');
+          case GalExceptionType.notSupportedFormat:
+            developer.log(
+              '[DeviceGallerySaveService] ❌ Unsupported file format for gallery save',
+              name: 'DeviceGallerySaveService',
+            );
+            return false;
+          case GalExceptionType.unexpected:
+            developer.log(
+              '[DeviceGallerySaveService] ❌ Unexpected error during gallery save',
+              name: 'DeviceGallerySaveService',
+            );
+            return false;
+        }
         return false;
       }
     } catch (e) {
@@ -270,28 +273,6 @@ class DeviceGallerySaveService {
     }
   }
 
-  /// Generate a meaningful filename for saved media
-  String _generateFileName(MediaType mediaType, String? caption) {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final prefix = mediaType == MediaType.photo ? 'MarketSnap_Photo' : 'MarketSnap_Video';
-    final extension = mediaType == MediaType.photo ? 'jpg' : 'mp4';
-    
-    // Create a clean filename (replace special characters)
-    String cleanCaption = '';
-    if (caption != null && caption.isNotEmpty) {
-      cleanCaption = caption
-          .replaceAll(RegExp(r'[^\w\s-]'), '') // Remove special chars
-          .replaceAll(RegExp(r'\s+'), '_') // Replace spaces with underscores
-          .toLowerCase();
-      if (cleanCaption.length > 20) {
-        cleanCaption = cleanCaption.substring(0, 20);
-      }
-      cleanCaption = '_$cleanCaption';
-    }
-    
-    return '${prefix}_$timestamp$cleanCaption.$extension';
-  }
-
   /// Check if save-to-device is enabled in settings
   bool isSaveToDeviceEnabled() {
     final settings = _hiveService.getUserSettings();
@@ -301,15 +282,6 @@ class DeviceGallerySaveService {
   /// Check if device has sufficient storage for saving media
   Future<bool> hasSufficientStorageForSave() async {
     return await _settingsService.hasSufficientStorage();
-  }
-
-  /// Check if the device is running Android 13 or higher
-  Future<bool> _isAndroid13OrHigher() async {
-    if (Platform.isAndroid) {
-      final version = Platform.version;
-      return version.contains('API 33') || version.contains('API 34') || version.contains('API 35');
-    }
-    return false;
   }
 }
 
