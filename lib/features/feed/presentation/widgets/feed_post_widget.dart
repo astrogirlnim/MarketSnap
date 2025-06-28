@@ -343,7 +343,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     // Get video aspect ratio
     final videoAspectRatio = _videoController!.value.aspectRatio;
 
-    // Determine overlay color from the snap's filterType
+    // ✅ NOTE: Videos use overlay filters (unlike images which are pre-processed)
+    // Video files are not modified - filters are applied as visual overlays only
     Color overlayColor = Colors.transparent;
     final filterType = widget.snap.filterType;
 
@@ -366,7 +367,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     }
 
     debugPrint(
-      '[FeedPostWidget] 🎨 Applied overlay color: $overlayColor for filter: $filterType',
+      '[FeedPostWidget] 🎨 Video display: Applied overlay color $overlayColor for filter "$filterType" (videos use overlay filters)',
     );
 
     return AspectRatio(
@@ -376,7 +377,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         children: [
           VideoPlayer(_videoController!),
 
-          // Filter overlay
+          // ✅ OVERLAY: Videos use filter overlays (video files are not processed)
           Positioned.fill(child: Container(color: overlayColor)),
 
           // Play/pause overlay
@@ -419,31 +420,21 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Build image display widget
   Widget _buildImageDisplay() {
-    // Determine overlay color from the snap's filterType
-    Color overlayColor = Colors.transparent;
     final filterType = widget.snap.filterType;
 
     debugPrint(
-      '[FeedPostWidget] Processing image for snap ${widget.snap.id} with filterType: "$filterType"',
+      '[FeedPostWidget] 🖼️ Processing image for snap ${widget.snap.id} with filterType: "$filterType"',
     );
-
-    if (filterType != null && filterType != 'none') {
-      if (filterType == 'warm') {
-        overlayColor = Colors.orange.withAlpha(77);
-      } else if (filterType == 'cool') {
-        overlayColor = Colors.blue.withAlpha(77);
-      } else if (filterType == 'contrast') {
-        overlayColor = Colors.black.withAlpha(77);
-      }
-    }
-
+    
+    // ✅ FIX: Images are already processed with LUT filters during capture
+    // The mediaUrl points to the filtered image, so no additional overlay is needed
     debugPrint(
-      '[FeedPostWidget] Applied overlay color: $overlayColor for filter: $filterType',
+      '[FeedPostWidget] 🎨 Image display: Using processed image without additional overlay (filter already applied during capture)',
     );
 
     return Stack(
       children: [
-        // Main image
+        // Main image (already filtered during capture/upload)
         Image.network(
           widget.snap.mediaUrl,
           width: double.infinity,
@@ -471,14 +462,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             );
           },
         ),
-
-        // Filter overlay
-        if (overlayColor != Colors.transparent)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: overlayColor,
-          ),
+        // ✅ NO OVERLAY: Images are already processed with LUT filters
+        // Additional overlays would cause double-filtering
       ],
     );
   }
