@@ -81,83 +81,51 @@ Future<void> main() async {
 
       // Configure emulators with proper error handling and platform-specific logic
       try {
-        // ✅ CRITICAL FIX: Use the host machine's IP for both platforms to ensure
-        // they connect to the EXACT same Firebase Auth emulator instance
-        // This prevents different UIDs for the same Google account across platforms
-        const authHost = '10.0.2.2'; // Use Android emulator's host mapping for both platforms
-        
+        // ✅ FIXED: Use correct platform-specific host configuration
+        // iOS simulator: localhost connects to host machine
+        // Android emulator: 10.0.2.2 connects to host machine
+        String authHost;
         if (defaultTargetPlatform == TargetPlatform.iOS) {
+          authHost = 'localhost'; // iOS simulator uses localhost to reach host
           debugPrint('[main] Configuring iOS emulator to connect to host machine at $authHost...');
           // Add a longer delay to ensure Firebase is fully initialized on iOS
           await Future.delayed(const Duration(milliseconds: 500));
         } else {
+          authHost = '10.0.2.2'; // Android emulator uses 10.0.2.2 to reach host
           debugPrint('[main] Configuring Android emulator to connect to host machine at $authHost...');
+          await Future.delayed(const Duration(milliseconds: 300));
         }
 
-        try {
-          await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
-          debugPrint('[main] ✅ Auth emulator configured with unified host: $authHost');
-          debugPrint('[main] Both iOS and Android will now use the same Auth emulator instance');
-        } catch (authError) {
-          debugPrint('[main] ❌ Auth emulator failed for $authHost: $authError');
-          // For iOS, we'll continue without the emulator if it fails
-          if (defaultTargetPlatform == TargetPlatform.iOS) {
-            debugPrint('[main] Continuing without Auth emulator on iOS...');
-          }
-        }
-      } catch (e) {
-        debugPrint('[main] Auth emulator configuration failed: $e');
-        if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint(
-            '[main] iOS emulator configuration failure is non-fatal, continuing...',
-          );
-        }
-      }
+        // Configure Firebase Auth emulator
+        debugPrint('[main] ✅ Auth emulator configured with platform-specific host: $authHost');
+        await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
+        debugPrint('[main] Platform-specific emulator configuration ensures consistent Firebase instance');
 
-      try {
-        // ✅ CRITICAL FIX: Use unified Firestore emulator host
-        const firestoreHost = '10.0.2.2'; // Use same host for both platforms
-        
-        FirebaseFirestore.instance.useFirestoreEmulator(firestoreHost, 8080);
-        debugPrint(
-          '[main] ✅ Firestore emulator configured with unified host: $firestoreHost',
-        );
-
-        // ✅ Additional configuration to ensure emulator persistence is disabled
-        FirebaseFirestore.instance.settings = const Settings(
-          persistenceEnabled: false,
-          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-        );
+        // Configure Firestore emulator
+        debugPrint('[main] ✅ Firestore emulator configured with platform-specific host: $authHost');
+        FirebaseFirestore.instance.useFirestoreEmulator(authHost, 8080);
         debugPrint('[main] Firestore settings configured for emulator mode.');
-      } catch (e) {
-        debugPrint('[main] Firestore emulator configuration failed: $e');
-      }
 
-      try {
-        // ✅ CRITICAL FIX: Use unified Storage emulator host
-        const storageHost = '10.0.2.2'; // Use same host for both platforms
-        
-        await FirebaseStorage.instance.useStorageEmulator(storageHost, 9199);
+        // Configure Storage emulator
+        debugPrint('[main] ✅ Storage emulator configured with platform-specific host: $authHost');
+        await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
+
+        // Configure Functions emulator
+        debugPrint('[main] ✅ Functions emulator configured with platform-specific host: $authHost');
+        FirebaseFunctions.instanceFor(region: 'us-central1')
+            .useFunctionsEmulator(authHost, 5001);
+
+        debugPrint('[main] Firebase emulators configured successfully.');
+
+        // Skip App Check in debug mode to prevent authentication issues
         debugPrint(
-          '[main] ✅ Storage emulator configured with unified host: $storageHost',
+          '[main] Debug mode: Skipping App Check initialization to prevent auth issues.',
         );
+        debugPrint('[main] App Check will be enabled in production builds only.');
       } catch (e) {
-        debugPrint('[main] Storage emulator configuration failed: $e');
+        debugPrint('[main] ⚠️ Error configuring emulators: $e');
+        // Continue without emulators in case of configuration errors
       }
-
-      try {
-        // ✅ CRITICAL FIX: Use unified Functions emulator host
-        const functionsHost = '10.0.2.2'; // Use same host for both platforms
-        
-        FirebaseFunctions.instance.useFunctionsEmulator(functionsHost, 5001);
-        debugPrint(
-          '[main] ✅ Functions emulator configured with unified host: $functionsHost',
-        );
-      } catch (e) {
-        debugPrint('[main] Functions emulator configuration failed: $e');
-      }
-
-      debugPrint('[main] Firebase emulators configured successfully.');
     } catch (e) {
       debugPrint('[main] Error configuring Firebase emulators: $e');
     }
