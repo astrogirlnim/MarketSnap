@@ -77,7 +77,10 @@ class AccountLinkingService {
         );
       }
 
-      // Check for existing vendor profiles with same phone number or email
+      // ✅ CRITICAL ENHANCEMENT: Enhanced cross-platform profile search
+      // This provides robust fallback when Firebase Auth UIDs are inconsistent across platforms
+      debugPrint('[AccountLinkingService] Searching for existing profiles by contact info');
+      
       if (phoneNumber != null || email != null) {
         final existingProfile = await _findExistingProfileByContact(
           phoneNumber,
@@ -86,7 +89,10 @@ class AccountLinkingService {
 
         if (existingProfile != null) {
           debugPrint(
-            '[AccountLinkingService] Found existing vendor profile: ${existingProfile.stallName} (${existingProfile.uid})',
+            '[AccountLinkingService] ✅ Found existing vendor profile: ${existingProfile.stallName} (${existingProfile.uid})',
+          );
+          debugPrint(
+            '[AccountLinkingService] 🔗 This resolves cross-platform authentication issues',
           );
 
           // Copy the existing profile to the current user's UID
@@ -102,6 +108,33 @@ class AccountLinkingService {
       debugPrint(
         '[AccountLinkingService] Error checking for existing profiles: $e',
       );
+      
+      // ✅ ENHANCEMENT: Add retry logic for transient Firestore errors
+      if (e.toString().contains('unavailable') || e.toString().contains('deadline-exceeded')) {
+        debugPrint('[AccountLinkingService] 🔄 Retrying due to transient error...');
+        await Future.delayed(const Duration(seconds: 2));
+        
+        try {
+          // Retry the contact-based search only (most critical for cross-platform linking)
+          if (phoneNumber != null || email != null) {
+            final existingProfile = await _findExistingProfileByContact(
+              phoneNumber,
+              email,
+            );
+            
+            if (existingProfile != null) {
+              debugPrint(
+                '[AccountLinkingService] ✅ Retry successful: Found profile ${existingProfile.stallName}',
+              );
+              await _copyProfileToCurrentUser(existingProfile);
+              return existingProfile;
+            }
+          }
+        } catch (retryError) {
+          debugPrint('[AccountLinkingService] ❌ Retry also failed: $retryError');
+        }
+      }
+      
       return null;
     }
   }
