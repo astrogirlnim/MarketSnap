@@ -330,9 +330,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SettingsScreen(
-          settingsService: SettingsService(hiveService: main.hiveService),
-        ),
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }

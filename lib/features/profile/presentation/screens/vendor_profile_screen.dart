@@ -328,9 +328,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SettingsScreen(
-          settingsService: SettingsService(hiveService: main.hiveService),
-        ),
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }

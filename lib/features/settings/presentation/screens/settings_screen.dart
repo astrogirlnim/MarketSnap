@@ -16,9 +16,7 @@ import '../../../../main.dart' as main;
 /// - External link to support email
 /// - Display free-storage indicator (≥ 100 MB check)
 class SettingsScreen extends StatefulWidget {
-  final SettingsService settingsService;
-
-  const SettingsScreen({super.key, required this.settingsService});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -56,13 +54,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       // Load current settings
-      final settings = widget.settingsService.getCurrentSettings();
+      final settings = main.settingsService.getCurrentSettings();
 
       // ✅ PERFORMANCE FIX: Load storage status using cached values
-      final storageStatus = await widget.settingsService
-          .getStorageStatusMessage();
-      final hasSufficientStorage = await widget.settingsService
-          .hasSufficientStorage();
+      final storageStatus = await main.settingsService.getStorageStatusMessage();
+      final hasSufficientStorage = await main.settingsService.hasSufficientStorage();
 
       setState(() {
         _currentSettings = settings;
@@ -109,14 +105,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      await widget.settingsService.updateSettings(
+      await main.settingsService.updateSettings(
         enableCoarseLocation: enableCoarseLocation,
         autoCompressVideo: autoCompressVideo,
         saveToDeviceDefault: saveToDeviceDefault,
       );
 
       // Reload settings to get updated values
-      final updatedSettings = widget.settingsService.getCurrentSettings();
+      final updatedSettings = main.settingsService.getCurrentSettings();
 
       setState(() {
         _currentSettings = updatedSettings;
@@ -163,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: 'SettingsScreen',
       );
 
-      final success = await widget.settingsService.openSupportEmail();
+      final success = await main.settingsService.openSupportEmail();
 
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,13 +214,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       // ✅ PERFORMANCE FIX: Force refresh storage cache
-      await widget.settingsService.refreshStorageCache();
+      await main.settingsService.refreshStorageCache();
 
       // Get updated values from refreshed cache
-      final storageStatus = await widget.settingsService
-          .getStorageStatusMessage();
-      final hasSufficientStorage = await widget.settingsService
-          .hasSufficientStorage();
+      final storageStatus = await main.settingsService.getStorageStatusMessage();
+      final hasSufficientStorage = await main.settingsService.hasSufficientStorage();
 
       setState(() {
         _storageStatus = storageStatus;
