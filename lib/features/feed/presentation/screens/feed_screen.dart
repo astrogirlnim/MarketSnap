@@ -22,7 +22,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   // Use global feed service instance with profile update notifier
   final FeedService _feedService = feedService;
-  
+
   /// Check if current user is a vendor (can create broadcasts)
   bool get _canCreateBroadcasts {
     final profile = profileService.getCurrentUserProfile();
@@ -206,11 +206,7 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.campaign,
-                    color: AppColors.marketBlue,
-                    size: 20,
-                  ),
+                  Icon(Icons.campaign, color: AppColors.marketBlue, size: 20),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     'Market Broadcasts',
@@ -224,25 +220,32 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
             // Broadcasts list
-            ...broadcasts.map((broadcast) => BroadcastWidget(
-              broadcast: broadcast,
-              isCurrentUserPost: broadcast.vendorUid == _feedService.currentUserId,
-                             onDelete: () async {
-                 // Capture context before async operation
-                 final messenger = ScaffoldMessenger.of(context);
-                 try {
-                   await broadcastService.deleteBroadcast(broadcast.id);
-                   developer.log('[FeedScreen] Broadcast deleted: ${broadcast.id}');
-                 } catch (e) {
-                   developer.log('[FeedScreen] Error deleting broadcast: $e');
-                   if (mounted) {
-                     messenger.showSnackBar(
-                       SnackBar(content: Text('Failed to delete broadcast: $e')),
-                     );
-                   }
-                 }
-               },
-            )),
+            ...broadcasts.map(
+              (broadcast) => BroadcastWidget(
+                broadcast: broadcast,
+                isCurrentUserPost:
+                    broadcast.vendorUid == _feedService.currentUserId,
+                onDelete: () async {
+                  // Capture context before async operation
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    await broadcastService.deleteBroadcast(broadcast.id);
+                    developer.log(
+                      '[FeedScreen] Broadcast deleted: ${broadcast.id}',
+                    );
+                  } catch (e) {
+                    developer.log('[FeedScreen] Error deleting broadcast: $e');
+                    if (mounted) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to delete broadcast: $e'),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
           ],
         );

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:gal/gal.dart';
-import 'package:flutter/foundation.dart';
 
 import '../models/pending_media.dart';
 import 'hive_service.dart';
@@ -16,8 +15,8 @@ class DeviceGallerySaveService {
   DeviceGallerySaveService({
     required HiveService hiveService,
     required SettingsService settingsService,
-  })  : _hiveService = hiveService,
-        _settingsService = settingsService;
+  }) : _hiveService = hiveService,
+       _settingsService = settingsService;
 
   /// Saves media to device gallery if enabled in settings and storage is sufficient
   /// Returns true if saved successfully, false if skipped or failed
@@ -48,7 +47,8 @@ class DeviceGallerySaveService {
       );
 
       // Step 2: Check if device has sufficient storage (≥ 100 MB)
-      final hasSufficientStorage = await _settingsService.hasSufficientStorage();
+      final hasSufficientStorage = await _settingsService
+          .hasSufficientStorage();
       if (!hasSufficientStorage) {
         developer.log(
           '[DeviceGallerySaveService] ⚠️ Insufficient storage (<100MB), skipping gallery save',
@@ -129,11 +129,11 @@ class DeviceGallerySaveService {
       '[DeviceGallerySaveService] 🔐 Checking gallery permissions using gal package...',
       name: 'DeviceGallerySaveService',
     );
-    
+
     try {
       // Use gal package's built-in permission checking
       final hasAccess = await Gal.hasAccess();
-      
+
       developer.log(
         '[DeviceGallerySaveService] 📱 Current gallery access status: $hasAccess',
         name: 'DeviceGallerySaveService',
@@ -144,15 +144,15 @@ class DeviceGallerySaveService {
           '[DeviceGallerySaveService] 🔐 Gallery access denied, requesting permission...',
           name: 'DeviceGallerySaveService',
         );
-        
+
         // Request access using gal package
         final granted = await Gal.requestAccess();
-        
+
         developer.log(
           '[DeviceGallerySaveService] 📱 Permission request result: $granted',
           name: 'DeviceGallerySaveService',
         );
-        
+
         return granted;
       } else {
         developer.log(
@@ -195,7 +195,7 @@ class DeviceGallerySaveService {
       // Log file details
       final fileSize = await file.length();
       developer.log(
-        '[DeviceGallerySaveService] 📁 File exists - size: ${fileSize} bytes',
+        '[DeviceGallerySaveService] 📁 File exists - size: $fileSize bytes',
         name: 'DeviceGallerySaveService',
       );
 
@@ -234,7 +234,7 @@ class DeviceGallerySaveService {
           '[DeviceGallerySaveService] ❌ Gal package error: ${galError.type.message}',
           name: 'DeviceGallerySaveService',
         );
-        
+
         // Handle specific gal errors
         switch (galError.type) {
           case GalExceptionType.accessDenied:
@@ -262,7 +262,6 @@ class DeviceGallerySaveService {
             );
             return false;
         }
-        return false;
       }
     } catch (e) {
       developer.log(
@@ -310,4 +309,4 @@ class GalleryPermissionException implements Exception {
 
   @override
   String toString() => 'GalleryPermissionException: $message';
-} 
+}

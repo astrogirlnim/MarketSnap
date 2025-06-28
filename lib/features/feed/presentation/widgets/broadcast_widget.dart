@@ -43,13 +43,13 @@ class BroadcastWidget extends StatelessWidget {
         children: [
           // Header with vendor info
           _buildHeader(context),
-          
+
           // Message content
           _buildMessage(),
-          
+
           // Location info (if available)
           if (broadcast.hasLocation) _buildLocationInfo(),
-          
+
           // Footer with timestamp
           _buildFooter(),
         ],
@@ -69,15 +69,11 @@ class BroadcastWidget extends StatelessWidget {
               color: AppColors.marketBlue.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             ),
-            child: Icon(
-              Icons.campaign,
-              color: AppColors.marketBlue,
-              size: 20,
-            ),
+            child: Icon(Icons.campaign, color: AppColors.marketBlue, size: 20),
           ),
-          
+
           const SizedBox(width: AppSpacing.md),
-          
+
           // Vendor avatar
           CircleAvatar(
             radius: 20,
@@ -86,16 +82,12 @@ class BroadcastWidget extends StatelessWidget {
                 ? CachedNetworkImageProvider(broadcast.vendorAvatarUrl)
                 : null,
             child: broadcast.vendorAvatarUrl.isEmpty
-                ? Icon(
-                    Icons.store,
-                    color: AppColors.seedBrown,
-                    size: 20,
-                  )
+                ? Icon(Icons.store, color: AppColors.seedBrown, size: 20)
                 : null,
           ),
-          
+
           const SizedBox(width: AppSpacing.md),
-          
+
           // Vendor info
           Expanded(
             child: Column(
@@ -121,7 +113,7 @@ class BroadcastWidget extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Delete button for current user's broadcasts
           if (isCurrentUserPost && onDelete != null)
             IconButton(
@@ -131,10 +123,7 @@ class BroadcastWidget extends StatelessWidget {
                 color: AppColors.textSecondary,
                 size: 20,
               ),
-              constraints: const BoxConstraints(
-                minWidth: 32,
-                minHeight: 32,
-              ),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
         ],
       ),
@@ -172,11 +161,7 @@ class BroadcastWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.location_on,
-            color: AppColors.leafGreen,
-            size: 16,
-          ),
+          Icon(Icons.location_on, color: AppColors.leafGreen, size: 16),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -216,11 +201,7 @@ class BroadcastWidget extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
-          Icon(
-            Icons.access_time,
-            color: AppColors.textSecondary,
-            size: 14,
-          ),
+          Icon(Icons.access_time, color: AppColors.textSecondary, size: 14),
           const SizedBox(width: AppSpacing.sm),
           Text(
             timeago.format(broadcast.createdAt, allowFromNow: true),
@@ -271,9 +252,7 @@ class BroadcastWidget extends StatelessWidget {
               Navigator.of(context).pop();
               _deleteBroadcast(context);
             },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.appleRed,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.appleRed),
             child: const Text('Delete'),
           ),
         ],
@@ -285,7 +264,7 @@ class BroadcastWidget extends StatelessWidget {
     try {
       developer.log('[BroadcastWidget] Deleting broadcast: ${broadcast.id}');
       onDelete?.call();
-      
+
       // Show success feedback
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -301,7 +280,7 @@ class BroadcastWidget extends StatelessWidget {
       );
     } catch (e) {
       developer.log('[BroadcastWidget] Error deleting broadcast: $e');
-      
+
       // Show error feedback
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -317,4 +296,4 @@ class BroadcastWidget extends StatelessWidget {
       );
     }
   }
-} 
+}

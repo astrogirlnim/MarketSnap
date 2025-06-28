@@ -324,7 +324,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         '[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})',
       );
 
-      // Phase 4.4: Save to device gallery BEFORE adding to queue 
+      // Phase 4.4: Save to device gallery BEFORE adding to queue
       // This ensures the file still exists at the original path
       await _attemptSaveToGallery(mediaPath, mediaType, caption);
 
@@ -407,40 +407,49 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Phase 4.4: Attempt to save media to device gallery if enabled
   /// Runs immediately before file gets moved to pending queue
-  Future<void> _attemptSaveToGallery(String mediaPath, MediaType mediaType, String caption) async {
+  Future<void> _attemptSaveToGallery(
+    String mediaPath,
+    MediaType mediaType,
+    String caption,
+  ) async {
     try {
-      debugPrint('[MediaReviewScreen] 💾 Attempting to save media to gallery...');
-        
-        final success = await main.deviceGallerySaveService.saveMediaToGalleryIfEnabled(
-          filePath: mediaPath,
-          mediaType: mediaType,
-          caption: caption.isNotEmpty ? caption : null,
+      debugPrint(
+        '[MediaReviewScreen] 💾 Attempting to save media to gallery...',
+      );
+
+      final success = await main.deviceGallerySaveService
+          .saveMediaToGalleryIfEnabled(
+            filePath: mediaPath,
+            mediaType: mediaType,
+            caption: caption.isNotEmpty ? caption : null,
+          );
+
+      if (mounted && success) {
+        // Show success message briefly
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.download_done, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('✅ Saved to gallery'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
 
-        if (mounted && success) {
-          // Show success message briefly
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.download_done, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('✅ Saved to gallery'),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          
-          debugPrint('[MediaReviewScreen] ✅ Media saved to gallery successfully');
-        } else if (!success) {
-          debugPrint('[MediaReviewScreen] ⏭️ Gallery save skipped (disabled in settings or conditions not met)');
-        }
+        debugPrint('[MediaReviewScreen] ✅ Media saved to gallery successfully');
+      } else if (!success) {
+        debugPrint(
+          '[MediaReviewScreen] ⏭️ Gallery save skipped (disabled in settings or conditions not met)',
+        );
+      }
     } catch (e) {
       debugPrint('[MediaReviewScreen] ❌ Gallery save failed: $e');
-      
+
       // Only show error message for actual failures, not when disabled
       if (mounted && e.toString().contains('permissions')) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -465,11 +474,15 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
               textColor: Colors.white,
               onPressed: () async {
                 // Navigate to device settings for permission management
-                debugPrint('[MediaReviewScreen] Opening app settings for photo permissions...');
+                debugPrint(
+                  '[MediaReviewScreen] Opening app settings for photo permissions...',
+                );
                 try {
                   await openAppSettings();
                 } catch (e) {
-                  debugPrint('[MediaReviewScreen] Failed to open app settings: $e');
+                  debugPrint(
+                    '[MediaReviewScreen] Failed to open app settings: $e',
+                  );
                 }
               },
             ),

@@ -428,9 +428,7 @@ Future<void> main() async {
       feedService = FeedService(profileUpdateNotifier: profileUpdateNotifier);
       debugPrint('[main] Basic feed service created.');
     } catch (fallbackError) {
-      debugPrint(
-        '[main] CRITICAL: Cannot create feed service: $fallbackError',
-      );
+      debugPrint('[main] CRITICAL: Cannot create feed service: $fallbackError');
       rethrow;
     }
   }
@@ -509,7 +507,9 @@ Future<void> main() async {
       hiveService: hiveService,
       settingsService: settingsService,
     );
-    debugPrint('[main] ✅ Device gallery save service initialized for Phase 4.4');
+    debugPrint(
+      '[main] ✅ Device gallery save service initialized for Phase 4.4',
+    );
   } catch (e) {
     debugPrint('[main] Error initializing device gallery save service: $e');
     // Create fallback device gallery save service

@@ -7,15 +7,13 @@ import '../models/rag_feedback.dart';
 /// Tracks user interactions with recipe and FAQ suggestions for personalization
 class RAGFeedbackService {
   static const String _collectionName = 'ragFeedback';
-  
+
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  RAGFeedbackService({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  RAGFeedbackService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   /// Record user feedback on a RAG suggestion
   Future<void> recordFeedback(RAGFeedback feedback) async {
@@ -131,11 +129,14 @@ class RAGFeedbackService {
           .limit(limit);
 
       if (contentType != null) {
-        query = query.where('contentType', isEqualTo: contentType.toString().split('.').last);
+        query = query.where(
+          'contentType',
+          isEqualTo: contentType.toString().split('.').last,
+        );
       }
 
       final snapshot = await query.get();
-      
+
       final feedback = snapshot.docs
           .map((doc) => RAGFeedback.fromFirestore(doc))
           .toList();
@@ -172,11 +173,17 @@ class RAGFeedbackService {
           .where('vendorId', isEqualTo: vendorId);
 
       if (startDate != null) {
-        query = query.where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+        query = query.where(
+          'createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+        );
       }
 
       if (endDate != null) {
-        query = query.where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+        query = query.where(
+          'createdAt',
+          isLessThanOrEqualTo: Timestamp.fromDate(endDate),
+        );
       }
 
       final snapshot = await query.get();
@@ -237,25 +244,45 @@ class RAGFeedbackService {
     }
 
     final totalFeedback = feedback.length;
-    final upvotes = feedback.where((f) => f.action == RAGFeedbackAction.upvote).length;
-    final downvotes = feedback.where((f) => f.action == RAGFeedbackAction.downvote).length;
-    final skips = feedback.where((f) => f.action == RAGFeedbackAction.skip).length;
-    final edits = feedback.where((f) => f.action == RAGFeedbackAction.edit).length;
-    final views = feedback.where((f) => f.action == RAGFeedbackAction.view).length;
-    final expands = feedback.where((f) => f.action == RAGFeedbackAction.expand).length;
+    final upvotes = feedback
+        .where((f) => f.action == RAGFeedbackAction.upvote)
+        .length;
+    final downvotes = feedback
+        .where((f) => f.action == RAGFeedbackAction.downvote)
+        .length;
+    final skips = feedback
+        .where((f) => f.action == RAGFeedbackAction.skip)
+        .length;
+    final edits = feedback
+        .where((f) => f.action == RAGFeedbackAction.edit)
+        .length;
+    final views = feedback
+        .where((f) => f.action == RAGFeedbackAction.view)
+        .length;
+    final expands = feedback
+        .where((f) => f.action == RAGFeedbackAction.expand)
+        .length;
 
-    final engagementActions = feedback.where((f) => f.isEngagement || f.isPositive).length;
-    final engagementRate = totalFeedback > 0 ? engagementActions / totalFeedback : 0.0;
+    final engagementActions = feedback
+        .where((f) => f.isEngagement || f.isPositive)
+        .length;
+    final engagementRate = totalFeedback > 0
+        ? engagementActions / totalFeedback
+        : 0.0;
 
     final positiveActions = feedback.where((f) => f.isPositive).length;
     final negativeActions = feedback.where((f) => f.isNegative).length;
-    final satisfactionScore = (positiveActions + negativeActions) > 0 
+    final satisfactionScore = (positiveActions + negativeActions) > 0
         ? positiveActions / (positiveActions + negativeActions)
         : 0.0;
 
     // Content type analytics
-    final recipeFeedback = feedback.where((f) => f.contentType == RAGContentType.recipe).toList();
-    final faqFeedback = feedback.where((f) => f.contentType == RAGContentType.faq).toList();
+    final recipeFeedback = feedback
+        .where((f) => f.contentType == RAGContentType.recipe)
+        .toList();
+    final faqFeedback = feedback
+        .where((f) => f.contentType == RAGContentType.faq)
+        .toList();
 
     return {
       'totalFeedback': totalFeedback,
@@ -277,10 +304,11 @@ class RAGFeedbackService {
     if (feedback.isEmpty) return {};
 
     final totalItems = feedback.length;
-    final avgRelevanceScore = feedback
-        .where((f) => f.relevanceScore != null)
-        .map((f) => f.relevanceScore!)
-        .fold(0.0, (total, score) => total + score) / 
+    final avgRelevanceScore =
+        feedback
+            .where((f) => f.relevanceScore != null)
+            .map((f) => f.relevanceScore!)
+            .fold(0.0, (total, score) => total + score) /
         feedback.where((f) => f.relevanceScore != null).length;
 
     return {
@@ -297,18 +325,18 @@ class RAGFeedbackService {
 
     // Analyze user's positive feedback patterns
     final positiveFeedback = feedback.where((f) => f.isPositive).toList();
-    
+
     // Extract keywords from metadata of positively rated content
     final positiveKeywords = <String>[];
     final positiveCategories = <String>[];
-    
+
     for (final item in positiveFeedback) {
       if (item.metadata != null) {
         final keywords = item.metadata!['keywords'] as List<dynamic>?;
         if (keywords != null) {
           positiveKeywords.addAll(keywords.cast<String>());
         }
-        
+
         final category = item.metadata!['category'] as String?;
         if (category != null) {
           positiveCategories.add(category);
@@ -329,13 +357,11 @@ class RAGFeedbackService {
     }
 
     // Sort by frequency
-    final topKeywords = keywordCounts.entries
-        .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-    
-    final topCategories = categoryCounts.entries
-        .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+    final topKeywords = keywordCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final topCategories = categoryCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return {
       'preferredKeywords': topKeywords.take(10).map((e) => e.key).toList(),
@@ -347,11 +373,15 @@ class RAGFeedbackService {
 
   /// Determine user's preferred content type based on positive feedback
   String _getPreferredContentType(List<RAGFeedback> positiveFeedback) {
-    final recipeCount = positiveFeedback.where((f) => f.contentType == RAGContentType.recipe).length;
-    final faqCount = positiveFeedback.where((f) => f.contentType == RAGContentType.faq).length;
+    final recipeCount = positiveFeedback
+        .where((f) => f.contentType == RAGContentType.recipe)
+        .length;
+    final faqCount = positiveFeedback
+        .where((f) => f.contentType == RAGContentType.faq)
+        .length;
 
     if (recipeCount > faqCount) return 'recipe';
     if (faqCount > recipeCount) return 'faq';
     return 'balanced';
   }
-} 
+}

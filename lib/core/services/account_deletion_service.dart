@@ -42,7 +42,9 @@ class AccountDeletionService {
       throw Exception('No user is currently signed in');
     }
 
-    developer.log('[AccountDeletionService] 🗑️ Starting account deletion for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🗑️ Starting account deletion for UID: $uid',
+    );
 
     try {
       // Step 1: Delete all local data immediately
@@ -67,9 +69,13 @@ class AccountDeletionService {
 
       // Step 6: Add a small delay to ensure auth state change propagates
       await Future.delayed(const Duration(milliseconds: 500));
-      developer.log('[AccountDeletionService] ✅ Auth state propagation delay completed');
+      developer.log(
+        '[AccountDeletionService] ✅ Auth state propagation delay completed',
+      );
 
-      developer.log('[AccountDeletionService] 🎉 Account deletion completed successfully');
+      developer.log(
+        '[AccountDeletionService] 🎉 Account deletion completed successfully',
+      );
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Account deletion failed: $e');
       rethrow;
@@ -78,21 +84,27 @@ class AccountDeletionService {
 
   /// Delete all local data from Hive storage
   Future<void> _deleteLocalData(String uid) async {
-    developer.log('[AccountDeletionService] 🧹 Deleting local data for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🧹 Deleting local data for UID: $uid',
+    );
 
     try {
       // Delete vendor profile if exists
       final vendorProfile = _hiveService.getVendorProfile(uid);
       if (vendorProfile != null) {
         await _hiveService.deleteVendorProfile(uid);
-        developer.log('[AccountDeletionService] ✅ Vendor profile deleted from local storage');
+        developer.log(
+          '[AccountDeletionService] ✅ Vendor profile deleted from local storage',
+        );
       }
 
-      // Delete regular user profile if exists  
+      // Delete regular user profile if exists
       final regularProfile = _hiveService.getRegularUserProfile(uid);
       if (regularProfile != null) {
         await _hiveService.deleteRegularUserProfile(uid);
-        developer.log('[AccountDeletionService] ✅ Regular user profile deleted from local storage');
+        developer.log(
+          '[AccountDeletionService] ✅ Regular user profile deleted from local storage',
+        );
       }
 
       // Clear authentication cache
@@ -103,7 +115,9 @@ class AccountDeletionService {
       await _deletePendingMediaQueue(uid);
       developer.log('[AccountDeletionService] ✅ Pending media queue cleaned');
 
-      developer.log('[AccountDeletionService] ✅ All local data deleted successfully');
+      developer.log(
+        '[AccountDeletionService] ✅ All local data deleted successfully',
+      );
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Error deleting local data: $e');
       throw Exception('Failed to delete local data: $e');
@@ -115,7 +129,7 @@ class AccountDeletionService {
     try {
       // Get all pending media items
       final pendingItems = _hiveService.getAllPendingMedia();
-      
+
       // Filter items that belong to this user and delete them
       for (final item in pendingItems) {
         // Assuming the pending media item has a way to identify the user
@@ -123,19 +137,25 @@ class AccountDeletionService {
         try {
           await _hiveService.removePendingMedia(item.id);
         } catch (e) {
-          developer.log('[AccountDeletionService] Warning: Failed to delete pending media item ${item.id}: $e');
+          developer.log(
+            '[AccountDeletionService] Warning: Failed to delete pending media item ${item.id}: $e',
+          );
           // Continue with other items
         }
       }
     } catch (e) {
-      developer.log('[AccountDeletionService] Warning: Error cleaning pending media queue: $e');
+      developer.log(
+        '[AccountDeletionService] Warning: Error cleaning pending media queue: $e',
+      );
       // Non-critical error, continue with deletion
     }
   }
 
   /// Trigger backend cascading deletion via Cloud Function
   Future<void> _triggerBackendDeletion(String uid) async {
-    developer.log('[AccountDeletionService] 🔥 Triggering backend deletion via Cloud Function for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🔥 Triggering backend deletion via Cloud Function for UID: $uid',
+    );
 
     try {
       final callable = _functions.httpsCallable('deleteUserAccount');
@@ -145,20 +165,28 @@ class AccountDeletionService {
       });
 
       final response = result.data;
-      developer.log('[AccountDeletionService] Backend deletion response: $response');
+      developer.log(
+        '[AccountDeletionService] Backend deletion response: $response',
+      );
 
       if (response['success'] != true) {
-        throw Exception('Backend deletion failed: ${response['error'] ?? 'Unknown error'}');
+        throw Exception(
+          'Backend deletion failed: ${response['error'] ?? 'Unknown error'}',
+        );
       }
 
-      developer.log('[AccountDeletionService] ✅ Backend deletion completed successfully');
+      developer.log(
+        '[AccountDeletionService] ✅ Backend deletion completed successfully',
+      );
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Backend deletion failed: $e');
-      
+
       // If backend deletion fails, we still need to continue with local cleanup
       // Log the error but don't throw - we'll handle cleanup manually
-      developer.log('[AccountDeletionService] ⚠️ Continuing with manual cleanup due to backend failure');
-      
+      developer.log(
+        '[AccountDeletionService] ⚠️ Continuing with manual cleanup due to backend failure',
+      );
+
       // Continue with manual deletion as fallback
       await _deleteUserDataManually(uid);
     }
@@ -166,37 +194,45 @@ class AccountDeletionService {
 
   /// Manual deletion as fallback if Cloud Function fails
   Future<void> _deleteUserDataManually(String uid) async {
-    developer.log('[AccountDeletionService] 🔧 Performing manual data deletion for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🔧 Performing manual data deletion for UID: $uid',
+    );
 
     try {
       // Delete user's snaps
       await _deleteUserSnaps(uid);
-      
+
       // Delete user's messages
       await _deleteUserMessages(uid);
-      
+
       // Delete user's followers/following relationships
       await _deleteUserFollowRelationships(uid);
-      
+
       // Delete user's RAG feedback
       await _deleteUserRAGFeedback(uid);
-      
+
       // Delete user's FAQ vectors (if vendor)
       await _deleteUserFAQVectors(uid);
-      
+
       // Delete user's broadcasts (if vendor)
       await _deleteUserBroadcasts(uid);
 
-      developer.log('[AccountDeletionService] ✅ Manual data deletion completed');
+      developer.log(
+        '[AccountDeletionService] ✅ Manual data deletion completed',
+      );
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Manual data deletion failed: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Manual data deletion failed: $e',
+      );
       // Continue with profile deletion anyway
     }
   }
 
   /// Delete all snaps created by the user
   Future<void> _deleteUserSnaps(String uid) async {
-    developer.log('[AccountDeletionService] 🖼️ Deleting user snaps for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🖼️ Deleting user snaps for UID: $uid',
+    );
 
     try {
       final snapsQuery = await _firestore
@@ -213,7 +249,7 @@ class AccountDeletionService {
       final batch = _firestore.batch();
       for (final doc in snapsQuery.docs) {
         batch.delete(doc.reference);
-        
+
         // Also delete associated media from Storage
         try {
           final snapData = doc.data();
@@ -222,12 +258,16 @@ class AccountDeletionService {
             await _storage.refFromURL(mediaURL).delete();
           }
         } catch (e) {
-          developer.log('[AccountDeletionService] Warning: Failed to delete media for snap ${doc.id}: $e');
+          developer.log(
+            '[AccountDeletionService] Warning: Failed to delete media for snap ${doc.id}: $e',
+          );
         }
       }
 
       await batch.commit();
-      developer.log('[AccountDeletionService] ✅ Deleted ${snapsQuery.docs.length} snaps');
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted ${snapsQuery.docs.length} snaps',
+      );
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Error deleting user snaps: $e');
     }
@@ -235,7 +275,9 @@ class AccountDeletionService {
 
   /// Delete all messages sent or received by the user
   Future<void> _deleteUserMessages(String uid) async {
-    developer.log('[AccountDeletionService] 💬 Deleting user messages for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 💬 Deleting user messages for UID: $uid',
+    );
 
     try {
       // Delete messages where user is sender
@@ -251,34 +293,41 @@ class AccountDeletionService {
           .get();
 
       final batch = _firestore.batch();
-      
+
       // Add sent messages to batch delete
       for (final doc in sentMessagesQuery.docs) {
         batch.delete(doc.reference);
       }
-      
+
       // Add received messages to batch delete
       for (final doc in receivedMessagesQuery.docs) {
         batch.delete(doc.reference);
       }
 
       await batch.commit();
-      
-      final totalMessages = sentMessagesQuery.docs.length + receivedMessagesQuery.docs.length;
-      developer.log('[AccountDeletionService] ✅ Deleted $totalMessages messages');
+
+      final totalMessages =
+          sentMessagesQuery.docs.length + receivedMessagesQuery.docs.length;
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted $totalMessages messages',
+      );
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting user messages: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting user messages: $e',
+      );
     }
   }
 
   /// Delete all follow relationships involving the user
   Future<void> _deleteUserFollowRelationships(String uid) async {
-    developer.log('[AccountDeletionService] 👥 Deleting follow relationships for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 👥 Deleting follow relationships for UID: $uid',
+    );
 
     try {
       // Delete where user is following others (in vendors/{vendorId}/followers/{uid})
       final vendorsSnapshot = await _firestore.collection('vendors').get();
-      
+
       final batch = _firestore.batch();
       int followersDeleted = 0;
 
@@ -287,7 +336,7 @@ class AccountDeletionService {
             .collection('followers')
             .doc(uid)
             .get();
-            
+
         if (followerDoc.exists) {
           batch.delete(followerDoc.reference);
           followersDeleted++;
@@ -306,16 +355,22 @@ class AccountDeletionService {
       }
 
       await batch.commit();
-      
-      developer.log('[AccountDeletionService] ✅ Deleted $followersDeleted follow relationships and ${userFollowersSnapshot.docs.length} followers');
+
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted $followersDeleted follow relationships and ${userFollowersSnapshot.docs.length} followers',
+      );
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting follow relationships: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting follow relationships: $e',
+      );
     }
   }
 
   /// Delete user's RAG feedback data
   Future<void> _deleteUserRAGFeedback(String uid) async {
-    developer.log('[AccountDeletionService] 🤖 Deleting RAG feedback for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 🤖 Deleting RAG feedback for UID: $uid',
+    );
 
     try {
       // Delete feedback created by the user
@@ -331,27 +386,34 @@ class AccountDeletionService {
           .get();
 
       final batch = _firestore.batch();
-      
+
       for (final doc in userFeedbackQuery.docs) {
         batch.delete(doc.reference);
       }
-      
+
       for (final doc in vendorFeedbackQuery.docs) {
         batch.delete(doc.reference);
       }
 
       await batch.commit();
-      
-      final totalFeedback = userFeedbackQuery.docs.length + vendorFeedbackQuery.docs.length;
-      developer.log('[AccountDeletionService] ✅ Deleted $totalFeedback RAG feedback items');
+
+      final totalFeedback =
+          userFeedbackQuery.docs.length + vendorFeedbackQuery.docs.length;
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted $totalFeedback RAG feedback items',
+      );
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting RAG feedback: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting RAG feedback: $e',
+      );
     }
   }
 
   /// Delete user's FAQ vectors (if vendor)
   Future<void> _deleteUserFAQVectors(String uid) async {
-    developer.log('[AccountDeletionService] 📚 Deleting FAQ vectors for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 📚 Deleting FAQ vectors for UID: $uid',
+    );
 
     try {
       final faqVectorsQuery = await _firestore
@@ -370,15 +432,21 @@ class AccountDeletionService {
       }
 
       await batch.commit();
-      developer.log('[AccountDeletionService] ✅ Deleted ${faqVectorsQuery.docs.length} FAQ vectors');
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted ${faqVectorsQuery.docs.length} FAQ vectors',
+      );
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting FAQ vectors: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting FAQ vectors: $e',
+      );
     }
   }
 
   /// Delete user's broadcasts (if vendor)
   Future<void> _deleteUserBroadcasts(String uid) async {
-    developer.log('[AccountDeletionService] 📢 Deleting broadcasts for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 📢 Deleting broadcasts for UID: $uid',
+    );
 
     try {
       final broadcastsQuery = await _firestore
@@ -397,7 +465,9 @@ class AccountDeletionService {
       }
 
       await batch.commit();
-      developer.log('[AccountDeletionService] ✅ Deleted ${broadcastsQuery.docs.length} broadcasts');
+      developer.log(
+        '[AccountDeletionService] ✅ Deleted ${broadcastsQuery.docs.length} broadcasts',
+      );
     } catch (e) {
       developer.log('[AccountDeletionService] ❌ Error deleting broadcasts: $e');
     }
@@ -405,74 +475,92 @@ class AccountDeletionService {
 
   /// Delete user profile data from Firestore and Storage
   Future<void> _deleteProfileData(String uid) async {
-    developer.log('[AccountDeletionService] 👤 Deleting profile data for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 👤 Deleting profile data for UID: $uid',
+    );
 
     try {
       // Use existing ProfileService methods for proper cleanup
       final vendorProfile = _profileService.getCurrentUserProfile();
       if (vendorProfile != null) {
         await _profileService.deleteCurrentUserProfile();
-        developer.log('[AccountDeletionService] ✅ Vendor profile deleted via ProfileService');
+        developer.log(
+          '[AccountDeletionService] ✅ Vendor profile deleted via ProfileService',
+        );
       }
 
       final regularProfile = _profileService.getCurrentRegularUserProfile();
       if (regularProfile != null) {
         await _profileService.deleteCurrentRegularUserProfile();
-        developer.log('[AccountDeletionService] ✅ Regular user profile deleted via ProfileService');
+        developer.log(
+          '[AccountDeletionService] ✅ Regular user profile deleted via ProfileService',
+        );
       }
 
       // Additional cleanup: Delete entire Storage folder for the user
       await _deleteUserStorageFolder(uid);
-
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting profile data: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting profile data: $e',
+      );
       throw Exception('Failed to delete profile data: $e');
     }
   }
 
   /// Delete user's entire Storage folder
   Future<void> _deleteUserStorageFolder(String uid) async {
-    developer.log('[AccountDeletionService] 📁 Deleting storage folder for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 📁 Deleting storage folder for UID: $uid',
+    );
 
     try {
       // Try to delete vendor storage folder
       try {
         final vendorFolder = _storage.ref().child('vendors/$uid');
         final vendorItems = await vendorFolder.listAll();
-        
+
         for (final item in vendorItems.items) {
           await item.delete();
         }
-        
+
         for (final folder in vendorItems.prefixes) {
           await _deleteStorageFolder(folder);
         }
-        
-        developer.log('[AccountDeletionService] ✅ Vendor storage folder deleted');
+
+        developer.log(
+          '[AccountDeletionService] ✅ Vendor storage folder deleted',
+        );
       } catch (e) {
-        developer.log('[AccountDeletionService] Info: No vendor storage folder found: $e');
+        developer.log(
+          '[AccountDeletionService] Info: No vendor storage folder found: $e',
+        );
       }
 
       // Try to delete regular user storage folder
       try {
         final regularUserFolder = _storage.ref().child('regularUsers/$uid');
         final regularUserItems = await regularUserFolder.listAll();
-        
+
         for (final item in regularUserItems.items) {
           await item.delete();
         }
-        
+
         for (final folder in regularUserItems.prefixes) {
           await _deleteStorageFolder(folder);
         }
-        
-        developer.log('[AccountDeletionService] ✅ Regular user storage folder deleted');
-      } catch (e) {
-        developer.log('[AccountDeletionService] Info: No regular user storage folder found: $e');
-      }
 
+        developer.log(
+          '[AccountDeletionService] ✅ Regular user storage folder deleted',
+        );
+      } catch (e) {
+        developer.log(
+          '[AccountDeletionService] Info: No regular user storage folder found: $e',
+        );
+      }
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error deleting storage folders: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting storage folders: $e',
+      );
       // Non-critical error, continue with deletion
     }
   }
@@ -481,18 +569,20 @@ class AccountDeletionService {
   Future<void> _deleteStorageFolder(Reference folder) async {
     try {
       final listResult = await folder.listAll();
-      
+
       // Delete all files
       for (final item in listResult.items) {
         await item.delete();
       }
-      
+
       // Recursively delete subfolders
       for (final subfolder in listResult.prefixes) {
         await _deleteStorageFolder(subfolder);
       }
     } catch (e) {
-      developer.log('[AccountDeletionService] Warning: Error deleting storage folder ${folder.fullPath}: $e');
+      developer.log(
+        '[AccountDeletionService] Warning: Error deleting storage folder ${folder.fullPath}: $e',
+      );
     }
   }
 
@@ -505,16 +595,20 @@ class AccountDeletionService {
       developer.log('[AccountDeletionService] ✅ Firebase Auth account deleted');
     } catch (e) {
       final errorMessage = e.toString().toLowerCase();
-      
+
       // Handle case where Cloud Function already deleted the auth account
-      if (errorMessage.contains('no user record') || 
+      if (errorMessage.contains('no user record') ||
           errorMessage.contains('user may have been deleted') ||
           errorMessage.contains('user not found')) {
-        developer.log('[AccountDeletionService] ✅ Auth account already deleted by Cloud Function');
+        developer.log(
+          '[AccountDeletionService] ✅ Auth account already deleted by Cloud Function',
+        );
         return; // Treat as success since the account is already deleted
       }
-      
-      developer.log('[AccountDeletionService] ❌ Error deleting auth account: $e');
+
+      developer.log(
+        '[AccountDeletionService] ❌ Error deleting auth account: $e',
+      );
       throw Exception('Failed to delete authentication account: $e');
     }
   }
@@ -526,7 +620,9 @@ class AccountDeletionService {
       return {};
     }
 
-    developer.log('[AccountDeletionService] 📊 Getting data summary for UID: $uid');
+    developer.log(
+      '[AccountDeletionService] 📊 Getting data summary for UID: $uid',
+    );
 
     try {
       final summary = <String, dynamic>{};
@@ -534,10 +630,16 @@ class AccountDeletionService {
       // Check profile type
       final vendorProfile = _profileService.getCurrentUserProfile();
       final regularProfile = _profileService.getCurrentRegularUserProfile();
-      
-      summary['profileType'] = vendorProfile != null ? 'vendor' : 
-                               regularProfile != null ? 'regular' : 'none';
-      summary['displayName'] = vendorProfile?.displayName ?? regularProfile?.displayName ?? 'Unknown';
+
+      summary['profileType'] = vendorProfile != null
+          ? 'vendor'
+          : regularProfile != null
+          ? 'regular'
+          : 'none';
+      summary['displayName'] =
+          vendorProfile?.displayName ??
+          regularProfile?.displayName ??
+          'Unknown';
 
       // Count snaps
       final snapsQuery = await _firestore
@@ -555,7 +657,8 @@ class AccountDeletionService {
           .collection('messages')
           .where('toUid', isEqualTo: uid)
           .get();
-      summary['messagesCount'] = sentMessagesQuery.docs.length + receivedMessagesQuery.docs.length;
+      summary['messagesCount'] =
+          sentMessagesQuery.docs.length + receivedMessagesQuery.docs.length;
 
       // Count followers (if vendor)
       if (vendorProfile != null) {
@@ -572,8 +675,10 @@ class AccountDeletionService {
       developer.log('[AccountDeletionService] 📊 Data summary: $summary');
       return summary;
     } catch (e) {
-      developer.log('[AccountDeletionService] ❌ Error getting data summary: $e');
+      developer.log(
+        '[AccountDeletionService] ❌ Error getting data summary: $e',
+      );
       return {};
     }
   }
-} 
+}

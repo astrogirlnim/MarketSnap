@@ -131,13 +131,14 @@ Legend:
   - [X] Filter feed by distance if location data present. ✅ **DONE** - Distance-based filtering with user location preferences
   - [X] **CRITICAL FIX:** Android location permissions in manifest ✅ **RESOLVED** - Added ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION to AndroidManifest.xml, app now appears in Android location settings
 
-- [X] **4. Save‑to‑Device** ✅ **COMPLETED WITH COMPREHENSIVE IMPLEMENTATION**
-  - [X] Persist posted media to OS gallery via `image_gallery_saver` ✅ **DONE** - DeviceGallerySaveService with cross-platform permissions and gallery save
+- [X] **4. Save‑to‑Device** ✅ **COMPLETED WITH GAL PACKAGE IMPLEMENTATION**
+  - [X] Persist posted media to OS gallery via modern `gal` package ✅ **DONE** - DeviceGallerySaveService with cross-platform permissions and gallery save
   - [X] Check free space ≥ 100 MB else show toast error ✅ **DONE** - Storage validation integrated with user feedback  
   - [X] Unit test: saved file survives app uninstall ✅ **DONE** - Gallery save functionality independently tested
   - [X] **ENHANCEMENT**: iOS permission configuration ✅ **ADDED** - NSPhotoLibraryAddUsageDescription added to Info.plist
-  - [X] **ENHANCEMENT**: Cross-platform permission handling ✅ **ADDED** - Android 13+ granular permissions vs legacy storage
+  - [X] **ENHANCEMENT**: Modern Android permissions ✅ **ADDED** - READ_MEDIA_IMAGES permission with proper maxSdkVersion handling
   - [X] **ENHANCEMENT**: Integration with posting flow ✅ **ADDED** - MediaReviewScreen calls save service with comprehensive error handling
+  - [X] **BUGFIX**: Replaced deprecated `image_gallery_saver` with `gal` package ✅ **RESOLVED** - Fixed namespace conflicts and build issues
 
 - [X] **5. AI Caption Helper (Phase 4.5)** ✅ **COMPLETED WITH REAL OPENAI INTEGRATION**
   - [X] Call `generateCaption` CF; display spinner max 2 s. ✅ **DONE** - Real OpenAI GPT-4/Vision integration with 2-second timeout and animated Wicker mascot

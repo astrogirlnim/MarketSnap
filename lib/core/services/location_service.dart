@@ -31,10 +31,12 @@ class LocationService {
       LocationPermission permission = await Geolocator.checkPermission();
       developer.log('[LocationService] 📍 Current permission: $permission');
 
-      return permission == LocationPermission.whileInUse || 
-             permission == LocationPermission.always;
+      return permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
     } catch (e) {
-      developer.log('[LocationService] ❌ Error checking location availability: $e');
+      developer.log(
+        '[LocationService] ❌ Error checking location availability: $e',
+      );
       return false;
     }
   }
@@ -48,13 +50,17 @@ class LocationService {
       // First check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        developer.log('[LocationService] ❌ Location services disabled - requesting user to enable');
-        
+        developer.log(
+          '[LocationService] ❌ Location services disabled - requesting user to enable',
+        );
+
         // Try to open location settings
         try {
           await Geolocator.openLocationSettings();
         } catch (e) {
-          developer.log('[LocationService] ⚠️ Could not open location settings: $e');
+          developer.log(
+            '[LocationService] ⚠️ Could not open location settings: $e',
+          );
         }
         return false;
       }
@@ -66,12 +72,16 @@ class LocationService {
       if (permission == LocationPermission.denied) {
         // Request permission
         permission = await Geolocator.requestPermission();
-        developer.log('[LocationService] 📍 Permission after request: $permission');
+        developer.log(
+          '[LocationService] 📍 Permission after request: $permission',
+        );
       }
 
       if (permission == LocationPermission.deniedForever) {
-        developer.log('[LocationService] ❌ Location permission denied forever - redirecting to app settings');
-        
+        developer.log(
+          '[LocationService] ❌ Location permission denied forever - redirecting to app settings',
+        );
+
         // Open app settings so user can enable manually
         try {
           await Geolocator.openAppSettings();
@@ -81,24 +91,33 @@ class LocationService {
         return false;
       }
 
-      bool granted = permission == LocationPermission.whileInUse || 
-                     permission == LocationPermission.always;
-      
-      developer.log('[LocationService] ${granted ? '✅' : '❌'} Location permission result: $granted');
+      bool granted =
+          permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+
+      developer.log(
+        '[LocationService] ${granted ? '✅' : '❌'} Location permission result: $granted',
+      );
       return granted;
     } catch (e) {
-      developer.log('[LocationService] ❌ Error requesting location permission: $e');
+      developer.log(
+        '[LocationService] ❌ Error requesting location permission: $e',
+      );
       return false;
     }
   }
 
   /// Get current coarse location with privacy-preserving rounding
   /// Returns null if location is not available or user hasn't granted permission
-  Future<CoarseLocation?> getCurrentCoarseLocation({bool forceRefresh = false}) async {
+  Future<CoarseLocation?> getCurrentCoarseLocation({
+    bool forceRefresh = false,
+  }) async {
     try {
       // Check cache first (unless force refresh)
       if (!forceRefresh && _isCacheValid()) {
-        developer.log('[LocationService] 📍 Using cached location: $_cachedLocation');
+        developer.log(
+          '[LocationService] 📍 Using cached location: $_cachedLocation',
+        );
         return _cachedLocation;
       }
 
@@ -107,17 +126,22 @@ class LocationService {
       // Ensure we have permission
       bool hasPermission = await isLocationAvailable();
       if (!hasPermission) {
-        developer.log('[LocationService] ❌ No location permission, cannot get location');
+        developer.log(
+          '[LocationService] ❌ No location permission, cannot get location',
+        );
         return null;
       }
 
       // Get current position with timeout for responsive UX
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium, // Balance between accuracy and battery
+        desiredAccuracy:
+            LocationAccuracy.medium, // Balance between accuracy and battery
         timeLimit: const Duration(seconds: 10), // Don't hang the UI
       );
 
-      developer.log('[LocationService] 📍 Raw position: ${position.latitude}, ${position.longitude}');
+      developer.log(
+        '[LocationService] 📍 Raw position: ${position.latitude}, ${position.longitude}',
+      );
 
       // Create coarse location with privacy rounding
       final coarseLocation = CoarseLocation.fromPrecise(
@@ -130,7 +154,9 @@ class LocationService {
       _cachedLocation = coarseLocation;
       _lastLocationUpdate = DateTime.now();
 
-      developer.log('[LocationService] ✅ Coarse location obtained: $coarseLocation');
+      developer.log(
+        '[LocationService] ✅ Coarse location obtained: $coarseLocation',
+      );
       return coarseLocation;
     } on TimeoutException {
       developer.log('[LocationService] ⏰ Location request timed out');
@@ -159,7 +185,7 @@ class LocationService {
     if (_cachedLocation == null || _lastLocationUpdate == null) {
       return false;
     }
-    
+
     final timeSinceUpdate = DateTime.now().difference(_lastLocationUpdate!);
     return timeSinceUpdate < _cacheValidDuration;
   }
@@ -168,7 +194,7 @@ class LocationService {
   /// Returns null if either location is invalid
   static double? calculateDistance(CoarseLocation? loc1, CoarseLocation? loc2) {
     if (loc1 == null || loc2 == null) return null;
-    
+
     try {
       double distanceInMeters = Geolocator.distanceBetween(
         loc1.latitude,
@@ -176,7 +202,7 @@ class LocationService {
         loc2.latitude,
         loc2.longitude,
       );
-      
+
       return distanceInMeters / 1000; // Convert to kilometers
     } catch (e) {
       developer.log('[LocationService] ❌ Error calculating distance: $e');
@@ -226,4 +252,4 @@ class LocationService {
       return 'Unable to check location status.';
     }
   }
-} 
+}

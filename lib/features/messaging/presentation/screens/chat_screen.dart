@@ -25,14 +25,16 @@ class _ChatScreenState extends State<ChatScreen> {
   final ProfileUpdateNotifier _profileUpdateNotifier = ProfileUpdateNotifier();
   String? _currentUserId;
   String? _authError;
-  VendorProfile _otherUser; // Keep a mutable copy to update when profile changes
+  VendorProfile
+  _otherUser; // Keep a mutable copy to update when profile changes
 
-  _ChatScreenState() : _otherUser = VendorProfile(
-    uid: '',
-    displayName: '',
-    stallName: '',
-    marketCity: '',
-  );
+  _ChatScreenState()
+    : _otherUser = VendorProfile(
+        uid: '',
+        displayName: '',
+        stallName: '',
+        marketCity: '',
+      );
 
   @override
   void initState() {
@@ -46,7 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _listenToProfileUpdates() {
     _profileUpdateNotifier.allProfileUpdates.listen((update) {
       final uid = update['uid'] as String;
-      
+
       // Check if this update is for the user we're chatting with
       if (uid == _otherUser.uid) {
         if (update['type'] == 'delete') {
@@ -57,10 +59,13 @@ class _ChatScreenState extends State<ChatScreen> {
           setState(() {
             _otherUser = _otherUser.copyWith(
               displayName: update['displayName'] as String,
-              avatarURL: (update['avatarURL'] as String?) ?? _otherUser.avatarURL,
+              avatarURL:
+                  (update['avatarURL'] as String?) ?? _otherUser.avatarURL,
             );
           });
-          debugPrint('[ChatScreen] 🔄 Updated other user profile: ${_otherUser.displayName}');
+          debugPrint(
+            '[ChatScreen] 🔄 Updated other user profile: ${_otherUser.displayName}',
+          );
         }
       }
     });
@@ -80,20 +85,20 @@ class _ChatScreenState extends State<ChatScreen> {
       '[ChatScreen] Initialized for user: $_currentUserId, chatting with: ${_otherUser.uid}',
     );
 
-          // Mark conversation as read when entering the screen
-      if (_currentUserId != null) {
-        _messagingService
-            .markConversationAsRead(
-              userId1: _currentUserId!,
-              userId2: _otherUser.uid,
-              currentUserId: _currentUserId!,
-            )
-            .catchError((error) {
-              debugPrint(
-                '[ChatScreen] Error marking conversation as read: $error',
-              );
-            });
-      }
+    // Mark conversation as read when entering the screen
+    if (_currentUserId != null) {
+      _messagingService
+          .markConversationAsRead(
+            userId1: _currentUserId!,
+            userId2: _otherUser.uid,
+            currentUserId: _currentUserId!,
+          )
+          .catchError((error) {
+            debugPrint(
+              '[ChatScreen] Error marking conversation as read: $error',
+            );
+          });
+    }
   }
 
   void _sendMessage(String text) async {

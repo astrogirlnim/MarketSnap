@@ -8,9 +8,7 @@ import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
-import '../../../settings/application/settings_service.dart';
 import '../../../auth/application/auth_service.dart';
-import '../../../../main.dart' as main;
 
 /// Vendor Profile Form Screen
 /// Allows vendors to create/edit their profile with stall name, market city, and avatar upload
@@ -326,11 +324,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       name: 'VendorProfileScreen',
     );
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
   }
 
   /// Sign out the current user

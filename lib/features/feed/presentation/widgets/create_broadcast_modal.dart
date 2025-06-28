@@ -30,9 +30,9 @@ class CreateBroadcastModal extends StatefulWidget {
 class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
   final TextEditingController _messageController = TextEditingController();
   final LocationService _locationService = LocationService();
-  
+
   static const int _maxCharacters = 100;
-  
+
   bool _includeLocation = false;
   bool _isPosting = false;
   bool _checkingLocation = false;
@@ -66,7 +66,7 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
   Future<void> _initializeLocationStatus() async {
     try {
       final status = await _locationService.getLocationStatusMessage();
-      
+
       if (mounted) {
         setState(() {
           _locationStatus = status;
@@ -78,7 +78,8 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
       developer.log('[CreateBroadcastModal] Error getting location status: $e');
       if (mounted) {
         setState(() {
-          _locationStatus = 'Location permission needed to tag broadcasts with your market area.';
+          _locationStatus =
+              'Location permission needed to tag broadcasts with your market area.';
         });
       }
     }
@@ -97,7 +98,7 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
     // Check if location is enabled in settings
     final settings = widget.hiveService.getUserSettings();
     final locationEnabled = settings?.enableCoarseLocation ?? false;
-    
+
     if (!locationEnabled) {
       _showLocationDisabledDialog();
       return;
@@ -110,16 +111,18 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
 
     try {
       developer.log('[CreateBroadcastModal] Requesting location permission...');
-      
+
       final granted = await _locationService.requestLocationPermission();
-      
+
       if (granted) {
         await _initializeLocationStatus(); // Refresh status
         setState(() {
           _includeLocation = true;
           _checkingLocation = false;
         });
-        developer.log('[CreateBroadcastModal] ✅ Location permission granted, toggle enabled');
+        developer.log(
+          '[CreateBroadcastModal] ✅ Location permission granted, toggle enabled',
+        );
       } else {
         setState(() {
           _checkingLocation = false;
@@ -127,7 +130,9 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
         _showLocationPermissionDialog();
       }
     } catch (e) {
-      developer.log('[CreateBroadcastModal] ❌ Error requesting location permission: $e');
+      developer.log(
+        '[CreateBroadcastModal] ❌ Error requesting location permission: $e',
+      );
       setState(() {
         _checkingLocation = false;
       });
@@ -169,18 +174,24 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              
-              final granted = await _locationService.requestLocationPermission();
+
+              final granted = await _locationService
+                  .requestLocationPermission();
               if (granted) {
                 await _initializeLocationStatus();
                 setState(() {
                   _includeLocation = true;
                 });
-                developer.log('[CreateBroadcastModal] ✅ Location permission granted on retry');
+                developer.log(
+                  '[CreateBroadcastModal] ✅ Location permission granted on retry',
+                );
               } else {
-                developer.log('[CreateBroadcastModal] ❌ Location permission denied again');
+                developer.log(
+                  '[CreateBroadcastModal] ❌ Location permission denied again',
+                );
                 // Could show another dialog or open app settings
-                await _locationService.requestLocationPermission(); // This might open settings
+                await _locationService
+                    .requestLocationPermission(); // This might open settings
               }
             },
             child: const Text('Try Again'),
@@ -193,7 +204,7 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
   /// Post the broadcast
   Future<void> _postBroadcast() async {
     final message = _messageController.text.trim();
-    
+
     if (message.isEmpty) {
       _showErrorSnackbar('Please enter a message');
       return;
@@ -209,7 +220,9 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
     });
 
     try {
-      developer.log('[CreateBroadcastModal] Posting broadcast: "$message", includeLocation: $_includeLocation');
+      developer.log(
+        '[CreateBroadcastModal] Posting broadcast: "$message", includeLocation: $_includeLocation',
+      );
 
       final broadcastId = await widget.broadcastService.createBroadcast(
         message: message,
@@ -217,8 +230,10 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
       );
 
       if (broadcastId != null) {
-        developer.log('[CreateBroadcastModal] ✅ Broadcast posted successfully: $broadcastId');
-        
+        developer.log(
+          '[CreateBroadcastModal] ✅ Broadcast posted successfully: $broadcastId',
+        );
+
         if (mounted) {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -310,7 +325,9 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                 const SizedBox(width: AppSpacing.md),
                 Text(
                   'Send Broadcast',
-                  style: AppTypography.h2.copyWith(color: AppColors.textPrimary),
+                  style: AppTypography.h2.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -334,10 +351,10 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                   // Description
                   Text(
                     'Send a quick message to all your followers',
-                                              style: AppTypography.body.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 16,
-                          ),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
@@ -347,7 +364,9 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                       color: AppColors.eggshell,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                       border: Border.all(
-                        color: isOverLimit ? AppColors.appleRed : AppColors.seedBrown,
+                        color: isOverLimit
+                            ? AppColors.appleRed
+                            : AppColors.seedBrown,
                         width: 1,
                       ),
                     ),
@@ -377,8 +396,12 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                         Text(
                           '$charactersRemaining',
                           style: AppTypography.caption.copyWith(
-                            color: isOverLimit ? AppColors.appleRed : AppColors.textSecondary,
-                            fontWeight: isOverLimit ? FontWeight.bold : FontWeight.normal,
+                            color: isOverLimit
+                                ? AppColors.appleRed
+                                : AppColors.textSecondary,
+                            fontWeight: isOverLimit
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         Text(
@@ -408,7 +431,9 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                           children: [
                             Icon(
                               Icons.location_on_outlined,
-                              color: _includeLocation ? AppColors.leafGreen : AppColors.textSecondary,
+                              color: _includeLocation
+                                  ? AppColors.leafGreen
+                                  : AppColors.textSecondary,
                               size: 20,
                             ),
                             const SizedBox(width: AppSpacing.sm),
@@ -421,19 +446,23 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                                 ),
                               ),
                             ),
-                            if (_checkingLocation) 
+                            if (_checkingLocation)
                               const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.marketBlue),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.marketBlue,
+                                  ),
                                 ),
                               )
-                            else 
+                            else
                               Switch(
                                 value: _includeLocation,
-                                onChanged: _isLocationEnabledInSettings() ? _onLocationToggled : null,
+                                onChanged: _isLocationEnabledInSettings()
+                                    ? _onLocationToggled
+                                    : null,
                                 activeColor: AppColors.leafGreen,
                               ),
                           ],
@@ -463,7 +492,10 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
                   ),
 
                   // Add some bottom padding for safe area
-                  SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.md),
+                  SizedBox(
+                    height:
+                        MediaQuery.of(context).padding.bottom + AppSpacing.md,
+                  ),
                 ],
               ),
             ),
@@ -472,4 +504,4 @@ class _CreateBroadcastModalState extends State<CreateBroadcastModal> {
       ),
     );
   }
-} 
+}

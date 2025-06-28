@@ -14,10 +14,9 @@ class StreamGroup {
     final subscriptions = <StreamSubscription>[];
 
     for (final stream in streams) {
-      subscriptions.add(stream.listen(
-        controller.add,
-        onError: controller.addError,
-      ));
+      subscriptions.add(
+        stream.listen(controller.add, onError: controller.addError),
+      );
     }
 
     return controller.stream;
@@ -36,13 +35,16 @@ class FeedService {
   final Map<String, Map<String, String>> _profileCache = {};
 
   FeedService({ProfileUpdateNotifier? profileUpdateNotifier})
-      : _profileUpdateNotifier = profileUpdateNotifier ?? ProfileUpdateNotifier() {
+    : _profileUpdateNotifier =
+          profileUpdateNotifier ?? ProfileUpdateNotifier() {
     // Listen for profile updates and clear cache when profiles change
     _profileUpdateNotifier.allProfileUpdates.listen((update) {
       final uid = update['uid'] as String;
       if (update['type'] == 'delete') {
         _profileCache.remove(uid);
-        developer.log('[FeedService] 🗑️ Cleared profile cache for deleted user: $uid');
+        developer.log(
+          '[FeedService] 🗑️ Cleared profile cache for deleted user: $uid',
+        );
       } else {
         _profileCache[uid] = {
           'displayName': update['displayName'] as String,
@@ -109,7 +111,9 @@ class FeedService {
     // Combine with profile update stream to get real-time updates
     return StreamGroup.merge([
       storiesStream,
-      _profileUpdateNotifier.allProfileUpdates.map((_) => <StoryItem>[]), // Trigger refresh on profile updates
+      _profileUpdateNotifier.allProfileUpdates.map(
+        (_) => <StoryItem>[],
+      ), // Trigger refresh on profile updates
     ]).asyncMap((storyItemsList) async {
       // If it's just a profile update trigger (empty list), get current stories
       if (storyItemsList.isEmpty) {
@@ -121,22 +125,28 @@ class FeedService {
               .orderBy('createdAt', descending: true)
               .limit(20)
               .get();
-          
-          final snaps = snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
-          
+
+          final snaps = snapshot.docs
+              .map((doc) => Snap.fromFirestore(doc))
+              .toList();
+
           if (snaps.isEmpty) {
             return <StoryItem>[];
           }
 
-          storyItemsList = [StoryItem(
-            vendorId: userId,
-            vendorName: snaps.first.vendorName,
-            vendorAvatarUrl: snaps.first.vendorAvatarUrl,
-            snaps: snaps,
-            hasUnseenSnaps: true,
-          )];
+          storyItemsList = [
+            StoryItem(
+              vendorId: userId,
+              vendorName: snaps.first.vendorName,
+              vendorAvatarUrl: snaps.first.vendorAvatarUrl,
+              snaps: snaps,
+              hasUnseenSnaps: true,
+            ),
+          ];
         } catch (e) {
-          developer.log('[FeedService] Error fetching stories after profile update: $e');
+          developer.log(
+            '[FeedService] Error fetching stories after profile update: $e',
+          );
           return <StoryItem>[];
         }
       }
@@ -210,7 +220,9 @@ class FeedService {
     // Create a combined stream that updates snaps when profiles change
     return StreamGroup.merge([
       snapsStream,
-      _profileUpdateNotifier.allProfileUpdates.map((_) => <Snap>[]), // Trigger refresh on any profile update
+      _profileUpdateNotifier.allProfileUpdates.map(
+        (_) => <Snap>[],
+      ), // Trigger refresh on any profile update
     ]).asyncMap((snapsList) async {
       // If it's just a profile update trigger (empty list), get current snaps
       if (snapsList.isEmpty) {
@@ -220,9 +232,13 @@ class FeedService {
               .orderBy('createdAt', descending: true)
               .limit(limit)
               .get();
-          snapsList = snapshot.docs.map((doc) => Snap.fromFirestore(doc)).toList();
+          snapsList = snapshot.docs
+              .map((doc) => Snap.fromFirestore(doc))
+              .toList();
         } catch (e) {
-          developer.log('[FeedService] Error fetching snaps after profile update: $e');
+          developer.log(
+            '[FeedService] Error fetching snaps after profile update: $e',
+          );
           return <Snap>[];
         }
       }
@@ -305,7 +321,7 @@ class FeedService {
     try {
       // Step 1: Get the snap document to verify ownership and get media URL
       final snapDoc = await _firestore.collection('snaps').doc(snapId).get();
-      
+
       if (!snapDoc.exists) {
         developer.log(
           '[FeedService] ❌ Snap not found: $snapId',
@@ -374,7 +390,6 @@ class FeedService {
       );
 
       return true;
-
     } catch (error, stackTrace) {
       developer.log(
         '[FeedService] ❌ Failed to delete snap $snapId: $error',
