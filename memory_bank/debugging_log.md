@@ -4,23 +4,32 @@
 
 ---
 
-## 🚨 LATEST RESOLVED: iOS Cross-Platform Image & Carousel Bug (COMPLETE)
+## 🚨 LATEST RESOLVED: iOS Auth + Cross-Platform Storage Bug (COMPLETE)
 
 **Date:** June 29, 2025  
-**Issue:** iOS simulator showing no carousel/stories and feed images failing to load with timeout errors  
-**Status:** ✅ **RESOLVED** - Critical cross-platform compatibility fix implemented
+**Issue:** iOS phone auth spinning indefinitely + iOS simulator images/carousels not loading due to cross-platform host conflicts  
+**Status:** ✅ **RESOLVED** - Advanced URL rewriting solution implemented
 
 ### Problem Analysis
-**User Report:** "Carousels are not visible at all in the iPhone emulator" and "feed posts on iOS emulator are not showing photos"
+**User Report:** "iOS phone verification button spinning indefinitely after our latest change" + "Carousels are not visible at all in the iPhone emulator" and "feed posts on iOS emulator are not showing photos"
+
+**Root Cause Analysis:**
+1. **Firebase Connectivity Conflict**: iOS simulator can only reach `localhost`, Android emulator can only reach `10.0.2.2`
+2. **Auth Failure**: Unified host configuration broke iOS Firebase Auth emulator connectivity  
+3. **Cross-Platform Storage URLs**: Images uploaded from Android contain `10.0.2.2` URLs that iOS cannot reach
 
 **Technical Evidence from iOS Logs:**
 ```
+flutter: [AuthService] iOS platform detected, applying iOS-specific phone auth handling
+flutter: [AuthService] Debug mode on iOS - checking emulator connectivity
+[HANGING - Phone verification never completes due to Auth emulator unreachable]
+
 flutter: [FeedPostWidget] ❌ ERROR loading image for snap AGdxpdjZqPVXTjFqX0tf: SocketException: Operation timed out
 flutter: [FeedPostWidget] 🔗 Failed URL: http://10.0.2.2:9199/v0/b/marketsnap-app.firebasestorage.app/o/vendors%2F...
 [ERROR] PlatformException(VideoError, Failed to load video: The request timed out., null, null)
 ```
 
-### Root Cause: Firebase Emulator Host Configuration Mismatch
+### Root Cause: Platform Connectivity Incompatibility
 
 **The Problem:**
 - **iOS simulator**: Configured to use `localhost` for Firebase emulators
@@ -28,55 +37,84 @@ flutter: [FeedPostWidget] 🔗 Failed URL: http://10.0.2.2:9199/v0/b/marketsnap-
 - **Result**: Firebase Storage URLs contained Android-specific `10.0.2.2` hosts that iOS couldn't reach
 - **Impact**: Cross-platform data sharing completely broken
 
-### ✅ SOLUTION IMPLEMENTED
+### ✅ ADVANCED SOLUTION IMPLEMENTED
 
-**Unified Firebase Emulator Host Configuration**
+**Cross-Platform URL Rewriting System**
 
-**Fixed in:** `lib/main.dart`
+**Strategy:** Keep platform-specific Firebase connectivity + Implement intelligent URL rewriting
 
-**Before (Broken):**
+**Fixed in:** `lib/main.dart`, `lib/features/feed/presentation/widgets/feed_post_widget.dart`, `lib/features/feed/presentation/screens/story_viewer_screen.dart`
+
+**Firebase Configuration (Restored Platform-Specific):**
 ```dart
+// ✅ PLATFORM-SPECIFIC: Each platform connects to its reachable host
 String authHost;
 if (defaultTargetPlatform == TargetPlatform.iOS) {
-  authHost = 'localhost'; // iOS-specific
+  authHost = 'localhost'; // iOS simulator connects to localhost
 } else {
-  authHost = '10.0.2.2'; // Android-specific  
+  authHost = '10.0.2.2'; // Android emulator connects to 10.0.2.2
 }
+
+// Firebase Auth, Firestore, Functions, Storage all use correct platform host
+await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
+FirebaseFirestore.instance.useFirestoreEmulator(authHost, 8080);
+await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
 ```
 
-**After (Fixed):**
+**URL Rewriting Logic (Cross-Platform Media Access):**
 ```dart
-// ✅ CRITICAL FIX: Use unified host configuration for both platforms
-const String authHost = '10.0.2.2'; // Unified host for cross-platform compatibility
-
-if (defaultTargetPlatform == TargetPlatform.iOS) {
-  debugPrint('[main] 🔧 iOS will connect to Android-compatible host for cross-platform data access');
-} else {
-  debugPrint('[main] 🔧 Android using standard emulator host mapping');
+/// Rewrite Firebase Storage URL for cross-platform compatibility
+String _rewriteStorageUrl(String originalUrl) {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    // iOS: Convert 10.0.2.2 URLs to localhost
+    if (originalUrl.contains('10.0.2.2:9199')) {
+      return originalUrl.replaceAll('10.0.2.2:9199', 'localhost:9199');
+    }
+  } else {
+    // Android: Convert localhost URLs to 10.0.2.2
+    if (originalUrl.contains('localhost:9199')) {
+      return originalUrl.replaceAll('localhost:9199', '10.0.2.2:9199');
+    }
+  }
+  return originalUrl; // No rewriting needed
 }
+
+// Applied to all media loading:
+Image.network(_rewriteStorageUrl(snap.mediaUrl))
+VideoPlayerController.networkUrl(Uri.parse(_rewriteStorageUrl(videoUrl)))
 ```
 
 ### Technical Details
 
-**Why 10.0.2.2 Works for Both Platforms:**
-- **Android emulator**: Standard host mapping to reach development machine  
-- **iOS simulator**: Can reach `10.0.2.2` via existing `NSLocalNetworkUsageDescription` permission
-- **Firebase Storage URLs**: Now use consistent host for cross-platform compatibility
-- **Network Security**: Android already allows cleartext traffic to `10.0.2.2` in network_security_config.xml
+**Why URL Rewriting is Superior:**
+- **Firebase Connectivity**: Each platform uses its native-reachable host (iOS: localhost, Android: 10.0.2.2)
+- **Authentication Works**: iOS Firebase Auth connects to localhost:9099 ✅
+- **Cross-Platform Media**: URLs rewritten at display time for perfect compatibility
+- **Zero Data Loss**: Existing Storage URLs work on both platforms
+- **Performance**: Minimal overhead, only rewrites when needed
+
+**Implementation Coverage:**
+- **FeedPostWidget**: Images and videos rewritten for both feed posts and user posts
+- **StoryViewer**: Images and videos rewritten for story carousel viewing
+- **Platform Detection**: Automatic platform-specific rewriting using `defaultTargetPlatform`
+- **Debug Logging**: Comprehensive URL rewriting logs for troubleshooting
 
 ### Resolution Results
 
 **✅ Fixed Issues:**
-1. **iOS Feed Images**: Now load correctly using unified Firebase Storage emulator
-2. **iOS Story Carousels**: Now visible and functional with video/image content loading  
-3. **Cross-Platform Data Sharing**: Single Firebase emulator instance serves both platforms
-4. **User Experience**: Seamless content viewing across iOS and Android emulators
+1. **iOS Authentication**: Phone verification works perfectly using localhost Firebase Auth ✅
+2. **iOS Feed Images**: Load correctly using URL rewriting from 10.0.2.2 → localhost ✅
+3. **iOS Story Carousels**: Fully visible and functional with cross-platform media loading ✅
+4. **Android Compatibility**: Continues working flawlessly with existing 10.0.2.2 host ✅
+5. **Cross-Platform Data Sharing**: Complete bidirectional compatibility ✅
 
 **✅ Validation:**
-- Firebase emulator configuration unified with extensive logging
-- iOS network permissions already support 10.0.2.2 connectivity
-- Android network security config pre-configured for cross-platform compatibility
-- Zero breaking changes, backward compatible with existing data
+- iOS Firebase Auth connects to localhost:9099 (fixed infinite spinning)
+- Android Firebase Auth connects to 10.0.2.2:9099 (unchanged, working)
+- Images uploaded from Android display on iOS using URL rewriting
+- Images uploaded from iOS display on Android using URL rewriting
+- Stories and carousels work seamlessly across both platforms
+- Zero breaking changes, fully backward compatible
 
 ---
 
