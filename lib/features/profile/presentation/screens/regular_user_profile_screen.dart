@@ -52,18 +52,21 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   void initState() {
     super.initState();
     _loadExistingProfile();
-    
+
     // ✅ Listen for profile updates from sync process
-    _profileUpdateSubscription = main.profileUpdateNotifier.regularUserProfileUpdates.listen(_onProfileUpdate);
+    _profileUpdateSubscription = main
+        .profileUpdateNotifier
+        .regularUserProfileUpdates
+        .listen(_onProfileUpdate);
   }
 
   @override
   void dispose() {
     _displayNameController.dispose();
-    
+
     // ✅ Cancel profile update subscription
     _profileUpdateSubscription?.cancel();
-    
+
     super.dispose();
   }
 
@@ -81,7 +84,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         _localAvatarPath = profile.localAvatarPath;
         _avatarURL = profile.avatarURL;
       });
-      
+
       developer.log(
         '[RegularUserProfileScreen] ✅ UI updated with synced avatar state:',
         name: 'RegularUserProfileScreen',
@@ -129,13 +132,13 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           '[RegularUserProfileScreen] - avatarURL: ${regularProfile.avatarURL}',
           name: 'RegularUserProfileScreen',
         );
-        
+
         setState(() {
           _displayNameController.text = regularProfile.displayName;
           _localAvatarPath = regularProfile.localAvatarPath;
           _avatarURL = regularProfile.avatarURL;
         });
-        
+
         developer.log(
           '[RegularUserProfileScreen] ✅ Profile loaded with avatar state:',
           name: 'RegularUserProfileScreen',
@@ -321,7 +324,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           currentUid,
           timeout: const Duration(seconds: 15),
         );
-        
+
         if (syncCompleted) {
           developer.log(
             '[RegularUserProfileScreen] ✅ Sync completed successfully',
@@ -373,17 +376,20 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   }
 
   /// ✅ NEW METHOD: Wait for regular user sync completion with proper result handling
-  Future<bool> _waitForRegularUserSyncCompletion(String uid, {Duration timeout = const Duration(seconds: 30)}) async {
+  Future<bool> _waitForRegularUserSyncCompletion(
+    String uid, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     developer.log(
       '[RegularUserProfileScreen] ⏳ Waiting for regular user sync completion for UID: $uid',
       name: 'RegularUserProfileScreen',
     );
-    
+
     final stopwatch = Stopwatch()..start();
-    
+
     while (stopwatch.elapsed < timeout) {
       final profile = widget.profileService.getCurrentRegularUserProfile();
-      
+
       if (profile == null) {
         developer.log(
           '[RegularUserProfileScreen] ❌ Profile not found during sync wait',
@@ -391,7 +397,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         );
         return false;
       }
-      
+
       if (!profile.needsSync) {
         developer.log(
           '[RegularUserProfileScreen] ✅ Sync completed in ${stopwatch.elapsed.inMilliseconds}ms',
@@ -399,11 +405,11 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         );
         return true;
       }
-      
+
       // Check every 100ms
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    
+
     developer.log(
       '[RegularUserProfileScreen] ⏰ Sync wait timed out after ${timeout.inSeconds}s',
       name: 'RegularUserProfileScreen',
@@ -423,7 +429,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     final bool hasLocalAvatar = _localAvatarPath != null;
     final bool hasRemoteAvatar = _avatarURL?.isNotEmpty == true;
     final bool hasAnyAvatar = hasLocalAvatar || hasRemoteAvatar;
-    
+
     developer.log(
       '[RegularUserProfileScreen] 🖼️ Avatar display logic:',
       name: 'RegularUserProfileScreen',
@@ -448,7 +454,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       '[RegularUserProfileScreen] - _avatarURL: $_avatarURL',
       name: 'RegularUserProfileScreen',
     );
-    
+
     return Column(
       children: [
         GestureDetector(
@@ -492,9 +498,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                               }
                               return Center(
                                 child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
+                                  value:
+                                      loadingProgress.expectedTotalBytes != null
                                       ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
+                                            loadingProgress.expectedTotalBytes!
                                       : null,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     AppColors.marketBlue,
@@ -542,8 +549,8 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         if (kDebugMode && hasAnyAvatar) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(
-            hasLocalAvatar 
-                ? '🔵 Local avatar selected (will upload)' 
+            hasLocalAvatar
+                ? '🔵 Local avatar selected (will upload)'
                 : '🟢 Synced avatar from server',
             style: AppTypography.caption.copyWith(
               color: hasLocalAvatar ? Colors.blue : Colors.green,

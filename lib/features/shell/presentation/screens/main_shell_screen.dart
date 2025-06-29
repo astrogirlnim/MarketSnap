@@ -103,36 +103,98 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
   }
 
-  /// ✅ BUFFER OVERFLOW FIX: Pause/resume camera based on tab visibility
+  /// ✅ CAMERA UNAVAILABLE FIX: Enhanced camera visibility change handling with better error recovery
   void _handleCameraVisibilityChange(int previousIndex, int currentIndex) {
     const int cameraTabIndex = 1; // Camera is at index 1 for vendors
+
+    debugPrint('[MainShellScreen] ========== TAB NAVIGATION ==========');
+    debugPrint(
+      '[MainShellScreen] Previous tab: $previousIndex, Current tab: $currentIndex',
+    );
+    debugPrint('[MainShellScreen] Camera tab index: $cameraTabIndex');
 
     // If navigating away from camera tab, pause camera to free resources
     if (previousIndex == cameraTabIndex && currentIndex != cameraTabIndex) {
       debugPrint(
-        '[MainShellScreen] Navigating away from camera tab - pausing camera',
+        '[MainShellScreen] 📱 Navigating AWAY from camera tab - pausing camera',
       );
+
       _cameraService.pauseCamera().catchError((error) {
-        debugPrint('[MainShellScreen] Error pausing camera: $error');
+        debugPrint('[MainShellScreen] ⚠️ Error pausing camera: $error');
       });
     }
-    // If navigating to camera tab, resume camera
+    // If navigating to camera tab, resume camera with enhanced error handling
     else if (previousIndex != cameraTabIndex &&
         currentIndex == cameraTabIndex) {
       debugPrint(
-        '[MainShellScreen] Navigating to camera tab - resuming camera',
+        '[MainShellScreen] 📷 Navigating TO camera tab - resuming camera',
       );
-      _cameraService
-          .resumeCamera()
-          .then((success) {
-            if (!success) {
-              debugPrint('[MainShellScreen] Camera resume failed');
-            }
-          })
-          .catchError((error) {
-            debugPrint('[MainShellScreen] Error resuming camera: $error');
-          });
+
+      // ✅ CAMERA UNAVAILABLE FIX: Check if camera is already working before resuming
+      if (_cameraService.controller?.value.isInitialized == true) {
+        debugPrint(
+          '[MainShellScreen] ✅ Camera already initialized and working, no resume needed',
+        );
+        return;
+      }
+
+      // ✅ CAMERA UNAVAILABLE FIX: Add small delay to allow tab transition to complete
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _cameraService
+            .resumeCamera()
+            .then((success) {
+              if (success) {
+                debugPrint('[MainShellScreen] ✅ Camera resume successful');
+              } else {
+                debugPrint(
+                  '[MainShellScreen] ❌ Camera resume failed - camera may show as unavailable',
+                );
+                debugPrint(
+                  '[MainShellScreen] Last error: ${_cameraService.lastError ?? "No specific error provided"}',
+                );
+
+                // ✅ CAMERA UNAVAILABLE FIX: Force reset if stuck and retry
+                if (_cameraService.isInitializingStuck) {
+                  debugPrint(
+                    '[MainShellScreen] Camera service stuck, forcing reset...',
+                  );
+                  _cameraService.forceResetInitialization();
+                }
+
+                // ✅ CAMERA UNAVAILABLE FIX: Trigger additional retry after a delay
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  debugPrint(
+                    '[MainShellScreen] 🔄 Attempting delayed camera recovery...',
+                  );
+                  _cameraService.resumeCamera().then((retrySuccess) {
+                    if (retrySuccess) {
+                      debugPrint(
+                        '[MainShellScreen] ✅ Delayed camera recovery successful',
+                      );
+                    } else {
+                      debugPrint(
+                        '[MainShellScreen] ❌ Delayed camera recovery failed',
+                      );
+                    }
+                  });
+                });
+              }
+            })
+            .catchError((error) {
+              debugPrint('[MainShellScreen] ⚠️ Error resuming camera: $error');
+
+              // ✅ CAMERA UNAVAILABLE FIX: Force reset and retry on error
+              _cameraService.forceResetInitialization();
+
+              Future.delayed(const Duration(milliseconds: 1000), () {
+                debugPrint('[MainShellScreen] 🔄 Attempting error recovery...');
+                _cameraService.resumeCamera();
+              });
+            });
+      });
     }
+
+    debugPrint('[MainShellScreen] ========== TAB NAVIGATION END ==========');
   }
 
   @override

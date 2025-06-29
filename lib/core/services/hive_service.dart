@@ -197,7 +197,8 @@ class HiveService {
         location: item.location,
         vendorId: item.vendorId,
         filterType: item.filterType,
-        isStory: item.isStory, // ✅ CRITICAL FIX: Include isStory field in quarantined item
+        isStory: item
+            .isStory, // ✅ CRITICAL FIX: Include isStory field in quarantined item
         id: item.id,
         createdAt: item.createdAt,
       );
@@ -209,17 +210,27 @@ class HiveService {
       final storedItem = pendingMediaQueueBox.get(quarantinedItem.id);
       debugPrint('[HiveService] ✅ STORY BUG FIX VERIFICATION:');
       debugPrint('[HiveService] - Original isStory: ${item.isStory}');
-      debugPrint('[HiveService] - Quarantined isStory: ${quarantinedItem.isStory}');
+      debugPrint(
+        '[HiveService] - Quarantined isStory: ${quarantinedItem.isStory}',
+      );
       debugPrint('[HiveService] - Stored isStory: ${storedItem?.isStory}');
       debugPrint('[HiveService] - Original filterType: "${item.filterType}"');
-      debugPrint('[HiveService] - Stored filterType: "${storedItem?.filterType}"');
+      debugPrint(
+        '[HiveService] - Stored filterType: "${storedItem?.filterType}"',
+      );
 
       // Critical validation for story bug fix
       if (item.isStory != storedItem?.isStory) {
-        debugPrint('[HiveService] ❌ CRITICAL ERROR: IsStory field mismatch detected!');
-        debugPrint('[HiveService] This will cause stories to post to feed instead!');
+        debugPrint(
+          '[HiveService] ❌ CRITICAL ERROR: IsStory field mismatch detected!',
+        );
+        debugPrint(
+          '[HiveService] This will cause stories to post to feed instead!',
+        );
       } else {
-        debugPrint('[HiveService] ✅ SUCCESS: IsStory field preserved correctly');
+        debugPrint(
+          '[HiveService] ✅ SUCCESS: IsStory field preserved correctly',
+        );
       }
 
       // Additional validation for filterType

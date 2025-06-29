@@ -58,7 +58,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   void _initializeVideo() {
     if (widget.snap.mediaType == MediaType.video &&
         widget.snap.mediaUrl.isNotEmpty) {
-      final rewrittenUrl = _rewriteStorageUrl(widget.snap.mediaUrl); // Apply URL rewriting
+      final rewrittenUrl = _rewriteStorageUrl(
+        widget.snap.mediaUrl,
+      ); // Apply URL rewriting
       final videoUri = Uri.parse(rewrittenUrl);
       debugPrint('[FeedPostWidget] 🎥 Video URL for playback: $rewrittenUrl');
       _videoController = VideoPlayerController.networkUrl(videoUri)
@@ -221,7 +223,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           CircleAvatar(
             radius: 20,
             backgroundImage: widget.snap.vendorAvatarUrl.isNotEmpty
-                ? NetworkImage(_rewriteUrlForCurrentPlatform(widget.snap.vendorAvatarUrl))
+                ? NetworkImage(
+                    _rewriteUrlForCurrentPlatform(widget.snap.vendorAvatarUrl),
+                  )
                 : null,
             backgroundColor: AppColors.marketBlue,
             child: widget.snap.vendorAvatarUrl.isEmpty
@@ -423,19 +427,29 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       // iOS: Convert 10.0.2.2 URLs to localhost for iOS simulator connectivity
       if (originalUrl.contains('10.0.2.2:9199')) {
-        final rewrittenUrl = originalUrl.replaceAll('10.0.2.2:9199', 'localhost:9199');
-        debugPrint('[FeedPostWidget] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl');
+        final rewrittenUrl = originalUrl.replaceAll(
+          '10.0.2.2:9199',
+          'localhost:9199',
+        );
+        debugPrint(
+          '[FeedPostWidget] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl',
+        );
         return rewrittenUrl;
       }
     } else {
-      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity  
+      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity
       if (originalUrl.contains('localhost:9199')) {
-        final rewrittenUrl = originalUrl.replaceAll('localhost:9199', '10.0.2.2:9199');
-        debugPrint('[FeedPostWidget] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl');
+        final rewrittenUrl = originalUrl.replaceAll(
+          'localhost:9199',
+          '10.0.2.2:9199',
+        );
+        debugPrint(
+          '[FeedPostWidget] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl',
+        );
         return rewrittenUrl;
       }
     }
-    
+
     // No rewriting needed
     return originalUrl;
   }
@@ -443,25 +457,27 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   /// ✅ ADD: Cross-platform URL rewriting for avatars specifically
   String _rewriteUrlForCurrentPlatform(String originalUrl) {
     // Only rewrite Firebase Storage emulator URLs
-    if (!originalUrl.contains('googleapis.com') && 
-        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
-      
-      debugPrint('[FeedPostWidget] 🔄 Avatar URL rewriting for cross-platform compatibility');
+    if (!originalUrl.contains('googleapis.com') &&
+        (originalUrl.contains('localhost') ||
+            originalUrl.contains('10.0.2.2'))) {
+      debugPrint(
+        '[FeedPostWidget] 🔄 Avatar URL rewriting for cross-platform compatibility',
+      );
       debugPrint('[FeedPostWidget] - Original URL: $originalUrl');
-      
+
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         // iOS: Convert Android emulator URL to iOS format
         final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
         debugPrint('[FeedPostWidget] - iOS rewrite: $rewritten');
         return rewritten;
       } else if (defaultTargetPlatform == TargetPlatform.android) {
-        // Android: Convert iOS emulator URL to Android format  
+        // Android: Convert iOS emulator URL to Android format
         final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
         debugPrint('[FeedPostWidget] - Android rewrite: $rewritten');
         return rewritten;
       }
     }
-    
+
     // No rewriting needed for production URLs or non-emulator environments
     return originalUrl;
   }
@@ -470,7 +486,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   Widget _buildImageDisplay() {
     final filterType = widget.snap.filterType;
     final originalMediaUrl = widget.snap.mediaUrl;
-    final mediaUrl = _rewriteStorageUrl(originalMediaUrl); // Apply URL rewriting
+    final mediaUrl = _rewriteStorageUrl(
+      originalMediaUrl,
+    ); // Apply URL rewriting
     final snapId = widget.snap.id;
 
     debugPrint(
@@ -1134,7 +1152,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
     try {
       debugPrint('[FeedPostWidget] Deleting snap: ${widget.snap.id}');
-      
+
       // Call the deletion callback provided by parent
       if (widget.onDelete != null) {
         await widget.onDelete!(widget.snap.id);
@@ -1144,7 +1162,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
       }
     } catch (e) {
       debugPrint('[FeedPostWidget] ❌ Error deleting snap: $e');
-      
+
       // Show error message to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

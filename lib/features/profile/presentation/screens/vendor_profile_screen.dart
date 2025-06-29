@@ -52,9 +52,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   void initState() {
     super.initState();
     _loadExistingProfile();
-    
+
     // ✅ Listen for profile updates from sync process
-    _profileUpdateSubscription = main.profileUpdateNotifier.vendorProfileUpdates.listen(_onProfileUpdate);
+    _profileUpdateSubscription = main.profileUpdateNotifier.vendorProfileUpdates
+        .listen(_onProfileUpdate);
   }
 
   @override
@@ -62,10 +63,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     _displayNameController.dispose();
     _stallNameController.dispose();
     _marketCityController.dispose();
-    
+
     // ✅ Cancel profile update subscription
     _profileUpdateSubscription?.cancel();
-    
+
     super.dispose();
   }
 
@@ -74,7 +75,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     // Only update if it's the current user's profile
     final currentUid = widget.profileService.currentUserUid;
     if (profile.uid == currentUid && mounted) {
-      debugPrint('[VendorProfileScreen] 📢 Received profile update from sync - updating UI');
+      debugPrint(
+        '[VendorProfileScreen] 📢 Received profile update from sync - updating UI',
+      );
       setState(() {
         _displayNameController.text = profile.displayName;
         _stallNameController.text = profile.stallName;
@@ -82,8 +85,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         _localAvatarPath = profile.localAvatarPath;
         _avatarURL = profile.avatarURL;
       });
-      
-      debugPrint('[VendorProfileScreen] ✅ UI updated with synced avatar state:');
+
+      debugPrint(
+        '[VendorProfileScreen] ✅ UI updated with synced avatar state:',
+      );
       debugPrint('[VendorProfileScreen] - Local path: $_localAvatarPath');
       debugPrint('[VendorProfileScreen] - Remote URL: $_avatarURL');
     }
@@ -105,9 +110,11 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           '[VendorProfileScreen] Found existing profile: ${profile.stallName}',
         );
         debugPrint('[VendorProfileScreen] 🖼️ Avatar status:');
-        debugPrint('[VendorProfileScreen] - localAvatarPath: ${profile.localAvatarPath}');
+        debugPrint(
+          '[VendorProfileScreen] - localAvatarPath: ${profile.localAvatarPath}',
+        );
         debugPrint('[VendorProfileScreen] - avatarURL: ${profile.avatarURL}');
-        
+
         setState(() {
           _displayNameController.text = profile.displayName;
           _stallNameController.text = profile.stallName;
@@ -115,7 +122,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           _localAvatarPath = profile.localAvatarPath;
           _avatarURL = profile.avatarURL;
         });
-        
+
         debugPrint('[VendorProfileScreen] ✅ Profile loaded with avatar state:');
         debugPrint('[VendorProfileScreen] - Local path: $_localAvatarPath');
         debugPrint('[VendorProfileScreen] - Remote URL: $_avatarURL');
@@ -147,7 +154,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       if (imagePath != null) {
         setState(() {
           _localAvatarPath = imagePath;
-          debugPrint('[VendorProfileScreen] 🖼️ New local avatar selected, clearing remote URL');
+          debugPrint(
+            '[VendorProfileScreen] 🖼️ New local avatar selected, clearing remote URL',
+          );
         });
         debugPrint('[VendorProfileScreen] Avatar selected: $imagePath');
       }
@@ -204,7 +213,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                         _localAvatarPath = null;
                         _avatarURL = null;
                       });
-                      debugPrint('[VendorProfileScreen] 🗑️ Avatar removed (both local and remote)');
+                      debugPrint(
+                        '[VendorProfileScreen] 🗑️ Avatar removed (both local and remote)',
+                      );
                     },
                   ),
               ],
@@ -272,20 +283,24 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       debugPrint('[VendorProfileScreen] ✅ Profile saved successfully');
 
       // ✅ CRITICAL FIX: Wait for sync completion instead of arbitrary delay
-      debugPrint('[VendorProfileScreen] ⏳ Waiting for sync process to complete...');
+      debugPrint(
+        '[VendorProfileScreen] ⏳ Waiting for sync process to complete...',
+      );
       final currentUid = widget.profileService.currentUserUid;
       if (currentUid != null) {
         final syncCompleted = await widget.profileService.waitForSyncCompletion(
           currentUid,
           timeout: const Duration(seconds: 15),
         );
-        
+
         if (syncCompleted) {
           debugPrint('[VendorProfileScreen] ✅ Sync completed successfully');
           // Reload profile to get the final synced state
           await _loadExistingProfile();
         } else {
-          debugPrint('[VendorProfileScreen] ⚠️ Sync timed out, but profile saved locally');
+          debugPrint(
+            '[VendorProfileScreen] ⚠️ Sync timed out, but profile saved locally',
+          );
           // Still reload to get current state
           await _loadExistingProfile();
         }
@@ -333,14 +348,14 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     final bool hasLocalAvatar = _localAvatarPath != null;
     final bool hasRemoteAvatar = _avatarURL?.isNotEmpty == true;
     final bool hasAnyAvatar = hasLocalAvatar || hasRemoteAvatar;
-    
+
     debugPrint('[VendorProfileScreen] 🖼️ Avatar display logic:');
     debugPrint('[VendorProfileScreen] - hasLocalAvatar: $hasLocalAvatar');
     debugPrint('[VendorProfileScreen] - hasRemoteAvatar: $hasRemoteAvatar');
     debugPrint('[VendorProfileScreen] - hasAnyAvatar: $hasAnyAvatar');
     debugPrint('[VendorProfileScreen] - _localAvatarPath: $_localAvatarPath');
     debugPrint('[VendorProfileScreen] - _avatarURL: $_avatarURL');
-    
+
     return Column(
       children: [
         GestureDetector(
@@ -360,7 +375,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                             File(_localAvatarPath!),
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              debugPrint('[VendorProfileScreen] ❌ Local avatar load error: $error');
+                              debugPrint(
+                                '[VendorProfileScreen] ❌ Local avatar load error: $error',
+                              );
                               return Icon(
                                 Icons.broken_image,
                                 size: 48,
@@ -373,14 +390,17 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                             fit: BoxFit.cover,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) {
-                                debugPrint('[VendorProfileScreen] ✅ Remote avatar loaded successfully');
+                                debugPrint(
+                                  '[VendorProfileScreen] ✅ Remote avatar loaded successfully',
+                                );
                                 return child;
                               }
                               return Center(
                                 child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
+                                  value:
+                                      loadingProgress.expectedTotalBytes != null
                                       ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
+                                            loadingProgress.expectedTotalBytes!
                                       : null,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     AppColors.marketBlue,
@@ -389,7 +409,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                               );
                             },
                             errorBuilder: (context, error, stackTrace) {
-                              debugPrint('[VendorProfileScreen] ❌ Remote avatar load error: $error');
+                              debugPrint(
+                                '[VendorProfileScreen] ❌ Remote avatar load error: $error',
+                              );
                               return Icon(
                                 Icons.broken_image,
                                 size: 48,
@@ -425,8 +447,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         if (kDebugMode && hasAnyAvatar) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(
-            hasLocalAvatar 
-                ? '🔵 Local avatar selected (will upload)' 
+            hasLocalAvatar
+                ? '🔵 Local avatar selected (will upload)'
                 : '🟢 Synced avatar from server',
             style: AppTypography.caption.copyWith(
               color: hasLocalAvatar ? Colors.blue : Colors.green,
@@ -458,11 +480,11 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       name: 'VendorProfileScreen',
     );
 
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(
-      builder: (context) => const VendorKnowledgeBaseScreen(),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const VendorKnowledgeBaseScreen(),
+      ),
+    );
   }
 
   /// Sign out the current user
@@ -692,8 +714,12 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                         padding: AppSpacing.edgeInsetsCard,
                         decoration: BoxDecoration(
                           color: AppColors.leafGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                          border: Border.all(color: AppColors.leafGreen.withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusLg,
+                          ),
+                          border: Border.all(
+                            color: AppColors.leafGreen.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -708,25 +734,32 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                                 const SizedBox(width: AppSpacing.sm),
                                 Text(
                                   'Smart Features',
-                                  style: AppTypography.h2.copyWith(color: AppColors.leafGreen),
+                                  style: AppTypography.h2.copyWith(
+                                    color: AppColors.leafGreen,
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Text(
                               'Manage your AI-powered customer assistance and view analytics.',
-                              style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                              style: AppTypography.body.copyWith(
+                                color: AppColors.soilCharcoal,
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.lg),
                             MarketSnapSecondaryButton(
                               text: 'Knowledge Base',
                               icon: Icons.quiz,
-                              onPressed: () => _navigateToKnowledgeBase(context),
+                              onPressed: () =>
+                                  _navigateToKnowledgeBase(context),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Text(
                               'Create FAQs that automatically appear when customers post about your products.',
-                              style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.soilTaupe,
+                              ),
                             ),
                           ],
                         ),
