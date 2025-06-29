@@ -525,11 +525,32 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
       }
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] Error during batch vectorization: $e');
+      
+      String errorMessage = 'Error vectorizing FAQs';
+      
+      // Handle specific error types with user-friendly messages
+      if (e.toString().contains('failed-precondition') || 
+          e.toString().contains('OpenAI API key')) {
+        errorMessage = 'AI service unavailable. Please contact support.';
+      } else if (e.toString().contains('unauthenticated')) {
+        errorMessage = 'Authentication error. Please try signing in again.';
+      } else if (e.toString().contains('INTERNAL')) {
+        errorMessage = 'Service temporarily unavailable. Please try again later.';
+      } else {
+        errorMessage = 'Failed to vectorize FAQs. Please try again.';
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error vectorizing FAQs: $e'),
+            content: Text(errorMessage),
             backgroundColor: AppColors.appleRed,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _batchVectorizeAllFAQs,
+            ),
           ),
         );
       }
@@ -1150,11 +1171,15 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
-          Text(
-            '$value$suffix',
-            style: AppTypography.caption.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              '$value$suffix',
+              style: AppTypography.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
