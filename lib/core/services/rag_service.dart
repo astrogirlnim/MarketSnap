@@ -58,6 +58,7 @@ class RecipeSnippet {
 
 /// FAQ search result model
 class FAQResult {
+  final String id; // FAQ document ID from Firestore
   final String question;
   final String answer;
   final double score;
@@ -65,6 +66,7 @@ class FAQResult {
   final String category;
 
   FAQResult({
+    required this.id,
     required this.question,
     required this.answer,
     required this.score,
@@ -74,6 +76,7 @@ class FAQResult {
 
   factory FAQResult.fromJson(Map<String, dynamic> json) {
     return FAQResult(
+      id: json['faqId'] ?? json['id'] ?? '', // Handle both possible field names
       question: json['question'] ?? '',
       answer: json['answer'] ?? '',
       score: (json['score'] ?? 0.0).toDouble(),
@@ -84,6 +87,8 @@ class FAQResult {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'faqId': id, // Include both for compatibility
       'question': question,
       'answer': answer,
       'score': score,

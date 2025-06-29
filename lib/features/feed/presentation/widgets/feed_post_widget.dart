@@ -861,12 +861,11 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             ),
             onTap: () {
               HapticFeedback.lightImpact();
-              // Track expand action for first FAQ
+              // Track expand action for first FAQ using proper FAQ ID
               if (faqs.isNotEmpty) {
                 _trackAction(
                   contentType: 'faq',
-                  contentId:
-                      faqs.first.vendorId, // Using vendorId as FAQ ID for now
+                  contentId: faqs.first.id, // Use the actual FAQ document ID
                   contentTitle: faqs.first.question,
                   action: RAGFeedbackAction.expand,
                   relevanceScore: faqs.first.score,
@@ -901,7 +900,8 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
 
   /// Build individual FAQ item with feedback buttons
   Widget _buildFAQItem(FAQResult faq) {
-    final faqId = '${faq.vendorId}_${faq.question.hashCode}';
+    // Use the actual FAQ document ID for consistent tracking
+    final faqId = faq.id;
 
     return Container(
       margin: const EdgeInsets.only(top: AppSpacing.sm),
