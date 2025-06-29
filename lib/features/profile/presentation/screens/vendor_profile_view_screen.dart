@@ -75,26 +75,8 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
           style: AppTypography.h1.copyWith(color: AppColors.soilCharcoal),
         ),
         centerTitle: true,
-        actions: [
-          // Show follow button for regular users viewing other vendors
-          if (_isRegularUser && !_isCurrentUser) ...[
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.md),
-              child: Center(
-                child: FollowButton(
-                  vendorId: widget.vendor.uid,
-                  followService: _followService,
-                  onFollowStatusChanged: () {
-                    developer.log(
-                      '[VendorProfileViewScreen] Follow status changed for vendor: ${widget.vendor.uid}',
-                      name: 'VendorProfileViewScreen',
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ],
+        // ✅ REMOVED: Redundant AppBar follow button to fix overflow and eliminate duplication
+        // The main follow section in the content area provides better UX with "Stay Updated" messaging
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -294,10 +276,15 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
             style: AppTypography.h2.copyWith(color: AppColors.marketBlue),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Follow ${widget.vendor.displayName} to get notified when they post fresh finds!',
-            style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
-            textAlign: TextAlign.center,
+          // ✅ IMPROVED: Added flexible text wrapping to prevent overflow with long vendor names
+          Flexible(
+            child: Text(
+              'Follow ${widget.vendor.displayName} to get notified when they post fresh finds!',
+              style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.visible,
+              maxLines: null, // Allow text to wrap to multiple lines if needed
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           FollowButton(
@@ -305,7 +292,7 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
             followService: _followService,
             onFollowStatusChanged: () {
               developer.log(
-                '[VendorProfileViewScreen] Follow status changed in main section for vendor: ${widget.vendor.uid}',
+                '[VendorProfileViewScreen] ✅ Follow status changed for vendor: ${widget.vendor.uid}',
                 name: 'VendorProfileViewScreen',
               );
             },
