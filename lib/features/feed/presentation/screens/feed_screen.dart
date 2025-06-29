@@ -196,7 +196,9 @@ class _FeedScreenState extends State<FeedScreen> {
                 final messenger = ScaffoldMessenger.of(context);
                 try {
                   await _feedService.deleteSnap(snapId);
-                  developer.log('[FeedScreen] Snap deleted successfully: $snapId');
+                  developer.log(
+                    '[FeedScreen] Snap deleted successfully: $snapId',
+                  );
                 } catch (e) {
                   developer.log('[FeedScreen] Error deleting snap: $e');
                   if (mounted) {

@@ -121,8 +121,9 @@ class FeedService {
               final vendorSnaps = entry.value;
               // Sort snaps for this vendor by creation time (oldest first for chronological viewing)
               vendorSnaps.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-              
-              final latestSnap = vendorSnaps.last; // Latest snap for vendor ordering (last in chronological list)
+
+              final latestSnap = vendorSnaps
+                  .last; // Latest snap for vendor ordering (last in chronological list)
               return StoryItem(
                 vendorId: latestSnap.vendorId,
                 vendorName: latestSnap.vendorName,
@@ -133,7 +134,10 @@ class FeedService {
             }).toList();
 
             // Sort story items by most recent story (latest snap from each vendor)
-            storyItems.sort((a, b) => b.snaps.last.createdAt.compareTo(a.snaps.last.createdAt));
+            storyItems.sort(
+              (a, b) =>
+                  b.snaps.last.createdAt.compareTo(a.snaps.last.createdAt),
+            );
 
             developer.log(
               '[FeedService] Created ${storyItems.length} story items from ${snaps.length} snaps',
@@ -158,20 +162,20 @@ class FeedService {
   Stream<List<String>> _getFollowedVendorsStream(String userId) {
     // Note: For now, we'll poll the follow service periodically
     // In a production app, you might want to cache this or use Firestore streams
-    
+
     // Create a controller that starts with an immediate value
     late StreamController<List<String>> controller;
-    
+
     // Start with immediate execution
     Future<void> getFollowedVendors() async {
       try {
         final followedIds = await _getFollowedVendorIds(userId);
-        
+
         // Also include current user's own stories
         if (!followedIds.contains(userId)) {
           followedIds.add(userId);
         }
-        
+
         if (!controller.isClosed) {
           controller.add(followedIds);
         }
@@ -186,12 +190,12 @@ class FeedService {
         }
       }
     }
-    
+
     controller = StreamController<List<String>>.broadcast(
       onListen: () {
         // Execute immediately on listen
         getFollowedVendors();
-        
+
         // Set up periodic updates
         Timer.periodic(const Duration(minutes: 5), (_) {
           if (!controller.isClosed) {
@@ -200,7 +204,7 @@ class FeedService {
         });
       },
     );
-    
+
     return controller.stream;
   }
 
@@ -243,7 +247,9 @@ class FeedService {
   }
 
   /// Apply cached profile updates to a list of story items
-  Future<List<StoryItem>> _applyProfileUpdatesToStories(List<StoryItem> stories) async {
+  Future<List<StoryItem>> _applyProfileUpdatesToStories(
+    List<StoryItem> stories,
+  ) async {
     return stories.map((story) {
       final cachedProfile = _profileCache[story.vendorId];
       if (cachedProfile != null) {
@@ -276,7 +282,10 @@ class FeedService {
     // Combine the Firestore snaps stream with profile update stream
     final snapsStream = _firestore
         .collection('snaps')
-        .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
+        .where(
+          'isStory',
+          isEqualTo: false,
+        ) // Only get regular feed posts, not stories
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -325,7 +334,10 @@ class FeedService {
         try {
           final snapshot = await _firestore
               .collection('snaps')
-              .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
+              .where(
+                'isStory',
+                isEqualTo: false,
+              ) // Only get regular feed posts, not stories
               .orderBy('createdAt', descending: true)
               .limit(limit)
               .get();

@@ -282,7 +282,7 @@ Future<void> _uploadPendingItem(
 
   // Create Firestore document
   final now = DateTime.now();
-  
+
   // Build snap data based on whether it's a story or feed post
   final Map<String, dynamic> snapData = {
     'vendorId': user.uid,
@@ -296,7 +296,7 @@ Future<void> _uploadPendingItem(
     'location': pendingItem.location,
     'isStory': pendingItem.isStory,
   };
-  
+
   // Add story-specific fields if this is a story
   if (pendingItem.isStory) {
     final expiresAt = now.add(const Duration(hours: 24));

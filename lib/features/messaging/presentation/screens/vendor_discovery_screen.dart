@@ -190,25 +190,27 @@ class _VendorCard extends StatelessWidget {
   /// ✅ ADD: Cross-platform URL rewriting for avatars to fix iOS emulator Firebase Storage access
   String _rewriteUrlForCurrentPlatform(String originalUrl) {
     // Only rewrite Firebase Storage emulator URLs
-    if (!originalUrl.contains('googleapis.com') && 
-        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
-      
-      debugPrint('[VendorDiscoveryScreen] 🔄 Avatar URL rewriting for cross-platform compatibility');
+    if (!originalUrl.contains('googleapis.com') &&
+        (originalUrl.contains('localhost') ||
+            originalUrl.contains('10.0.2.2'))) {
+      debugPrint(
+        '[VendorDiscoveryScreen] 🔄 Avatar URL rewriting for cross-platform compatibility',
+      );
       debugPrint('[VendorDiscoveryScreen] - Original URL: $originalUrl');
-      
+
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         // iOS: Convert Android emulator URL to iOS format
         final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
         debugPrint('[VendorDiscoveryScreen] - iOS rewrite: $rewritten');
         return rewritten;
       } else if (defaultTargetPlatform == TargetPlatform.android) {
-        // Android: Convert iOS emulator URL to Android format  
+        // Android: Convert iOS emulator URL to Android format
         final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
         debugPrint('[VendorDiscoveryScreen] - Android rewrite: $rewritten');
         return rewritten;
       }
     }
-    
+
     // No rewriting needed for production URLs or non-emulator environments
     return originalUrl;
   }
@@ -225,10 +227,14 @@ class _VendorCard extends StatelessWidget {
             vendor.avatarURL?.isNotEmpty == true
                 ? CircleAvatar(
                     radius: 32,
-                    backgroundImage: NetworkImage(_rewriteUrlForCurrentPlatform(vendor.avatarURL!)),
+                    backgroundImage: NetworkImage(
+                      _rewriteUrlForCurrentPlatform(vendor.avatarURL!),
+                    ),
                     backgroundColor: AppColors.marketBlue,
                     onBackgroundImageError: (exception, stackTrace) {
-                      debugPrint('[VendorDiscoveryScreen] ❌ Avatar load error for ${vendor.displayName}: $exception');
+                      debugPrint(
+                        '[VendorDiscoveryScreen] ❌ Avatar load error for ${vendor.displayName}: $exception',
+                      );
                     },
                   )
                 : CircleAvatar(

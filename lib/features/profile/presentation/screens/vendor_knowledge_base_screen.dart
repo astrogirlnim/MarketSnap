@@ -18,15 +18,16 @@ class VendorKnowledgeBaseScreen extends StatefulWidget {
   const VendorKnowledgeBaseScreen({super.key});
 
   @override
-  State<VendorKnowledgeBaseScreen> createState() => _VendorKnowledgeBaseScreenState();
+  State<VendorKnowledgeBaseScreen> createState() =>
+      _VendorKnowledgeBaseScreenState();
 }
 
-class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen> 
+class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   String? _currentVendorId;
   bool _isLoading = true;
   List<FAQVector> _faqs = [];
@@ -49,17 +50,21 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
   /// Initialize vendor data and load FAQs
   Future<void> _initializeVendor() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        developer.log('[VendorKnowledgeBaseScreen] No authenticated user found');
+        developer.log(
+          '[VendorKnowledgeBaseScreen] No authenticated user found',
+        );
         return;
       }
-      
+
       _currentVendorId = user.uid;
-      developer.log('[VendorKnowledgeBaseScreen] Loading knowledge base for vendor: $_currentVendorId');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Loading knowledge base for vendor: $_currentVendorId',
+      );
+
       await _loadFAQs();
       await _loadAnalytics();
     } catch (e) {
@@ -72,22 +77,26 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
   /// Load vendor's FAQ vectors from Firestore
   Future<void> _loadFAQs() async {
     if (_currentVendorId == null) return;
-    
+
     try {
-      developer.log('[VendorKnowledgeBaseScreen] Loading FAQs for vendor: $_currentVendorId');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Loading FAQs for vendor: $_currentVendorId',
+      );
+
       final snapshot = await _firestore
           .collection('faqVectors')
           .where('vendorId', isEqualTo: _currentVendorId)
           .orderBy('updatedAt', descending: true)
           .get();
-      
-      final faqs = snapshot.docs.map((doc) => FAQVector.fromFirestore(doc)).toList();
-      
+
+      final faqs = snapshot.docs
+          .map((doc) => FAQVector.fromFirestore(doc))
+          .toList();
+
       setState(() {
         _faqs = faqs;
       });
-      
+
       developer.log('[VendorKnowledgeBaseScreen] Loaded ${faqs.length} FAQs');
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] Error loading FAQs: $e');
@@ -97,10 +106,12 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
   /// Load analytics data for vendor's content
   Future<void> _loadAnalytics() async {
     if (_currentVendorId == null) return;
-    
+
     try {
-      developer.log('[VendorKnowledgeBaseScreen] Loading analytics for vendor: $_currentVendorId');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Loading analytics for vendor: $_currentVendorId',
+      );
+
       final snapshot = await _firestore
           .collection('ragFeedback')
           .where('vendorId', isEqualTo: _currentVendorId)
@@ -108,24 +119,26 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
           .orderBy('createdAt', descending: true)
           .limit(100) // Limit to recent feedback
           .get();
-      
+
       final analytics = <String, List<RAGFeedback>>{};
-      
+
       for (final doc in snapshot.docs) {
         final feedback = RAGFeedback.fromFirestore(doc);
         final contentId = feedback.contentId;
-        
+
         if (!analytics.containsKey(contentId)) {
           analytics[contentId] = [];
         }
         analytics[contentId]!.add(feedback);
       }
-      
+
       setState(() {
         _analytics = analytics;
       });
-      
-      developer.log('[VendorKnowledgeBaseScreen] Loaded analytics for ${analytics.length} FAQ items');
+
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Loaded analytics for ${analytics.length} FAQ items',
+      );
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] Error loading analytics: $e');
     }
@@ -133,13 +146,19 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
 
   /// Show dialog for creating/editing FAQ
   Future<void> _showFAQDialog({FAQVector? existingFAQ}) async {
-    final questionController = TextEditingController(text: existingFAQ?.question ?? '');
-    final answerController = TextEditingController(text: existingFAQ?.answer ?? '');
-    final categoryController = TextEditingController(text: existingFAQ?.category ?? 'general');
-    final keywordsController = TextEditingController(
-      text: existingFAQ?.keywords.join(', ') ?? ''
+    final questionController = TextEditingController(
+      text: existingFAQ?.question ?? '',
     );
-    
+    final answerController = TextEditingController(
+      text: existingFAQ?.answer ?? '',
+    );
+    final categoryController = TextEditingController(
+      text: existingFAQ?.category ?? 'general',
+    );
+    final keywordsController = TextEditingController(
+      text: existingFAQ?.keywords.join(', ') ?? '',
+    );
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -161,7 +180,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpacing.md),
-              
+
               // Answer field
               MarketSnapTextField(
                 labelText: 'Answer',
@@ -171,7 +190,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 maxLines: 4,
               ),
               const SizedBox(height: AppSpacing.md),
-              
+
               // Category field
               MarketSnapTextField(
                 labelText: 'Category',
@@ -180,7 +199,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 prefixIcon: Icons.category,
               ),
               const SizedBox(height: AppSpacing.md),
-              
+
               // Keywords field
               MarketSnapTextField(
                 labelText: 'Keywords (comma separated)',
@@ -190,10 +209,11 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpacing.md),
-              
+
               // Help text
               MarketSnapStatusMessage(
-                message: 'Keywords help customers find relevant answers. Include product names, topics, and related terms.',
+                message:
+                    'Keywords help customers find relevant answers. Include product names, topics, and related terms.',
                 type: StatusType.info,
                 showIcon: true,
               ),
@@ -203,7 +223,10 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: AppTypography.body.copyWith(color: AppColors.soilTaupe)),
+            child: Text(
+              'Cancel',
+              style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+            ),
           ),
           MarketSnapPrimaryButton(
             text: existingFAQ == null ? 'Add FAQ' : 'Save Changes',
@@ -224,14 +247,14 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 );
                 return;
               }
-              
+
               Navigator.pop(context, true);
             },
           ),
         ],
       ),
     );
-    
+
     if (result == true) {
       await _saveFAQ(
         existingFAQ: existingFAQ,
@@ -245,7 +268,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             .toList(),
       );
     }
-    
+
     questionController.dispose();
     answerController.dispose();
     categoryController.dispose();
@@ -261,13 +284,13 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     required List<String> keywords,
   }) async {
     if (_currentVendorId == null) return;
-    
+
     try {
       developer.log('[VendorKnowledgeBaseScreen] Saving FAQ: $question');
-      
+
       final now = DateTime.now();
       final chunkText = '$question $answer'; // Combined text for embedding
-      
+
       final faqData = {
         'vendorId': _currentVendorId!,
         'question': question,
@@ -277,14 +300,14 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         'category': category,
         'updatedAt': Timestamp.fromDate(now),
       };
-      
+
       if (existingFAQ == null) {
         // Create new FAQ
         faqData['createdAt'] = Timestamp.fromDate(now);
         await _firestore.collection('faqVectors').add(faqData);
-        
+
         developer.log('[VendorKnowledgeBaseScreen] ✅ Created new FAQ');
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -300,15 +323,21 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         }
       } else {
         // Update existing FAQ
-        await _firestore.collection('faqVectors').doc(existingFAQ.id).update(faqData);
-        
-        developer.log('[VendorKnowledgeBaseScreen] ✅ Updated FAQ: ${existingFAQ.id}');
-        
+        await _firestore
+            .collection('faqVectors')
+            .doc(existingFAQ.id)
+            .update(faqData);
+
+        developer.log(
+          '[VendorKnowledgeBaseScreen] ✅ Updated FAQ: ${existingFAQ.id}',
+        );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: MarketSnapStatusMessage(
-                message: 'FAQ updated successfully! Re-vectorization in progress...',
+                message:
+                    'FAQ updated successfully! Re-vectorization in progress...',
                 type: StatusType.success,
                 showIcon: true,
               ),
@@ -318,12 +347,12 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
           );
         }
       }
-      
+
       // Reload FAQs to show changes
       await _loadFAQs();
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] ❌ Error saving FAQ: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -379,7 +408,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'A: ${faq.answer}',
-                    style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilTaupe,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -397,7 +428,10 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: AppTypography.body.copyWith(color: AppColors.soilTaupe)),
+            child: Text(
+              'Cancel',
+              style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+            ),
           ),
           SizedBox(
             width: double.infinity,
@@ -410,7 +444,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 elevation: AppSpacing.elevationSm,
                 shadowColor: AppColors.appleRed.withValues(alpha: 0.4),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.preferredTouchTarget / 2),
+                  borderRadius: BorderRadius.circular(
+                    AppSpacing.preferredTouchTarget / 2,
+                  ),
                 ),
               ),
               child: Text('Delete', style: AppTypography.buttonLarge),
@@ -419,15 +455,15 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       try {
         developer.log('[VendorKnowledgeBaseScreen] Deleting FAQ: ${faq.id}');
-        
+
         await _firestore.collection('faqVectors').doc(faq.id).delete();
-        
+
         developer.log('[VendorKnowledgeBaseScreen] ✅ Deleted FAQ: ${faq.id}');
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -441,12 +477,12 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ),
           );
         }
-        
+
         // Reload FAQs to show changes
         await _loadFAQs();
       } catch (e) {
         developer.log('[VendorKnowledgeBaseScreen] ❌ Error deleting FAQ: $e');
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -473,7 +509,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
       'downvotes': 0,
       'expansions': 0,
     };
-    
+
     for (final item in feedback) {
       switch (item.action) {
         case RAGFeedbackAction.view:
@@ -492,44 +528,54 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
           break;
       }
     }
-    
+
     return summary;
   }
 
   /// Batch vectorize all pending FAQs
   Future<void> _batchVectorizeAllFAQs() async {
     if (_currentVendorId == null) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
-      developer.log('[VendorKnowledgeBaseScreen] Starting batch vectorization for vendor: $_currentVendorId');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Starting batch vectorization for vendor: $_currentVendorId',
+      );
+
       // Verify user is authenticated before calling Cloud Function
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
-      
-      developer.log('[VendorKnowledgeBaseScreen] Authenticated user: ${currentUser.uid}');
-      developer.log('[VendorKnowledgeBaseScreen] User email: ${currentUser.email}');
-      
+
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Authenticated user: ${currentUser.uid}',
+      );
+      developer.log(
+        '[VendorKnowledgeBaseScreen] User email: ${currentUser.email}',
+      );
+
       // Use the default Firebase Functions instance (already configured for emulator in main.dart)
-      final callable = FirebaseFunctions.instance.httpsCallable('batchVectorizeFAQs');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'batchVectorizeFAQs',
+      );
       final result = await callable.call({
         'vendorId': _currentVendorId,
         'limit': 50,
       });
-      
+
       final data = result.data;
-      developer.log('[VendorKnowledgeBaseScreen] Batch vectorization result: $data');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Batch vectorization result: $data',
+      );
+
       if (data['success'] == true) {
         final processed = data['processed'] ?? 0;
-        
+
         // Refresh FAQ data to show updated vectorization status
         await _loadFAQs();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -542,15 +588,23 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         throw Exception(data['error'] ?? 'Vectorization failed');
       }
     } catch (e) {
-      developer.log('[VendorKnowledgeBaseScreen] Error during batch vectorization: $e');
-      
+      developer.log(
+        '[VendorKnowledgeBaseScreen] Error during batch vectorization: $e',
+      );
+
       String errorMessage = 'Failed to vectorize FAQs. Please try again.';
 
       if (e is FirebaseFunctionsException) {
-        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Code: ${e.code}');
-        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Message: ${e.message}');
-        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Details: ${e.details}');
-        
+        developer.log(
+          '[VendorKnowledgeBaseScreen] Firebase Functions Exception Code: ${e.code}',
+        );
+        developer.log(
+          '[VendorKnowledgeBaseScreen] Firebase Functions Exception Message: ${e.message}',
+        );
+        developer.log(
+          '[VendorKnowledgeBaseScreen] Firebase Functions Exception Details: ${e.details}',
+        );
+
         switch (e.code) {
           case 'unauthenticated':
             errorMessage = 'Authentication error. Please sign in again.';
@@ -559,16 +613,18 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             errorMessage = 'AI service not configured. Please contact support.';
             break;
           case 'internal':
-            errorMessage = 'An internal service error occurred. Please try again later.';
+            errorMessage =
+                'An internal service error occurred. Please try again later.';
             break;
           case 'unavailable':
-             errorMessage = 'Network connection issue. Please check your connection.';
+            errorMessage =
+                'Network connection issue. Please check your connection.';
             break;
           default:
             errorMessage = 'An unknown error occurred. Code: ${e.code}';
         }
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -592,8 +648,10 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
 
   /// Build FAQ management tab
   Widget _buildFAQManagementTab() {
-    developer.log('[VendorKnowledgeBaseScreen] Building FAQ Management Tab - FAQs count: ${_faqs.length}, Loading: $_isLoading');
-    
+    developer.log(
+      '[VendorKnowledgeBaseScreen] Building FAQ Management Tab - FAQs count: ${_faqs.length}, Loading: $_isLoading',
+    );
+
     return Padding(
       padding: AppSpacing.edgeInsetsLg,
       child: Column(
@@ -609,11 +667,15 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                   children: [
                     Text(
                       'Your FAQ Library',
-                      style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+                      style: AppTypography.h2.copyWith(
+                        color: AppColors.soilCharcoal,
+                      ),
                     ),
                     Text(
                       '${_faqs.length} questions and answers',
-                      style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.soilTaupe,
+                      ),
                     ),
                   ],
                 ),
@@ -630,11 +692,17 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                     backgroundColor: AppColors.marketBlue,
                     foregroundColor: Colors.white,
                     elevation: AppSpacing.elevationSm,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 6,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    minimumSize: const Size(0, 36), // Ensure minimum touch target
+                    minimumSize: const Size(
+                      0,
+                      36,
+                    ), // Ensure minimum touch target
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -655,7 +723,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          
+
           // Help information
           if (_faqs.isEmpty) ...[
             Container(
@@ -664,7 +732,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
               decoration: BoxDecoration(
                 color: AppColors.marketBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: AppColors.marketBlue.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.marketBlue.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 children: [
@@ -676,18 +746,23 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'Start Building Your Knowledge Base',
-                    style: AppTypography.h2.copyWith(color: AppColors.marketBlue),
+                    style: AppTypography.h2.copyWith(
+                      color: AppColors.marketBlue,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Add frequently asked questions to help customers learn about your products. These will appear automatically when relevant to their posts.',
-                    style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilCharcoal,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   MarketSnapStatusMessage(
-                    message: 'Example questions: "Are your tomatoes organic?", "What days are you at the market?", "Do you accept credit cards?"',
+                    message:
+                        'Example questions: "Are your tomatoes organic?", "What days are you at the market?", "Do you accept credit cards?"',
                     type: StatusType.info,
                     showIcon: true,
                   ),
@@ -702,7 +777,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 itemBuilder: (context, index) {
                   final faq = _faqs[index];
                   final analytics = _getAnalyticsSummary(faq.id);
-                  
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: AppSpacing.md),
                     color: AppColors.eggshell,
@@ -733,10 +808,12 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                     const SizedBox(height: AppSpacing.xs),
                                     Text(
                                       'A: ${faq.answer}',
-                                      style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
+                                      style: AppTypography.body.copyWith(
+                                        color: AppColors.soilTaupe,
+                                      ),
                                     ),
                                     const SizedBox(height: AppSpacing.sm),
-                                    
+
                                     // Category and keywords
                                     Wrap(
                                       spacing: AppSpacing.xs,
@@ -748,33 +825,48 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.marketBlue.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                                            color: AppColors.marketBlue
+                                                .withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              AppSpacing.radiusSm,
+                                            ),
                                           ),
                                           child: Text(
                                             faq.category,
-                                            style: AppTypography.caption.copyWith(
-                                              color: AppColors.marketBlue,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: AppTypography.caption
+                                                .copyWith(
+                                                  color: AppColors.marketBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                           ),
                                         ),
-                                        ...faq.keywords.take(3).map((keyword) => Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AppSpacing.sm,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.leafGreen.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                                          ),
-                                          child: Text(
-                                            keyword,
-                                            style: AppTypography.caption.copyWith(
-                                              color: AppColors.leafGreen,
+                                        ...faq.keywords
+                                            .take(3)
+                                            .map(
+                                              (keyword) => Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: AppSpacing.sm,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.leafGreen
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppSpacing.radiusSm,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  keyword,
+                                                  style: AppTypography.caption
+                                                      .copyWith(
+                                                        color:
+                                                            AppColors.leafGreen,
+                                                      ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        )),
                                         if (faq.keywords.length > 3)
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -782,14 +874,19 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                               vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.soilTaupe.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                                              color: AppColors.soilTaupe
+                                                  .withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppSpacing.radiusSm,
+                                                  ),
                                             ),
                                             child: Text(
                                               '+${faq.keywords.length - 3}',
-                                              style: AppTypography.caption.copyWith(
-                                                color: AppColors.soilTaupe,
-                                              ),
+                                              style: AppTypography.caption
+                                                  .copyWith(
+                                                    color: AppColors.soilTaupe,
+                                                  ),
                                             ),
                                           ),
                                       ],
@@ -797,15 +894,17 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                   ],
                                 ),
                               ),
-                              
+
                               // Action buttons
                               Column(
                                 children: [
                                   IconButton(
-                                    onPressed: () => _showFAQDialog(existingFAQ: faq),
+                                    onPressed: () =>
+                                        _showFAQDialog(existingFAQ: faq),
                                     icon: const Icon(Icons.edit),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: AppColors.marketBlue.withValues(alpha: 0.1),
+                                      backgroundColor: AppColors.marketBlue
+                                          .withValues(alpha: 0.1),
                                       foregroundColor: AppColors.marketBlue,
                                     ),
                                     tooltip: 'Edit FAQ',
@@ -815,7 +914,8 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                     onPressed: () => _deleteFAQ(faq),
                                     icon: const Icon(Icons.delete),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: AppColors.appleRed.withValues(alpha: 0.1),
+                                      backgroundColor: AppColors.appleRed
+                                          .withValues(alpha: 0.1),
                                       foregroundColor: AppColors.appleRed,
                                     ),
                                     tooltip: 'Delete FAQ',
@@ -824,7 +924,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                               ),
                             ],
                           ),
-                          
+
                           // Analytics summary
                           if (analytics['views']! > 0) ...[
                             const Divider(color: AppColors.seedBrown),
@@ -853,29 +953,42 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                               ],
                             ),
                           ],
-                          
+
                           // Vectorization status
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: faq.embedding != null 
+                              color: faq.embedding != null
                                   ? AppColors.leafGreen.withValues(alpha: 0.1)
-                                  : AppColors.sunsetAmber.withValues(alpha: 0.1),
+                                  : AppColors.sunsetAmber.withValues(
+                                      alpha: 0.1,
+                                    ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  faq.embedding != null ? Icons.verified : Icons.schedule,
+                                  faq.embedding != null
+                                      ? Icons.verified
+                                      : Icons.schedule,
                                   size: 14,
-                                  color: faq.embedding != null ? AppColors.leafGreen : AppColors.sunsetAmber,
+                                  color: faq.embedding != null
+                                      ? AppColors.leafGreen
+                                      : AppColors.sunsetAmber,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  faq.embedding != null ? 'Enhanced' : 'Basic matching',
+                                  faq.embedding != null
+                                      ? 'Enhanced'
+                                      : 'Basic matching',
                                   style: AppTypography.caption.copyWith(
-                                    color: faq.embedding != null ? AppColors.leafGreen : AppColors.sunsetAmber,
+                                    color: faq.embedding != null
+                                        ? AppColors.leafGreen
+                                        : AppColors.sunsetAmber,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -902,52 +1015,65 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         .expand((feedback) => feedback)
         .where((f) => f.action == RAGFeedbackAction.view)
         .length;
-    
+
     final totalUpvotes = _analytics.values
         .expand((feedback) => feedback)
         .where((f) => f.action == RAGFeedbackAction.upvote)
         .length;
-    
+
     final totalDownvotes = _analytics.values
         .expand((feedback) => feedback)
         .where((f) => f.action == RAGFeedbackAction.downvote)
         .length;
-    
+
     final satisfactionRate = totalUpvotes + totalDownvotes > 0
         ? (totalUpvotes / (totalUpvotes + totalDownvotes)) * 100
         : 0.0;
-    
+
     // Debug vectorization status
-    final faqsNeedingVectorization = _faqs.where((faq) => faq.embedding == null).length;
-    developer.log('[VendorKnowledgeBaseScreen] Vectorization status: $_currentVendorId');
+    final faqsNeedingVectorization = _faqs
+        .where((faq) => faq.embedding == null)
+        .length;
+    developer.log(
+      '[VendorKnowledgeBaseScreen] Vectorization status: $_currentVendorId',
+    );
     developer.log('[VendorKnowledgeBaseScreen] Total FAQs: ${_faqs.length}');
-    developer.log('[VendorKnowledgeBaseScreen] FAQs needing vectorization: $faqsNeedingVectorization');
+    developer.log(
+      '[VendorKnowledgeBaseScreen] FAQs needing vectorization: $faqsNeedingVectorization',
+    );
     for (int i = 0; i < _faqs.length; i++) {
       final faq = _faqs[i];
-      developer.log('[VendorKnowledgeBaseScreen] FAQ $i: ${faq.question} - Embedding: ${faq.embedding != null ? "${faq.embedding!.length} dimensions" : "null"}');
+      developer.log(
+        '[VendorKnowledgeBaseScreen] FAQ $i: ${faq.question} - Embedding: ${faq.embedding != null ? "${faq.embedding!.length} dimensions" : "null"}',
+      );
     }
-    
+
     // Top performing FAQs
     final faqPerformance = <String, Map<String, dynamic>>{};
     for (final faq in _faqs) {
       final analytics = _getAnalyticsSummary(faq.id);
-      final totalInteractions = analytics['views']! + analytics['upvotes']! + analytics['downvotes']!;
-      
+      final totalInteractions =
+          analytics['views']! + analytics['upvotes']! + analytics['downvotes']!;
+
       if (totalInteractions > 0) {
         faqPerformance[faq.id] = {
           'faq': faq,
           'interactions': totalInteractions,
           'satisfaction': analytics['upvotes']! + analytics['downvotes']! > 0
-              ? (analytics['upvotes']! / (analytics['upvotes']! + analytics['downvotes']!)) * 100
+              ? (analytics['upvotes']! /
+                        (analytics['upvotes']! + analytics['downvotes']!)) *
+                    100
               : 0.0,
         };
       }
     }
-    
+
     // Sort by interactions
     final topFAQs = faqPerformance.entries.toList()
-      ..sort((a, b) => b.value['interactions'].compareTo(a.value['interactions']));
-    
+      ..sort(
+        (a, b) => b.value['interactions'].compareTo(a.value['interactions']),
+      );
+
     return SingleChildScrollView(
       padding: AppSpacing.edgeInsetsLg,
       child: Column(
@@ -964,7 +1090,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
           ),
           const SizedBox(height: AppSpacing.lg),
-          
+
           // Overall statistics
           Row(
             children: [
@@ -982,13 +1108,15 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                   title: 'Satisfaction Rate',
                   value: '${satisfactionRate.toStringAsFixed(1)}%',
                   icon: Icons.sentiment_satisfied,
-                  color: satisfactionRate >= 70 ? AppColors.leafGreen : AppColors.sunsetAmber,
+                  color: satisfactionRate >= 70
+                      ? AppColors.leafGreen
+                      : AppColors.sunsetAmber,
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          
+
           Row(
             children: [
               Expanded(
@@ -1011,7 +1139,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          
+
           // Vectorization Status & Actions
           Container(
             width: double.infinity,
@@ -1019,7 +1147,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             decoration: BoxDecoration(
               color: AppColors.sunsetAmber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-              border: Border.all(color: AppColors.sunsetAmber.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.sunsetAmber.withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1050,12 +1180,18 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, color: AppColors.marketBlue, size: 20),
+                          Icon(
+                            Icons.info_outline,
+                            color: AppColors.marketBlue,
+                            size: 20,
+                          ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
                               'FAQ Search Status',
-                              style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+                              style: AppTypography.h2.copyWith(
+                                color: AppColors.soilCharcoal,
+                              ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
@@ -1067,7 +1203,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                         '${_faqs.where((faq) => faq.embedding == null).length} of ${_faqs.length} FAQs need vectorization for enhanced search accuracy.\n\n'
                         'Note: FAQs work with basic keyword matching even without vectorization. '
                         'Vectorization improves search relevance and personalization.',
-                        style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.soilCharcoal,
+                        ),
                       ),
                     ],
                   ),
@@ -1083,16 +1221,20 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                         backgroundColor: AppColors.marketBlue,
                         foregroundColor: AppColors.eggshell,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                       ),
-                      icon: _isLoading 
+                      icon: _isLoading
                           ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.eggshell),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.eggshell,
+                                ),
                               ),
                             )
                           : const Icon(Icons.auto_fix_high, size: 16),
@@ -1110,7 +1252,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          
+
           // Top performing FAQs
           if (topFAQs.isNotEmpty) ...[
             Text(
@@ -1118,7 +1260,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
               style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
             ),
             const SizedBox(height: AppSpacing.md),
-            
+
             // Use ListView.builder with shrinkWrap instead of fixed height
             ListView.builder(
               shrinkWrap: true,
@@ -1129,7 +1271,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                 final faq = entry.value['faq'] as FAQVector;
                 final interactions = entry.value['interactions'] as int;
                 final satisfaction = entry.value['satisfaction'] as double;
-                
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: AppSpacing.md),
                   color: AppColors.eggshell,
@@ -1152,7 +1294,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        
+
                         Wrap(
                           spacing: AppSpacing.sm,
                           runSpacing: AppSpacing.xs,
@@ -1168,7 +1310,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                               label: 'Satisfaction',
                               value: satisfaction.toInt(),
                               suffix: '%',
-                              color: satisfaction >= 70 ? AppColors.leafGreen : AppColors.sunsetAmber,
+                              color: satisfaction >= 70
+                                  ? AppColors.leafGreen
+                                  : AppColors.sunsetAmber,
                             ),
                           ],
                         ),
@@ -1185,32 +1329,34 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
               decoration: BoxDecoration(
                 color: AppColors.soilTaupe.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: AppColors.soilTaupe.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.soilTaupe.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.analytics,
-                    color: AppColors.soilTaupe,
-                    size: 48,
-                  ),
+                  Icon(Icons.analytics, color: AppColors.soilTaupe, size: 48),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'No Analytics Yet',
-                    style: AppTypography.h2.copyWith(color: AppColors.soilTaupe),
+                    style: AppTypography.h2.copyWith(
+                      color: AppColors.soilTaupe,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Analytics will appear here once customers start interacting with your FAQs.',
-                    style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.soilCharcoal,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
           ],
-          
+
           // Add bottom padding to ensure content is not cut off
           const SizedBox(height: AppSpacing.xl),
         ],
@@ -1342,11 +1488,8 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             )
           : TabBarView(
               controller: _tabController,
-              children: [
-                _buildFAQManagementTab(),
-                _buildAnalyticsTab(),
-              ],
+              children: [_buildFAQManagementTab(), _buildAnalyticsTab()],
             ),
     );
   }
-} 
+}

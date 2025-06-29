@@ -46,7 +46,9 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
         itemCount: widget.stories.length,
         itemBuilder: (context, index) {
           final story = widget.stories[index];
-          debugPrint('[StoryCarousel] Building story item for: ${story.vendorName}');
+          debugPrint(
+            '[StoryCarousel] Building story item for: ${story.vendorName}',
+          );
           return _buildStoryItem(story);
         },
       ),
@@ -88,7 +90,11 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
                     radius: 28,
                     backgroundColor: AppColors.eggshell,
                     backgroundImage: story.vendorAvatarUrl.isNotEmpty
-                        ? NetworkImage(_rewriteUrlForCurrentPlatform(story.vendorAvatarUrl))
+                        ? NetworkImage(
+                            _rewriteUrlForCurrentPlatform(
+                              story.vendorAvatarUrl,
+                            ),
+                          )
                         : null,
                     child: story.vendorAvatarUrl.isEmpty
                         ? Text(
@@ -102,7 +108,9 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
                           )
                         : null,
                     onBackgroundImageError: (exception, stackTrace) {
-                      debugPrint('[StoryCarousel] ❌ Avatar load error for ${story.vendorName}: $exception');
+                      debugPrint(
+                        '[StoryCarousel] ❌ Avatar load error for ${story.vendorName}: $exception',
+                      );
                     },
                   ),
                 ),
@@ -406,25 +414,27 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
   /// Android emulator: 10.0.2.2 URLs need to be rewritten to use localhost for iOS
   String _rewriteUrlForCurrentPlatform(String originalUrl) {
     // Only rewrite Firebase Storage emulator URLs
-    if (!originalUrl.contains('googleapis.com') && 
-        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
-      
-      debugPrint('[StoryCarousel] 🔄 URL rewriting for cross-platform compatibility');
+    if (!originalUrl.contains('googleapis.com') &&
+        (originalUrl.contains('localhost') ||
+            originalUrl.contains('10.0.2.2'))) {
+      debugPrint(
+        '[StoryCarousel] 🔄 URL rewriting for cross-platform compatibility',
+      );
       debugPrint('[StoryCarousel] - Original URL: $originalUrl');
-      
+
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         // iOS: Convert Android emulator URL to iOS format
         final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
         debugPrint('[StoryCarousel] - iOS rewrite: $rewritten');
         return rewritten;
       } else if (defaultTargetPlatform == TargetPlatform.android) {
-        // Android: Convert iOS emulator URL to Android format  
+        // Android: Convert iOS emulator URL to Android format
         final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
         debugPrint('[StoryCarousel] - Android rewrite: $rewritten');
         return rewritten;
       }
     }
-    
+
     // No rewriting needed for production URLs or non-emulator environments
     return originalUrl;
   }

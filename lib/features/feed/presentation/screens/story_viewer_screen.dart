@@ -25,27 +25,26 @@ class StoryViewerScreen extends StatefulWidget {
 
 class _StoryViewerScreenState extends State<StoryViewerScreen>
     with TickerProviderStateMixin {
-  
   // Page controllers
   late PageController _storyPageController;
   late PageController _snapPageController;
-  
+
   // Current indices
   int _currentStoryIndex = 0;
   int _currentSnapIndex = 0;
-  
+
   // Progress animation controllers
   late List<AnimationController> _progressControllers;
   late List<Animation<double>> _progressAnimations;
-  
+
   // Video player controller
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
-  
+
   // Auto-advance timer
   Timer? _autoAdvanceTimer;
   bool _isPaused = false;
-  
+
   // Story duration constants
   static const Duration _imageDuration = Duration(seconds: 5);
   static const Duration _videoDuration = Duration(seconds: 10);
@@ -55,7 +54,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     super.initState();
     _initializeControllers();
     _initializeProgressAnimations();
-    _currentStoryIndex = widget.initialStoryIndex.clamp(0, widget.stories.length - 1);
+    _currentStoryIndex = widget.initialStoryIndex.clamp(
+      0,
+      widget.stories.length - 1,
+    );
     _startCurrentSnap();
   }
 
@@ -69,7 +71,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   /// Initialize page controllers
   void _initializeControllers() {
-    _storyPageController = PageController(initialPage: widget.initialStoryIndex);
+    _storyPageController = PageController(
+      initialPage: widget.initialStoryIndex,
+    );
     _snapPageController = PageController();
   }
 
@@ -83,10 +87,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         vsync: this,
       ),
     );
-    
-    _progressAnimations = _progressControllers.map((controller) =>
-      Tween<double>(begin: 0.0, end: 1.0).animate(controller)
-    ).toList();
+
+    _progressAnimations = _progressControllers
+        .map(
+          (controller) =>
+              Tween<double>(begin: 0.0, end: 1.0).animate(controller),
+        )
+        .toList();
   }
 
   /// Dispose all controllers
@@ -100,16 +107,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   /// Get duration for a snap based on media type
   Duration _getSnapDuration(snap_models.Snap snap) {
-    return snap.mediaType == snap_models.MediaType.video ? _videoDuration : _imageDuration;
+    return snap.mediaType == snap_models.MediaType.video
+        ? _videoDuration
+        : _imageDuration;
   }
 
   /// Start playing the current snap
   void _startCurrentSnap() {
     final currentStory = widget.stories[_currentStoryIndex];
     final currentSnap = currentStory.snaps[_currentSnapIndex];
-    
-    debugPrint('[StoryViewer] Starting snap ${_currentSnapIndex + 1}/${currentStory.snaps.length} for vendor ${currentStory.vendorName}');
-    
+
+    debugPrint(
+      '[StoryViewer] Starting snap ${_currentSnapIndex + 1}/${currentStory.snaps.length} for vendor ${currentStory.vendorName}',
+    );
+
     // Initialize video if needed
     if (currentSnap.mediaType == snap_models.MediaType.video) {
       _initializeVideo(currentSnap.mediaUrl);
@@ -118,11 +129,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _videoController = null;
       _isVideoInitialized = false;
     }
-    
+
     // Start progress animation
     if (_currentSnapIndex < _progressControllers.length) {
       _progressControllers[_currentSnapIndex].forward();
-      
+
       // Set up auto-advance timer
       _autoAdvanceTimer?.cancel();
       _autoAdvanceTimer = Timer(_getSnapDuration(currentSnap), () {
@@ -141,32 +152,43 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       debugPrint('[StoryViewer] ⚠️ Empty URL provided for rewriting');
       return originalUrl;
     }
-    
+
     // Check if this is a Firebase Storage emulator URL that needs rewriting
-    bool isEmulatorUrl = originalUrl.contains(':9199') && 
-                        (originalUrl.contains('10.0.2.2') || originalUrl.contains('localhost'));
-    
+    bool isEmulatorUrl =
+        originalUrl.contains(':9199') &&
+        (originalUrl.contains('10.0.2.2') || originalUrl.contains('localhost'));
+
     if (!isEmulatorUrl) {
       debugPrint('[StoryViewer] 📝 No URL rewriting needed for: $originalUrl');
       return originalUrl;
     }
-    
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       // iOS: Convert 10.0.2.2 URLs to localhost for iOS simulator connectivity
       if (originalUrl.contains('10.0.2.2:9199')) {
-        final rewrittenUrl = originalUrl.replaceAll('10.0.2.2:9199', 'localhost:9199');
-        debugPrint('[StoryViewer] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl');
+        final rewrittenUrl = originalUrl.replaceAll(
+          '10.0.2.2:9199',
+          'localhost:9199',
+        );
+        debugPrint(
+          '[StoryViewer] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl',
+        );
         return rewrittenUrl;
       }
     } else {
-      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity  
+      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity
       if (originalUrl.contains('localhost:9199')) {
-        final rewrittenUrl = originalUrl.replaceAll('localhost:9199', '10.0.2.2:9199');
-        debugPrint('[StoryViewer] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl');
+        final rewrittenUrl = originalUrl.replaceAll(
+          'localhost:9199',
+          '10.0.2.2:9199',
+        );
+        debugPrint(
+          '[StoryViewer] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl',
+        );
         return rewrittenUrl;
       }
     }
-    
+
     // No rewriting needed or already in correct format
     debugPrint('[StoryViewer] 📝 URL already in correct format: $originalUrl');
     return originalUrl;
@@ -179,81 +201,115 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _videoController?.dispose();
       _videoController = null;
       _isVideoInitialized = false;
-      
+
       // Apply URL rewriting for cross-platform compatibility
       final rewrittenUrl = _rewriteStorageUrl(videoUrl);
       debugPrint('[StoryViewer] 🎥 Original video URL: $videoUrl');
       debugPrint('[StoryViewer] 🎥 Rewritten video URL: $rewrittenUrl');
-      
+
       // Parse URL and validate
       final uri = Uri.tryParse(rewrittenUrl);
       if (uri == null) {
         debugPrint('[StoryViewer] ❌ Invalid video URL format: $rewrittenUrl');
         return;
       }
-      
-      debugPrint('[StoryViewer] 🔍 Parsed URI - host: ${uri.host}, port: ${uri.port}, path: ${uri.path}');
+
+      debugPrint(
+        '[StoryViewer] 🔍 Parsed URI - host: ${uri.host}, port: ${uri.port}, path: ${uri.path}',
+      );
       debugPrint('[StoryViewer] 🔍 Full URI: $uri');
-      
+
       // iOS Emulator Video Issue Workaround
       // Firebase Storage emulator serves videos with application/octet-stream Content-Type
       // which iOS video player rejects with OSStatus -9405
-      if (defaultTargetPlatform == TargetPlatform.iOS && 
+      if (defaultTargetPlatform == TargetPlatform.iOS &&
           rewrittenUrl.contains('localhost:9199')) {
-        debugPrint('[StoryViewer] 🚨 iOS Emulator + Firebase Storage Emulator detected');
-        debugPrint('[StoryViewer] 💡 Firebase emulator serves videos with incorrect Content-Type');
-        debugPrint('[StoryViewer] 💡 iOS VideoPlayer requires proper video/mp4 MIME type');
-        debugPrint('[StoryViewer] 🔧 Attempting video initialization with fallback...');
+        debugPrint(
+          '[StoryViewer] 🚨 iOS Emulator + Firebase Storage Emulator detected',
+        );
+        debugPrint(
+          '[StoryViewer] 💡 Firebase emulator serves videos with incorrect Content-Type',
+        );
+        debugPrint(
+          '[StoryViewer] 💡 iOS VideoPlayer requires proper video/mp4 MIME type',
+        );
+        debugPrint(
+          '[StoryViewer] 🔧 Attempting video initialization with fallback...',
+        );
       }
-      
+
       // Create video controller with error listener
       _videoController = VideoPlayerController.networkUrl(uri);
-      
+
       // Add listener for detailed error tracking
       _videoController!.addListener(() {
         if (_videoController!.value.hasError) {
-          debugPrint('[StoryViewer] 💥 Video player internal error: ${_videoController!.value.errorDescription}');
+          debugPrint(
+            '[StoryViewer] 💥 Video player internal error: ${_videoController!.value.errorDescription}',
+          );
         }
       });
-      
+
       // Initialize with extended timeout for emulator
-      debugPrint('[StoryViewer] ⏱️ Starting video initialization with 15 second timeout...');
+      debugPrint(
+        '[StoryViewer] ⏱️ Starting video initialization with 15 second timeout...',
+      );
       await _videoController!.initialize().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          debugPrint('[StoryViewer] ⏰ Video initialization timeout after 15 seconds for URL: $rewrittenUrl');
+          debugPrint(
+            '[StoryViewer] ⏰ Video initialization timeout after 15 seconds for URL: $rewrittenUrl',
+          );
           throw Exception('Video initialization timeout after 15 seconds');
         },
       );
-      
+
       if (mounted && _videoController != null) {
         setState(() {
           _isVideoInitialized = true;
         });
-        
+
         // Auto-play video and loop
         await _videoController!.setLooping(true);
         await _videoController!.play();
-        
-        debugPrint('[StoryViewer] ✅ Video initialized and playing successfully');
-        debugPrint('[StoryViewer] 📊 Video duration: ${_videoController!.value.duration}');
-        debugPrint('[StoryViewer] 📊 Video size: ${_videoController!.value.size}');
+
+        debugPrint(
+          '[StoryViewer] ✅ Video initialized and playing successfully',
+        );
+        debugPrint(
+          '[StoryViewer] 📊 Video duration: ${_videoController!.value.duration}',
+        );
+        debugPrint(
+          '[StoryViewer] 📊 Video size: ${_videoController!.value.size}',
+        );
       }
     } on Exception catch (e) {
       debugPrint('[StoryViewer] ❌ Exception initializing video: $e');
       debugPrint('[StoryViewer] 🔍 Exception type: ${e.runtimeType}');
-      
+
       // Enhanced iOS emulator error handling
       if (e.toString().contains('-9405')) {
-        debugPrint('[StoryViewer] 🚨 OSStatus -9405 detected - Media loading failure');
-        debugPrint('[StoryViewer] 🔧 KNOWN ISSUE: Firebase Storage emulator Content-Type problem');
-        debugPrint('[StoryViewer] 💡 Root cause: Emulator serves videos as application/octet-stream');
-        debugPrint('[StoryViewer] 💡 iOS VideoPlayer requires video/mp4 MIME type');
-        debugPrint('[StoryViewer] 💡 Workaround: Show static preview for videos in iOS emulator');
-        
+        debugPrint(
+          '[StoryViewer] 🚨 OSStatus -9405 detected - Media loading failure',
+        );
+        debugPrint(
+          '[StoryViewer] 🔧 KNOWN ISSUE: Firebase Storage emulator Content-Type problem',
+        );
+        debugPrint(
+          '[StoryViewer] 💡 Root cause: Emulator serves videos as application/octet-stream',
+        );
+        debugPrint(
+          '[StoryViewer] 💡 iOS VideoPlayer requires video/mp4 MIME type',
+        );
+        debugPrint(
+          '[StoryViewer] 💡 Workaround: Show static preview for videos in iOS emulator',
+        );
+
         // For iOS emulator, treat video as failed and show static preview
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          debugPrint('[StoryViewer] 🎬 Using static video preview fallback for iOS emulator');
+          debugPrint(
+            '[StoryViewer] 🎬 Using static video preview fallback for iOS emulator',
+          );
           if (mounted) {
             setState(() {
               _isVideoInitialized = false; // Show static preview instead
@@ -261,26 +317,26 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           }
         }
       }
-      
+
       if (mounted) {
         setState(() {
           _isVideoInitialized = false;
         });
       }
-      
+
       // Clean up failed controller
       _videoController?.dispose();
       _videoController = null;
     } catch (e) {
       debugPrint('[StoryViewer] ❌ Error initializing video: $e');
       debugPrint('[StoryViewer] 🔍 Error type: ${e.runtimeType}');
-      
+
       if (mounted) {
         setState(() {
           _isVideoInitialized = false;
         });
       }
-      
+
       // Clean up failed controller
       _videoController?.dispose();
       _videoController = null;
@@ -290,7 +346,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   /// Advance to next snap or story
   void _advanceToNextSnap() {
     final currentStory = widget.stories[_currentStoryIndex];
-    
+
     if (_currentSnapIndex < currentStory.snaps.length - 1) {
       // Move to next snap in current story
       setState(() {
@@ -333,17 +389,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       for (final controller in _progressControllers) {
         controller.reset();
       }
-      
+
       setState(() {
         _currentStoryIndex++;
         _currentSnapIndex = 0;
       });
-      
+
       _storyPageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-      
+
       // Re-initialize for new story
       _disposeProgressControllers();
       _initializeProgressAnimations();
@@ -361,17 +417,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       for (final controller in _progressControllers) {
         controller.reset();
       }
-      
+
       setState(() {
         _currentStoryIndex--;
-        _currentSnapIndex = widget.stories[_currentStoryIndex].snaps.length - 1; // Start from last snap
+        _currentSnapIndex =
+            widget.stories[_currentStoryIndex].snaps.length -
+            1; // Start from last snap
       });
-      
+
       _storyPageController.previousPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-      
+
       // Re-initialize for new story
       _disposeProgressControllers();
       _initializeProgressAnimations();
@@ -394,7 +452,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     setState(() {
       _isPaused = !_isPaused;
     });
-    
+
     if (_isPaused) {
       _progressControllers[_currentSnapIndex].stop();
       _autoAdvanceTimer?.cancel();
@@ -405,14 +463,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _progressControllers[_currentSnapIndex].forward();
       final currentStory = widget.stories[_currentStoryIndex];
       final currentSnap = currentStory.snaps[_currentSnapIndex];
-      
+
       _autoAdvanceTimer?.cancel();
       _autoAdvanceTimer = Timer(_getSnapDuration(currentSnap), () {
         if (!_isPaused) {
           _advanceToNextSnap();
         }
       });
-      
+
       if (_videoController?.value.isInitialized == true) {
         _videoController!.play();
       }
@@ -477,16 +535,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             return _buildSnapContent(story.snaps[snapIndex]);
           },
         ),
-        
+
         // Progress indicators
         _buildProgressIndicators(story),
-        
+
         // Header with vendor info
         _buildHeader(story),
-        
+
         // Caption overlay
         _buildCaptionOverlay(story.snaps[_currentSnapIndex]),
-        
+
         // Pause indicator
         if (_isPaused) _buildPauseIndicator(),
       ],
@@ -511,11 +569,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.videocam_off,
-              color: Colors.white,
-              size: 64,
-            ),
+            const Icon(Icons.videocam_off, color: Colors.white, size: 64),
             const SizedBox(height: 16),
             const Text(
               'Video Preview',
@@ -529,19 +583,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             if (defaultTargetPlatform == TargetPlatform.iOS) ...[
               const Text(
                 'iOS Emulator Issue',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 4),
               const Text(
                 'Firebase emulator serves videos with\nincorrect Content-Type for iOS player',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -557,10 +605,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               const SizedBox(height: 8),
               const Text(
                 'Loading video...',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
           ],
@@ -571,7 +616,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     // Apply filter overlay for videos
     Color overlayColor = Colors.transparent;
     final filterType = snap.filterType;
-    
+
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
         overlayColor = Colors.orange.withAlpha(77);
@@ -600,7 +645,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     // Apply filter overlay for images
     Color overlayColor = Colors.transparent;
     final filterType = snap.filterType;
-    
+
     if (filterType != null && filterType != 'none') {
       if (filterType == 'warm') {
         overlayColor = Colors.orange.withAlpha(77);
@@ -611,7 +656,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
     }
 
-    final rewrittenUrl = _rewriteStorageUrl(snap.mediaUrl); // Apply URL rewriting
+    final rewrittenUrl = _rewriteStorageUrl(
+      snap.mediaUrl,
+    ); // Apply URL rewriting
     debugPrint('[StoryViewer] 🖼️ Image URL for display: $rewrittenUrl');
 
     return Center(
@@ -656,22 +703,26 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 1),
               height: 3,
-              child: index == _currentSnapIndex 
-                ? AnimatedBuilder(
-                    animation: _progressAnimations[index],
-                    builder: (context, child) {
-                      return LinearProgressIndicator(
-                        value: _progressAnimations[index].value,
-                        backgroundColor: Colors.white.withAlpha(77),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                      );
-                    },
-                  )
-                : LinearProgressIndicator(
-                    value: index < _currentSnapIndex ? 1.0 : 0.0,
-                    backgroundColor: Colors.white.withAlpha(77),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
+              child: index == _currentSnapIndex
+                  ? AnimatedBuilder(
+                      animation: _progressAnimations[index],
+                      builder: (context, child) {
+                        return LinearProgressIndicator(
+                          value: _progressAnimations[index].value,
+                          backgroundColor: Colors.white.withAlpha(77),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        );
+                      },
+                    )
+                  : LinearProgressIndicator(
+                      value: index < _currentSnapIndex ? 1.0 : 0.0,
+                      backgroundColor: Colors.white.withAlpha(77),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                    ),
             ),
           );
         }),
@@ -707,7 +758,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 : null,
           ),
           const SizedBox(width: 8),
-          
+
           // Vendor name and time
           Expanded(
             child: Column(
@@ -729,7 +780,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               ],
             ),
           ),
-          
+
           // Close button
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -742,8 +793,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   /// Build caption overlay at bottom
   Widget _buildCaptionOverlay(snap_models.Snap snap) {
-    if (snap.caption == null || snap.caption!.isEmpty) return const SizedBox.shrink();
-    
+    if (snap.caption == null || snap.caption!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Positioned(
       bottom: 80,
       left: 16,
@@ -765,11 +818,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   /// Build pause indicator
   Widget _buildPauseIndicator() {
     return const Center(
-      child: Icon(
-        Icons.pause,
-        color: Colors.white,
-        size: 64,
-      ),
+      child: Icon(Icons.pause, color: Colors.white, size: 64),
     );
   }
 
@@ -777,7 +826,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   String _getTimeAgo(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

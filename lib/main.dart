@@ -126,7 +126,9 @@ Future<void> main() async {
           '[main] ✅ Storage emulator configured with platform-specific host: $authHost',
         );
         await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
-        debugPrint('[main] 🖼️ Storage URLs will be rewritten for cross-platform image access');
+        debugPrint(
+          '[main] 🖼️ Storage URLs will be rewritten for cross-platform image access',
+        );
 
         // Configure Functions emulator
         debugPrint(

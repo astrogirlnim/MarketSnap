@@ -346,12 +346,12 @@ Thank you!
   bool getPreferredPostingChoice() {
     final settings = getCurrentSettings();
     final preference = settings.preferStoryPosting;
-    
+
     developer.log(
       '[SettingsService] Getting preferred posting choice: ${preference ? 'Stories' : 'Feed'}',
       name: 'SettingsService',
     );
-    
+
     return preference;
   }
 
