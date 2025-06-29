@@ -142,7 +142,9 @@ async function addFarmersMarketData() {
     console.log('📸 Adding farmer\'s market snaps...');
     
     const marketSnaps = [
-      // Sunrise Organic Farm - Vegetables
+      // 📸 STORIES (appear in carousel) - 4 items
+      
+      // Sunrise Organic Farm - Story
       {
         vendorId: 'vendor-sunrise-organic',
         vendorName: 'Sunrise Organic Farm',
@@ -150,21 +152,12 @@ async function addFarmersMarketData() {
         mediaUrl: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=600&fit=crop',
         mediaType: 'photo',
         caption: 'Fresh heirloom tomatoes just harvested! 🍅 Perfect for caprese salad or fresh pasta sauce. Still warm from the sun!',
+        isStory: true, // ✅ STORY - appears in carousel
         createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 1 * 60 * 60 * 1000)), // 1 hour ago
         expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 23 * 60 * 60 * 1000)) // 23 hours from now
       },
-      {
-        vendorId: 'vendor-sunrise-organic',
-        vendorName: 'Sunrise Organic Farm',
-        vendorAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-        mediaUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=600&fit=crop',
-        mediaType: 'photo',
-        caption: 'Rainbow carrots and fresh beets ready for your kitchen! 🥕 Great for roasting or fresh juice. Limited quantities today.',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 60 * 1000)), // 3 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 21 * 60 * 60 * 1000))
-      },
       
-      // Golden Grain Bakery - Breads & Pastries
+      // Golden Grain Bakery - Story
       {
         vendorId: 'vendor-golden-grain',
         vendorName: 'Golden Grain Bakery',
@@ -172,33 +165,12 @@ async function addFarmersMarketData() {
         mediaUrl: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&h=600&fit=crop',
         mediaType: 'photo',
         caption: 'Warm sourdough loaves just out of the oven! 🍞 Made with our 100-year-old starter. Only 8 loaves left for today.',
+        isStory: true, // ✅ STORY - appears in carousel
         createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
         expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 23.5 * 60 * 60 * 1000))
       },
-      {
-        vendorId: 'vendor-golden-grain',
-        vendorName: 'Golden Grain Bakery',
-        vendorAvatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        mediaUrl: 'https://images.unsplash.com/photo-1478369402113-1fd53f17e8b4?w=400&h=600&fit=crop',
-        mediaType: 'photo',
-        caption: 'Fresh croissants and Danish pastries! 🥐 Buttery, flaky, and perfect with morning coffee. Best served warm.',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22 * 60 * 60 * 1000))
-      },
 
-      // Mountain View Dairy - Cheese & Dairy
-      {
-        vendorId: 'vendor-mountain-dairy',
-        vendorName: 'Mountain View Dairy',
-        vendorAvatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b790?w=150&h=150&fit=crop&crop=face',
-        mediaUrl: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=600&fit=crop',
-        mediaType: 'photo',
-        caption: 'Aged cheddar and gouda wheels ready for tasting! 🧀 Pair with local honey and fresh bread for the perfect snack.',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 4 * 60 * 60 * 1000)), // 4 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 20 * 60 * 60 * 1000))
-      },
-
-      // Berry Patch Farm - Fruits
+      // Berry Patch Farm - Story  
       {
         vendorId: 'vendor-berry-patch',
         vendorName: 'Berry Patch Farm',
@@ -206,21 +178,12 @@ async function addFarmersMarketData() {
         mediaUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=600&fit=crop',
         mediaType: 'photo',
         caption: 'Peak-season strawberries picked this morning! 🍓 Sweet, juicy, and perfect for pies, jams, or eating fresh.',
+        isStory: true, // ✅ STORY - appears in carousel
         createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 45 * 60 * 1000)), // 45 minutes ago
         expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 23.25 * 60 * 60 * 1000))
       },
-      {
-        vendorId: 'vendor-berry-patch',
-        vendorName: 'Berry Patch Farm',
-        vendorAvatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-        mediaUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=600&fit=crop',
-        mediaType: 'photo',
-        caption: 'Fresh peaches and apricots - so ripe they\'re almost melting! 🍑 Great for cobblers, smoothies, or grilling.',
-        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 5 * 60 * 60 * 1000)), // 5 hours ago
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 19 * 60 * 60 * 1000))
-      },
 
-      // Heritage Herb Garden - Herbs
+      // Heritage Herb Garden - Story
       {
         vendorId: 'vendor-heritage-herbs',
         vendorName: 'Heritage Herb Garden',
@@ -228,11 +191,61 @@ async function addFarmersMarketData() {
         mediaUrl: 'https://images.unsplash.com/photo-1585254020021-35e2ea0a3e6a?w=400&h=600&fit=crop',
         mediaType: 'photo',
         caption: 'Fresh basil, rosemary, and thyme bundles! 🌿 Perfect for Mediterranean cooking. Harvested just before sunrise.',
+        isStory: true, // ✅ STORY - appears in carousel
         createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 90 * 60 * 1000)), // 1.5 hours ago
         expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22.5 * 60 * 60 * 1000))
       },
 
-      // Coastal Coffee Roasters - Coffee
+      // 📰 FEED POSTS (appear in main feed) - 5 items
+      
+      {
+        vendorId: 'vendor-sunrise-organic',
+        vendorName: 'Sunrise Organic Farm',
+        vendorAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+        mediaUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=600&fit=crop',
+        mediaType: 'photo',
+        caption: 'Rainbow carrots and fresh beets ready for your kitchen! 🥕 Great for roasting or fresh juice. Limited quantities today.',
+        isStory: false, // ✅ FEED POST - appears in main feed
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 60 * 1000)), // 3 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 21 * 60 * 60 * 1000))
+      },
+      
+      {
+        vendorId: 'vendor-golden-grain',
+        vendorName: 'Golden Grain Bakery',
+        vendorAvatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+        mediaUrl: 'https://images.unsplash.com/photo-1478369402113-1fd53f17e8b4?w=400&h=600&fit=crop',
+        mediaType: 'photo',
+        caption: 'Fresh croissants and Danish pastries! 🥐 Buttery, flaky, and perfect with morning coffee. Best served warm.',
+        isStory: false, // ✅ FEED POST - appears in main feed
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 22 * 60 * 60 * 1000))
+      },
+
+      {
+        vendorId: 'vendor-mountain-dairy',
+        vendorName: 'Mountain View Dairy',
+        vendorAvatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b790?w=150&h=150&fit=crop&crop=face',
+        mediaUrl: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=600&fit=crop',
+        mediaType: 'photo',
+        caption: 'Aged cheddar and gouda wheels ready for tasting! 🧀 Pair with local honey and fresh bread for the perfect snack.',
+        isStory: false, // ✅ FEED POST - appears in main feed
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 4 * 60 * 60 * 1000)), // 4 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 20 * 60 * 60 * 1000))
+      },
+
+      {
+        vendorId: 'vendor-berry-patch',
+        vendorName: 'Berry Patch Farm',
+        vendorAvatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+        mediaUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=600&fit=crop',
+        mediaType: 'photo',
+        caption: 'Fresh peaches and apricots - so ripe they\'re almost melting! 🍑 Great for cobblers, smoothies, or grilling.',
+        isStory: false, // ✅ FEED POST - appears in main feed
+        createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 5 * 60 * 60 * 1000)), // 5 hours ago
+        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 19 * 60 * 60 * 1000))
+      },
+
       {
         vendorId: 'vendor-coastal-coffee',
         vendorName: 'Coastal Coffee Roasters',
@@ -240,6 +253,7 @@ async function addFarmersMarketData() {
         mediaUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=600&fit=crop',
         mediaType: 'photo',
         caption: 'Single-origin Colombian beans roasted yesterday! ☕️ Rich, chocolatey notes perfect for pour-over or espresso.',
+        isStory: false, // ✅ FEED POST - appears in main feed
         createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - 6 * 60 * 60 * 1000)), // 6 hours ago
         expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 18 * 60 * 60 * 1000))
       }
