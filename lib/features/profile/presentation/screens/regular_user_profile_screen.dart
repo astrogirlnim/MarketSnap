@@ -13,7 +13,6 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../auth/application/auth_service.dart';
-import '../../../../core/services/profile_update_notifier.dart';
 import '../../../../core/models/regular_user_profile.dart';
 import '../../../../main.dart' as main;
 

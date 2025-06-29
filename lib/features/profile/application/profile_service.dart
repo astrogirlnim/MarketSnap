@@ -273,25 +273,7 @@ class ProfileService {
     return true;
   }
 
-  /// Attempts to sync profile immediately without blocking the UI
-  void _attemptImmediateSync(String uid) {
-    debugPrint('[ProfileService] Attempting immediate sync for UID: $uid');
 
-    _performProfileSync(uid)
-        .timeout(
-          const Duration(seconds: 5), // 5 second timeout
-          onTimeout: () {
-            debugPrint(
-              '[ProfileService] Sync timed out after 5 seconds - will retry later',
-            );
-            return false;
-          },
-        )
-        .catchError((error) {
-          debugPrint('[ProfileService] Immediate sync failed: $error');
-          // Don't throw - offline-first means we save locally and sync when possible
-        });
-  }
 
   /// Attempts to save FCM token after profile creation
   void _attemptFCMTokenSave() {
@@ -371,11 +353,11 @@ class ProfileService {
 
       // Check file size for reasonable limits
       final fileSize = await file.length();
-      developer.log('File size: ${fileSize} bytes', name: 'ProfileService.Upload');
+      developer.log('File size: $fileSize bytes', name: 'ProfileService.Upload');
       
       if (fileSize > 5 * 1024 * 1024) { // 5MB limit
         developer.log('❌ Avatar file too large', name: 'ProfileService.Upload', level: 1200, error: {'size': fileSize});
-        throw Exception('Avatar file too large (${fileSize} bytes). Maximum size is 5MB.');
+        throw Exception('Avatar file too large ($fileSize bytes). Maximum size is 5MB.');
       }
 
       // Create a reference to the avatar location
@@ -800,11 +782,11 @@ class ProfileService {
 
       // Check file size for reasonable limits
       final fileSize = await file.length();
-      developer.log('File size: ${fileSize} bytes', name: 'ProfileService.Upload.Regular');
+      developer.log('File size: $fileSize bytes', name: 'ProfileService.Upload.Regular');
       
       if (fileSize > 5 * 1024 * 1024) { // 5MB limit
         developer.log('❌ Regular user avatar file too large', name: 'ProfileService.Upload.Regular', level: 1200, error: {'size': fileSize});
-        throw Exception('Regular user avatar file too large (${fileSize} bytes). Maximum size is 5MB.');
+        throw Exception('Regular user avatar file too large ($fileSize bytes). Maximum size is 5MB.');
       }
 
       // Create a reference to the regular user avatar location

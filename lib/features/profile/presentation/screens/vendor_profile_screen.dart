@@ -11,7 +11,6 @@ import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../auth/application/auth_service.dart';
 import 'vendor_knowledge_base_screen.dart';
-import '../../../../core/services/profile_update_notifier.dart';
 import '../../../../core/models/vendor_profile.dart';
 import '../../../../main.dart' as main;
 import 'dart:async';
