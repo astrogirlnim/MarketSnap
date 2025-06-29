@@ -172,7 +172,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     return originalUrl;
   }
 
-  /// Initialize video player for video snaps
+  /// Initialize video player for video snaps with enhanced error handling
   Future<void> _initializeVideo(String videoUrl) async {
     try {
       // Dispose existing controller
@@ -192,15 +192,26 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         return;
       }
       
-      // Create video controller
+      debugPrint('[StoryViewer] 🔍 Parsed URI - host: ${uri.host}, port: ${uri.port}, path: ${uri.path}');
+      debugPrint('[StoryViewer] 🔍 Full URI: $uri');
+      
+      // Create video controller with error listener
       _videoController = VideoPlayerController.networkUrl(uri);
       
-      // Initialize with timeout
+      // Add listener for detailed error tracking
+      _videoController!.addListener(() {
+        if (_videoController!.value.hasError) {
+          debugPrint('[StoryViewer] 💥 Video player internal error: ${_videoController!.value.errorDescription}');
+        }
+      });
+      
+      // Initialize with extended timeout for emulator
+      debugPrint('[StoryViewer] ⏱️ Starting video initialization with 15 second timeout...');
       await _videoController!.initialize().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 15),
         onTimeout: () {
-          debugPrint('[StoryViewer] ⏱️ Video initialization timeout for URL: $rewrittenUrl');
-          throw Exception('Video initialization timeout');
+          debugPrint('[StoryViewer] ⏰ Video initialization timeout after 15 seconds for URL: $rewrittenUrl');
+          throw Exception('Video initialization timeout after 15 seconds');
         },
       );
       
@@ -214,9 +225,36 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         await _videoController!.play();
         
         debugPrint('[StoryViewer] ✅ Video initialized and playing successfully');
+        debugPrint('[StoryViewer] 📊 Video duration: ${_videoController!.value.duration}');
+        debugPrint('[StoryViewer] 📊 Video size: ${_videoController!.value.size}');
       }
+    } on Exception catch (e) {
+      debugPrint('[StoryViewer] ❌ Exception initializing video: $e');
+      debugPrint('[StoryViewer] 🔍 Exception type: ${e.runtimeType}');
+      
+      // Check for specific error types
+      if (e.toString().contains('-9405')) {
+        debugPrint('[StoryViewer] 🚨 OSStatus -9405 detected - Media loading failure');
+        debugPrint('[StoryViewer] 💡 Possible causes:');
+        debugPrint('[StoryViewer] 💡   1) Video format not supported by iOS player');
+        debugPrint('[StoryViewer] 💡   2) Network connectivity issue with emulator');
+        debugPrint('[StoryViewer] 💡   3) Firebase storage emulator CORS/access issue');
+        debugPrint('[StoryViewer] 💡   4) Video file corruption or invalid format');
+      }
+      
+      if (mounted) {
+        setState(() {
+          _isVideoInitialized = false;
+        });
+      }
+      
+      // Clean up failed controller
+      _videoController?.dispose();
+      _videoController = null;
     } catch (e) {
       debugPrint('[StoryViewer] ❌ Error initializing video: $e');
+      debugPrint('[StoryViewer] 🔍 Error type: ${e.runtimeType}');
+      
       if (mounted) {
         setState(() {
           _isVideoInitialized = false;
