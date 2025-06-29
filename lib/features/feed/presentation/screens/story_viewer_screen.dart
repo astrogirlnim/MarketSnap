@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/models/story_item_model.dart';
@@ -132,11 +133,36 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
+  /// Rewrite Firebase Storage URL for cross-platform compatibility
+  /// iOS simulator needs localhost, Android emulator needs 10.0.2.2
+  String _rewriteStorageUrl(String originalUrl) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS: Convert 10.0.2.2 URLs to localhost for iOS simulator connectivity
+      if (originalUrl.contains('10.0.2.2:9199')) {
+        final rewrittenUrl = originalUrl.replaceAll('10.0.2.2:9199', 'localhost:9199');
+        debugPrint('[StoryViewer] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl');
+        return rewrittenUrl;
+      }
+    } else {
+      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity  
+      if (originalUrl.contains('localhost:9199')) {
+        final rewrittenUrl = originalUrl.replaceAll('localhost:9199', '10.0.2.2:9199');
+        debugPrint('[StoryViewer] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl');
+        return rewrittenUrl;
+      }
+    }
+    
+    // No rewriting needed
+    return originalUrl;
+  }
+
   /// Initialize video player for video snaps
   Future<void> _initializeVideo(String videoUrl) async {
     try {
       _videoController?.dispose();
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      final rewrittenUrl = _rewriteStorageUrl(videoUrl); // Apply URL rewriting
+      debugPrint('[StoryViewer] 🎥 Video URL for playback: $rewrittenUrl');
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(rewrittenUrl));
       
       await _videoController!.initialize();
       
@@ -426,11 +452,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
     }
 
+    final rewrittenUrl = _rewriteStorageUrl(snap.mediaUrl); // Apply URL rewriting
+    debugPrint('[StoryViewer] 🖼️ Image URL for display: $rewrittenUrl');
+
     return Center(
       child: Stack(
         children: [
           Image.network(
-            snap.mediaUrl,
+            rewrittenUrl,
             fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;

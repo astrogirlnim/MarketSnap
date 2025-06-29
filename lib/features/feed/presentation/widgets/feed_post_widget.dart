@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -59,7 +60,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
   void _initializeVideo() {
     if (widget.snap.mediaType == MediaType.video &&
         widget.snap.mediaUrl.isNotEmpty) {
-      final videoUri = Uri.parse(widget.snap.mediaUrl);
+      final rewrittenUrl = _rewriteStorageUrl(widget.snap.mediaUrl); // Apply URL rewriting
+      final videoUri = Uri.parse(rewrittenUrl);
+      debugPrint('[FeedPostWidget] 🎥 Video URL for playback: $rewrittenUrl');
       _videoController = VideoPlayerController.networkUrl(videoUri)
         ..initialize().then((_) {
           if (mounted) {
@@ -418,10 +421,34 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     );
   }
 
+  /// Rewrite Firebase Storage URL for cross-platform compatibility
+  /// iOS simulator needs localhost, Android emulator needs 10.0.2.2
+  String _rewriteStorageUrl(String originalUrl) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS: Convert 10.0.2.2 URLs to localhost for iOS simulator connectivity
+      if (originalUrl.contains('10.0.2.2:9199')) {
+        final rewrittenUrl = originalUrl.replaceAll('10.0.2.2:9199', 'localhost:9199');
+        debugPrint('[FeedPostWidget] 🔄 URL rewritten for iOS: $originalUrl -> $rewrittenUrl');
+        return rewrittenUrl;
+      }
+    } else {
+      // Android: Convert localhost URLs to 10.0.2.2 for Android emulator connectivity  
+      if (originalUrl.contains('localhost:9199')) {
+        final rewrittenUrl = originalUrl.replaceAll('localhost:9199', '10.0.2.2:9199');
+        debugPrint('[FeedPostWidget] 🔄 URL rewritten for Android: $originalUrl -> $rewrittenUrl');
+        return rewrittenUrl;
+      }
+    }
+    
+    // No rewriting needed
+    return originalUrl;
+  }
+
   /// Build image display widget
   Widget _buildImageDisplay() {
     final filterType = widget.snap.filterType;
-    final mediaUrl = widget.snap.mediaUrl;
+    final originalMediaUrl = widget.snap.mediaUrl;
+    final mediaUrl = _rewriteStorageUrl(originalMediaUrl); // Apply URL rewriting
     final snapId = widget.snap.id;
 
     debugPrint(
