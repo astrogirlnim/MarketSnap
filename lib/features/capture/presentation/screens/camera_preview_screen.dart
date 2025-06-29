@@ -203,10 +203,16 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       return;
     }
 
-    // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts
+    // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts with timeout protection
     if (_isInitializing) {
       debugPrint('[CameraPreviewScreen] Already initializing, skipping duplicate attempt');
       return;
+    }
+
+    // ✅ CAMERA UNAVAILABLE FIX: Check if camera service is stuck and force reset if needed
+    if (_cameraService.isInitializingStuck) {
+      debugPrint('[CameraPreviewScreen] Camera service stuck initializing, forcing reset...');
+      _cameraService.forceResetInitialization();
     }
 
     setState(() {

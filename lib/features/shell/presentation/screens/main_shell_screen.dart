@@ -130,7 +130,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
             debugPrint('[MainShellScreen] ✅ Camera resume successful');
           } else {
             debugPrint('[MainShellScreen] ❌ Camera resume failed - camera may show as unavailable');
-            debugPrint('[MainShellScreen] Last error: ${_cameraService.lastError}');
+            debugPrint('[MainShellScreen] Last error: ${_cameraService.lastError ?? "No specific error provided"}');
+            
+            // ✅ CAMERA UNAVAILABLE FIX: Force reset if stuck and retry
+            if (_cameraService.isInitializingStuck) {
+              debugPrint('[MainShellScreen] Camera service stuck, forcing reset...');
+              _cameraService.forceResetInitialization();
+            }
             
             // ✅ CAMERA UNAVAILABLE FIX: Trigger additional retry after a delay
             Future.delayed(const Duration(milliseconds: 500), () {
@@ -147,7 +153,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         }).catchError((error) {
           debugPrint('[MainShellScreen] ⚠️ Error resuming camera: $error');
           
-          // ✅ CAMERA UNAVAILABLE FIX: Additional error recovery attempt
+          // ✅ CAMERA UNAVAILABLE FIX: Force reset and retry on error
+          _cameraService.forceResetInitialization();
+          
           Future.delayed(const Duration(milliseconds: 1000), () {
             debugPrint('[MainShellScreen] 🔄 Attempting error recovery...');
             _cameraService.resumeCamera();

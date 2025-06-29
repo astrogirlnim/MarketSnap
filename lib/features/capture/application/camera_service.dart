@@ -39,7 +39,6 @@ class CameraService {
   bool _isInitializing = false;
   int _initializationAttempts = 0;
   static const int _maxInitializationAttempts = 3;
-  Timer? _retryTimer;
   static const Duration _retryDelay = Duration(milliseconds: 500);
 
   // ✅ ZOOM LEVEL FIX: Track zoom levels manually since camera plugin doesn't provide getCurrentZoomLevel()
@@ -95,6 +94,17 @@ class CameraService {
 
   /// ✅ BUFFER OVERFLOW FIX: Whether app is in background
   bool get isInBackground => _isInBackground;
+
+  /// ✅ CAMERA UNAVAILABLE FIX: Check if initialization is stuck (for UI layer recovery)
+  bool get isInitializingStuck => _isInitializing && _controller == null;
+
+  /// ✅ CAMERA UNAVAILABLE FIX: Force reset initialization state (for UI layer recovery)
+  void forceResetInitialization() {
+    debugPrint('[CameraService] Force resetting initialization state...');
+    _isInitializing = false;
+    _initializationAttempts = 0;
+    debugPrint('[CameraService] Initialization state force reset completed');
+  }
 
   /// Check if running on a simulator/emulator
   bool _isRunningOnSimulator() {
@@ -226,13 +236,24 @@ class CameraService {
       
       _lastError = null;
 
-      // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts
+      // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts with timeout
       if (_isInitializing) {
         debugPrint('[CameraService] Already initializing, waiting for completion...');
-        // Wait for current initialization to complete
-        while (_isInitializing && _initializationAttempts < _maxInitializationAttempts) {
+        // Wait for current initialization to complete with timeout
+        int waitAttempts = 0;
+        const int maxWaitAttempts = 30; // 3 seconds max wait
+        while (_isInitializing && waitAttempts < maxWaitAttempts) {
           await Future.delayed(const Duration(milliseconds: 100));
+          waitAttempts++;
         }
+        
+        // If still initializing after timeout, force reset and continue
+        if (_isInitializing) {
+          debugPrint('[CameraService] Initialization timeout, forcing reset...');
+          _isInitializing = false;
+          _initializationAttempts = 0;
+        }
+        
         // Return success if initialization completed while we were waiting
         if (_controller?.value.isInitialized == true) {
           debugPrint('[CameraService] Initialization completed while waiting');
@@ -1124,21 +1145,23 @@ class CameraService {
         _disposalTimeoutTimer?.cancel();
         _disposalTimeoutTimer = null;
 
-        // ✅ BUFFER OVERFLOW FIX: Reset lifecycle state on disposal
+        // ✅ CAMERA UNAVAILABLE FIX: Reset ALL state flags on disposal to prevent stuck initialization
         _isPaused = false;
         _isInBackground = false;
+        _isInitializing = false;  // Critical: Reset initialization flag
+        _initializationAttempts = 0;  // Reset attempt counter
 
         // ✅ ZOOM LEVEL FIX: Reset zoom levels on disposal
         _minAvailableZoom = 1.0;
         _maxAvailableZoom = 1.0;
         _currentZoomLevel = 1.0;
 
-        debugPrint('[CameraService] Camera controller cleanup completed');
+        debugPrint('[CameraService] Camera controller cleanup completed - all state flags reset');
       }
     }
   }
 
-  /// ✅ BUFFER OVERFLOW FIX: Pause camera operations (for background/tab switch)
+  /// ✅ CAMERA UNAVAILABLE FIX: Enhanced pause camera operations with proper disposal
   Future<void> pauseCamera() async {
     if (_isPaused) {
       debugPrint('[CameraService] Camera already paused');
@@ -1148,12 +1171,12 @@ class CameraService {
     debugPrint('[CameraService] Pausing camera operations...');
     _isPaused = true;
 
-    // ✅ CAMERA UNAVAILABLE FIX: Don't dispose controller, just pause to prevent "unavailable" state
-    // The controller remains valid for quick resume
+    // ✅ CAMERA UNAVAILABLE FIX: Properly dispose controller to free resources and prevent "unavailable" state
     try {
       if (_controller?.value.isInitialized == true) {
-        // Just mark as paused, don't dispose the controller
-        debugPrint('[CameraService] Camera paused (controller preserved for quick resume)');
+        debugPrint('[CameraService] Disposing camera controller during pause to free resources');
+        await disposeController();
+        debugPrint('[CameraService] Camera paused successfully');
       }
     } catch (e) {
       debugPrint('[CameraService] Warning during camera pause: $e');
@@ -1166,22 +1189,20 @@ class CameraService {
     debugPrint('[CameraService] Current state - isPaused: $_isPaused, isInBackground: $_isInBackground');
     debugPrint('[CameraService] Controller state - exists: ${_controller != null}, initialized: ${_controller?.value.isInitialized}');
 
-    if (!_isPaused && !_isInBackground) {
-      debugPrint('[CameraService] Camera not paused, no need to resume');
-      return _controller?.value.isInitialized == true;
-    }
-
-    _isPaused = false;
-    _isInBackground = false;
-
-    // ✅ CAMERA UNAVAILABLE FIX: Check if controller is still valid
+    // ✅ CAMERA UNAVAILABLE FIX: Always check controller validity first, regardless of pause state
     if (_controller?.value.isInitialized == true) {
       debugPrint('[CameraService] ✅ Camera controller still valid, resume successful');
+      _isPaused = false;
+      _isInBackground = false;
       return true;
     }
 
-    // ✅ CAMERA UNAVAILABLE FIX: Controller lost or invalid, reinitialize with retry logic
-    debugPrint('[CameraService] Controller invalid, reinitializing with retry logic...');
+    // ✅ CAMERA UNAVAILABLE FIX: Controller is null or invalid - always reinitialize
+    debugPrint('[CameraService] Controller null or invalid, reinitializing with retry logic...');
+    
+    // Reset state flags before reinitialization
+    _isPaused = false;
+    _isInBackground = false;
     
     final success = await initializeCameraWithRetry();
     
