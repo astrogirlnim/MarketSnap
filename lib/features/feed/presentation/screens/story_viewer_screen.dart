@@ -468,15 +468,22 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 1),
               height: 3,
-              child: LinearProgressIndicator(
-                value: index < _currentSnapIndex 
-                    ? 1.0 
-                    : index == _currentSnapIndex 
-                        ? _progressAnimations[index].value 
-                        : 0.0,
-                backgroundColor: Colors.white.withAlpha(77),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+              child: index == _currentSnapIndex 
+                ? AnimatedBuilder(
+                    animation: _progressAnimations[index],
+                    builder: (context, child) {
+                      return LinearProgressIndicator(
+                        value: _progressAnimations[index].value,
+                        backgroundColor: Colors.white.withAlpha(77),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      );
+                    },
+                  )
+                : LinearProgressIndicator(
+                    value: index < _currentSnapIndex ? 1.0 : 0.0,
+                    backgroundColor: Colors.white.withAlpha(77),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
             ),
           );
         }),

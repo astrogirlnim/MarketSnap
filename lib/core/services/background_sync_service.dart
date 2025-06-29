@@ -203,6 +203,7 @@ Future<void> _uploadPendingItem(
   debugPrint('$logPrefix - ID: ${pendingItem.id}');
   debugPrint('$logPrefix - MediaType: ${pendingItem.mediaType}');
   debugPrint('$logPrefix - FilterType: "${pendingItem.filterType}"');
+  debugPrint('$logPrefix - IsStory: ${pendingItem.isStory}');
   debugPrint('$logPrefix - FilePath: ${pendingItem.filePath}');
   debugPrint('$logPrefix - Caption: ${pendingItem.caption}');
 
@@ -281,9 +282,9 @@ Future<void> _uploadPendingItem(
 
   // Create Firestore document
   final now = DateTime.now();
-  final expiresAt = now.add(const Duration(hours: 24));
-
-  final snapData = {
+  
+  // Build snap data based on whether it's a story or feed post
+  final Map<String, dynamic> snapData = {
     'vendorId': user.uid,
     'vendorName': vendorName,
     'vendorAvatarUrl': vendorAvatarUrl,
@@ -292,11 +293,16 @@ Future<void> _uploadPendingItem(
     'caption': pendingItem.caption ?? '',
     'filterType': pendingItem.filterType,
     'createdAt': Timestamp.fromDate(now),
-    'expiresAt': Timestamp.fromDate(expiresAt),
     'location': pendingItem.location,
-    'isStory': true,
-    'storyVendorId': user.uid,
+    'isStory': pendingItem.isStory,
   };
+  
+  // Add story-specific fields if this is a story
+  if (pendingItem.isStory) {
+    final expiresAt = now.add(const Duration(hours: 24));
+    snapData['expiresAt'] = Timestamp.fromDate(expiresAt);
+    snapData['storyVendorId'] = user.uid;
+  }
 
   debugPrint(
     '$logPrefix Creating Firestore document with filterType: "${pendingItem.filterType}"',

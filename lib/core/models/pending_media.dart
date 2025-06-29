@@ -52,6 +52,10 @@ class PendingMediaItem extends HiveObject {
   @HiveField(7)
   final String? filterType;
 
+  /// Whether this should be posted as a story (carousel) or regular feed post.
+  @HiveField(8)
+  final bool isStory;
+
   PendingMediaItem({
     required this.filePath,
     required this.mediaType,
@@ -59,6 +63,7 @@ class PendingMediaItem extends HiveObject {
     this.caption,
     this.location,
     this.filterType,
+    this.isStory = false, // Default to feed posts
     String? id,
     DateTime? createdAt,
   }) : id = id ?? _uuid.v4(),
@@ -66,6 +71,6 @@ class PendingMediaItem extends HiveObject {
 
   @override
   String toString() {
-    return 'PendingMediaItem(id: $id, vendorId: $vendorId, type: $mediaType, filter: $filterType, path: $filePath, queuedAt: $createdAt)';
+    return 'PendingMediaItem(id: $id, vendorId: $vendorId, type: $mediaType, filter: $filterType, isStory: $isStory, path: $filePath, queuedAt: $createdAt)';
   }
 }

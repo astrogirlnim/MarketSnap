@@ -69,6 +69,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   // Posting state
   bool _hasConnectivity = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _postToStory = false; // Whether to post to stories (carousel) or feed
 
   @override
   void initState() {
@@ -318,6 +319,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         mediaType: mediaType,
         vendorId: currentUser.uid,
         filterType: _selectedFilter.name,
+        isStory: _postToStory,
       );
 
       debugPrint(
@@ -355,8 +357,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           // Success - immediate upload completed
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ Posted successfully!'),
+              SnackBar(
+                content: Text(
+                  _postToStory 
+                    ? '✅ Posted to Stories successfully!' 
+                    : '✅ Posted to Feed successfully!'
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -366,10 +372,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           // Timeout - let it continue in background
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('📤 Posting in background...'),
+              SnackBar(
+                content: Text(
+                  _postToStory 
+                    ? '📤 Posting to Stories in background...' 
+                    : '📤 Posting to Feed in background...'
+                ),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 3),
               ),
             );
             Navigator.of(context).popUntil((route) => route.isFirst);
@@ -742,6 +752,121 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
+  /// Build story vs feed posting choice
+  Widget _buildPostingChoice() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Where to post',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Stories vs Feed toggle
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                // Feed option
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _postToStory = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: !_postToStory 
+                          ? Colors.deepPurple 
+                          : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.view_list,
+                            size: 20,
+                            color: !_postToStory ? Colors.white : Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Feed',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: !_postToStory ? Colors.white : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Stories option  
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _postToStory = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: _postToStory 
+                          ? Colors.deepPurple 
+                          : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt,
+                            size: 20,
+                            color: _postToStory ? Colors.white : Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Stories',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _postToStory ? Colors.white : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Descriptive text
+          const SizedBox(height: 8),
+          Text(
+            _postToStory 
+              ? 'Share as a story that disappears after 24 hours'
+              : 'Post to your main feed for permanent sharing',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Build post button with connectivity awareness
   Widget _buildPostButton() {
     return Container(
@@ -808,7 +933,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         const SizedBox(width: 12),
                         Text(
                           _hasConnectivity
-                              ? 'Posting...'
+                              ? (_postToStory ? 'Posting to Stories...' : 'Posting to Feed...')
                               : 'Adding to queue...',
                           style: const TextStyle(fontSize: 16),
                         ),
@@ -823,7 +948,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _hasConnectivity ? 'Post' : 'Queue for Later',
+                          _hasConnectivity 
+                            ? (_postToStory ? 'Post to Stories' : 'Post to Feed')
+                            : 'Queue for Later',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -982,6 +1109,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
                         // Caption input
                         _buildCaptionInput(),
+
+                        // Posting choice (Stories vs Feed)
+                        _buildPostingChoice(),
 
                         // Post button
                         _buildPostButton(),
