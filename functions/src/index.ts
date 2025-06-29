@@ -1058,7 +1058,7 @@ export const vectorSearchFAQ = createAIHelper(
 
         // Calculate relevance score based on keyword matching
         // In a full implementation, this would use vector similarity
-        let score = 0;
+        let score = 0.02; // Small baseline score to ensure some FAQs always show up
 
         const questionText = (faqData.question || "").toLowerCase();
         const answerText = (faqData.answer || "").toLowerCase();
@@ -1070,15 +1070,30 @@ export const vectorSearchFAQ = createAIHelper(
           score += 0.5;
         }
 
-        // Score based on keyword matches
+        // Score based on keyword matches (improved with partial matching)
         let keywordMatches = 0;
+        let partialMatches = 0;
+        
         keywordSet.forEach((keyword) => {
           if (combinedText.includes(keyword)) {
             keywordMatches++;
+          } else {
+            // Check for partial matches (3+ characters)
+            if (keyword.length >= 3) {
+              const words = combinedText.split(/\s+/);
+              const hasPartialMatch = words.some(word => 
+                word.includes(keyword) || keyword.includes(word)
+              );
+              if (hasPartialMatch) {
+                partialMatches++;
+              }
+            }
           }
         });
 
+        // Full keyword matches get full points, partial matches get half
         score += (keywordMatches / Math.max(keywordSet.size, 1)) * 0.4;
+        score += (partialMatches / Math.max(keywordSet.size, 1)) * 0.2;
 
         // Category bonus for matching product types
         const category = faqData.category || "";
@@ -1109,8 +1124,14 @@ export const vectorSearchFAQ = createAIHelper(
 
         score += Math.min(preferenceBonus, 0.3); // Cap preference bonus at 0.3
 
-        // Only include results with reasonable relevance
-        if (score > 0.1) {
+        // Debug logging for score calculation
+        logger.log(
+          `[vectorSearchFAQ] FAQ "${faqData.question?.substring(0, 50)}..." ` +
+          `score: ${score.toFixed(3)} (threshold: 0.05)`
+        );
+
+        // Lower threshold for better matching - many valid FAQs have lower scores
+        if (score > 0.05) {
           results.push({
             question: faqData.question || "",
             answer: faqData.answer || "",

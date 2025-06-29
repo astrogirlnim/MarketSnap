@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:developer' as developer;
 
 import '../../../../shared/presentation/theme/app_colors.dart';
@@ -283,17 +284,19 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         
         developer.log('[VendorKnowledgeBaseScreen] ✅ Created new FAQ');
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: MarketSnapStatusMessage(
-              message: 'FAQ added successfully! Vectorization in progress...',
-              type: StatusType.success,
-              showIcon: true,
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: MarketSnapStatusMessage(
+                message: 'FAQ added successfully! Vectorization in progress...',
+                type: StatusType.success,
+                showIcon: true,
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
-        );
+          );
+        }
       } else {
         // Update existing FAQ
         await _firestore.collection('faqVectors').doc(existingFAQ.id).update(faqData);
@@ -486,17 +489,17 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
 
   /// Batch vectorize all pending FAQs
   Future<void> _batchVectorizeAllFAQs() async {
-    if (_vendor == null) return;
+    if (_currentVendorId == null) return;
     
     setState(() => _isLoading = true);
     
     try {
-      developer.log('[VendorKnowledgeBaseScreen] Starting batch vectorization for vendor: ${_vendor!.uid}');
+      developer.log('[VendorKnowledgeBaseScreen] Starting batch vectorization for vendor: $_currentVendorId');
       
       // Call the Cloud Function
       final callable = FirebaseFunctions.instance.httpsCallable('batchVectorizeFAQs');
       final result = await callable.call({
-        'vendorId': _vendor!.uid,
+        'vendorId': _currentVendorId,
         'limit': 50,
       });
       

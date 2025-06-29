@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 
+// Set environment variable for emulator testing
+process.env.GOOGLE_APPLICATION_CREDENTIALS = '';
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+
 const admin = require('firebase-admin');
 
 // Initialize Firebase Admin SDK for emulator
 admin.initializeApp({
   projectId: 'marketsnap-app',
+  // Use application default credentials for emulator
 });
 
 // Connect to Firestore emulator
