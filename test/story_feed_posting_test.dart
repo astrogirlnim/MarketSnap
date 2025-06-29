@@ -1,7 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-// Import the models
-import '../lib/core/models/pending_media.dart';
+import 'package:marketsnap/core/models/pending_media.dart';
 
 void main() {
   group('Story vs Feed Posting Bug Fix Tests', () {
@@ -17,7 +16,7 @@ void main() {
         isStory: true, // This should be preserved!
       );
       
-      print('📝 Created story item with isStory: ${storyItem.isStory}');
+      debugPrint('📝 Created story item with isStory: ${storyItem.isStory}');
       
       // Assert: Verify isStory is correctly set
       expect(storyItem.isStory, isTrue, 
@@ -26,7 +25,7 @@ void main() {
       expect(storyItem.filterType, equals('warm'));
       expect(storyItem.mediaType, equals(MediaType.photo));
       
-      print('✅ PASSED: Story item correctly stores isStory=true');
+      debugPrint('✅ PASSED: Story item correctly stores isStory=true');
     });
 
     test('PendingMediaItem correctly stores and preserves isStory=false', () {
@@ -40,7 +39,7 @@ void main() {
         isStory: false, // This should be preserved!
       );
       
-      print('📝 Created feed item with isStory: ${feedItem.isStory}');
+      debugPrint('📝 Created feed item with isStory: ${feedItem.isStory}');
       
       // Assert: Verify isStory is correctly set
       expect(feedItem.isStory, isFalse, 
@@ -49,7 +48,7 @@ void main() {
       expect(feedItem.filterType, equals('cool'));
       expect(feedItem.mediaType, equals(MediaType.photo));
       
-      print('✅ PASSED: Feed item correctly stores isStory=false');
+      debugPrint('✅ PASSED: Feed item correctly stores isStory=false');
     });
 
     test('Multiple PendingMediaItems with different isStory values', () {
@@ -82,7 +81,7 @@ void main() {
       expect(storyItem.mediaType, equals(MediaType.photo));
       expect(feedItem.mediaType, equals(MediaType.video));
       
-      print('✅ PASSED: Mixed story/feed items handled correctly');
+      debugPrint('✅ PASSED: Mixed story/feed items handled correctly');
     });
 
     test('PendingMediaItem default isStory value behavior', () {
@@ -103,7 +102,7 @@ void main() {
       expect(defaultItem.isStory, isFalse, 
         reason: 'PendingMediaItem should default isStory to false when not set');
       
-      print('✅ PASSED: Default isStory behavior works correctly');
+      debugPrint('✅ PASSED: Default isStory behavior works correctly');
     });
 
     test('Bug scenario: HiveService should pass isStory to quarantined items', () {
@@ -160,7 +159,7 @@ void main() {
       expect(quarantinedFeedItem.isStory, isFalse,
         reason: 'Feed item should remain a feed item after quarantine');
       
-      print('✅ PASSED: Bug fix correctly preserves isStory in quarantined items');
+      debugPrint('✅ PASSED: Bug fix correctly preserves isStory in quarantined items');
     });
 
     test('toString() method includes isStory field for debugging', () {
@@ -194,9 +193,9 @@ void main() {
       expect(feedString, contains('isStory: false'),
         reason: 'toString should include isStory=false for feed items');
       
-      print('📝 Story toString: $storyString');
-      print('📝 Feed toString: $feedString');
-      print('✅ PASSED: toString includes isStory field for debugging');
+      debugPrint('📝 Story toString: $storyString');
+      debugPrint('📝 Feed toString: $feedString');
+      debugPrint('✅ PASSED: toString includes isStory field for debugging');
     });
   });
 } 
