@@ -33,7 +33,8 @@ class RAGPersonalizationService {
     // Check cache first
     if (_interestsCache.containsKey(uid)) {
       final cacheTime = _cacheTimestamps[uid];
-      if (cacheTime != null && DateTime.now().difference(cacheTime) < _cacheExpiry) {
+      if (cacheTime != null &&
+          DateTime.now().difference(cacheTime) < _cacheExpiry) {
         developer.log(
           '[RAGPersonalizationService] Returning cached interests for: $uid',
           name: 'RAGPersonalizationService',
@@ -45,7 +46,7 @@ class RAGPersonalizationService {
     try {
       // Try to load from Firestore
       final doc = await _firestore.collection(_collectionName).doc(uid).get();
-      
+
       UserInterests interests;
       if (doc.exists) {
         interests = UserInterests.fromFirestore(doc);
@@ -73,7 +74,7 @@ class RAGPersonalizationService {
         '[RAGPersonalizationService] Error getting user interests: $e',
         name: 'RAGPersonalizationService',
       );
-      
+
       // Return empty interests on error
       final emptyInterests = UserInterests.empty(uid);
       _interestsCache[uid] = emptyInterests;
@@ -140,10 +141,12 @@ class RAGPersonalizationService {
   }
 
   /// Get personalization context for RAG prompts
-  Future<Map<String, dynamic>> getPersonalizationContext({String? userId}) async {
+  Future<Map<String, dynamic>> getPersonalizationContext({
+    String? userId,
+  }) async {
     try {
       final interests = await getUserInterests(userId: userId);
-      
+
       if (!interests.hasSignificantData) {
         developer.log(
           '[RAGPersonalizationService] Insufficient data for personalization (${interests.totalInteractions} interactions)',
@@ -153,7 +156,7 @@ class RAGPersonalizationService {
       }
 
       final context = interests.toPersonalizationContext();
-      
+
       developer.log(
         '[RAGPersonalizationService] Generated personalization context: ${context['preferredKeywords']?.length ?? 0} keywords, confidence: ${interests.personalizationConfidence.toStringAsFixed(2)}',
         name: 'RAGPersonalizationService',
@@ -170,14 +173,16 @@ class RAGPersonalizationService {
   }
 
   /// Get enhanced user preferences combining feedback history and stored interests
-  Future<Map<String, dynamic>> getEnhancedUserPreferences({String? userId}) async {
+  Future<Map<String, dynamic>> getEnhancedUserPreferences({
+    String? userId,
+  }) async {
     final uid = userId ?? _auth.currentUser?.uid;
     if (uid == null) return {};
 
     try {
       // Get detailed interests
       final interests = await getUserInterests(userId: uid);
-      
+
       // Create enhanced preferences
       final enhancedPreferences = {
         'preferredKeywords': interests.preferredKeywords,
@@ -218,7 +223,8 @@ class RAGPersonalizationService {
       String category = 'general';
 
       if (feedback.metadata != null) {
-        final metadataKeywords = feedback.metadata!['keywords'] as List<dynamic>?;
+        final metadataKeywords =
+            feedback.metadata!['keywords'] as List<dynamic>?;
         if (metadataKeywords != null) {
           keywords.addAll(metadataKeywords.cast<String>());
         }
@@ -284,10 +290,12 @@ class RAGPersonalizationService {
   }
 
   /// Get user interest analytics
-  Future<Map<String, dynamic>> getUserInterestAnalytics({String? userId}) async {
+  Future<Map<String, dynamic>> getUserInterestAnalytics({
+    String? userId,
+  }) async {
     try {
       final interests = await getUserInterests(userId: userId);
-      
+
       return {
         'totalInteractions': interests.totalInteractions,
         'totalPositiveFeedback': interests.totalPositiveFeedback,
@@ -345,7 +353,8 @@ class RAGPersonalizationService {
 
       // Category preference bonus
       if (interests.preferredCategories.contains(category)) {
-        final categoryScore = interests.categoryRelevanceScores[category] ?? 0.5;
+        final categoryScore =
+            interests.categoryRelevanceScores[category] ?? 0.5;
         preferenceBonus += categoryScore * 0.2; // Max 20% bonus for category
       }
 
@@ -371,7 +380,7 @@ class RAGPersonalizationService {
   Future<void> deleteUserInterests(String userId) async {
     try {
       await _firestore.collection(_collectionName).doc(userId).delete();
-      
+
       // Clear from cache
       _interestsCache.remove(userId);
       _cacheTimestamps.remove(userId);
@@ -388,4 +397,4 @@ class RAGPersonalizationService {
       throw Exception('Failed to delete user interests: $e');
     }
   }
-} 
+}

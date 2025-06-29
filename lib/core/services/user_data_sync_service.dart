@@ -92,7 +92,9 @@ class UserDataSyncService {
       while (_isSyncing) {
         await Future.delayed(const Duration(milliseconds: 500));
       }
-      return UserDataSyncResult.success('Sync completed by concurrent operation');
+      return UserDataSyncResult.success(
+        'Sync completed by concurrent operation',
+      );
     }
 
     _isSyncing = true;
@@ -167,7 +169,6 @@ class UserDataSyncService {
       );
 
       return syncResult;
-
     } catch (e, stackTrace) {
       developer.log(
         '[UserDataSyncService] ❌ SYNC FAILED: $e',
@@ -198,13 +199,16 @@ class UserDataSyncService {
           '[UserDataSyncService] 🏪 Found vendor profile - loading and caching',
           name: 'UserDataSyncService',
         );
-        
-        final vendorProfile = VendorProfile.fromFirestore(vendorDoc.data()!, uid);
+
+        final vendorProfile = VendorProfile.fromFirestore(
+          vendorDoc.data()!,
+          uid,
+        );
         await _hiveService.saveVendorProfile(vendorProfile);
-        
+
         // Broadcast profile update
         _profileUpdateNotifier.notifyVendorProfileUpdate(vendorProfile);
-        
+
         developer.log(
           '[UserDataSyncService] ✅ Vendor profile synced: ${vendorProfile.displayName}',
           name: 'UserDataSyncService',
@@ -213,19 +217,25 @@ class UserDataSyncService {
       }
 
       // Check for regular user profile
-      final regularDoc = await _firestore.collection('regularUsers').doc(uid).get();
+      final regularDoc = await _firestore
+          .collection('regularUsers')
+          .doc(uid)
+          .get();
       if (regularDoc.exists) {
         developer.log(
           '[UserDataSyncService] 👤 Found regular user profile - loading and caching',
           name: 'UserDataSyncService',
         );
-        
-        final regularProfile = RegularUserProfile.fromFirestore(regularDoc.data()!, uid);
+
+        final regularProfile = RegularUserProfile.fromFirestore(
+          regularDoc.data()!,
+          uid,
+        );
         await _hiveService.saveRegularUserProfile(regularProfile);
-        
+
         // Broadcast profile update
         _profileUpdateNotifier.notifyRegularUserProfileUpdate(regularProfile);
-        
+
         developer.log(
           '[UserDataSyncService] ✅ Regular user profile synced: ${regularProfile.displayName}',
           name: 'UserDataSyncService',
@@ -238,7 +248,6 @@ class UserDataSyncService {
         name: 'UserDataSyncService',
       );
       return ProfileSyncResult(success: false, profileType: 'none');
-
     } catch (e) {
       developer.log(
         '[UserDataSyncService] ❌ Error syncing profile data: $e',
@@ -266,9 +275,8 @@ class UserDataSyncService {
 
       // Cache snaps locally (we'll add this to HiveService if needed)
       // For now, just count them as they'll be loaded by FeedService streams
-      
-      return DataSyncResult(success: true, count: snapsQuery.docs.length);
 
+      return DataSyncResult(success: true, count: snapsQuery.docs.length);
     } catch (e) {
       developer.log(
         '[UserDataSyncService] ❌ Error syncing user snaps: $e',
@@ -296,9 +304,11 @@ class UserDataSyncService {
 
       // Cache conversations locally (we'll add this to HiveService if needed)
       // For now, just count them as they'll be loaded by MessagingService
-      
-      return DataSyncResult(success: true, count: conversationsQuery.docs.length);
 
+      return DataSyncResult(
+        success: true,
+        count: conversationsQuery.docs.length,
+      );
     } catch (e) {
       developer.log(
         '[UserDataSyncService] ❌ Error syncing conversations: $e',
@@ -339,7 +349,6 @@ class UserDataSyncService {
       );
 
       return DataSyncResult(success: true, count: totalMessages);
-
     } catch (e) {
       developer.log(
         '[UserDataSyncService] ❌ Error syncing messages: $e',
@@ -366,7 +375,6 @@ class UserDataSyncService {
       );
 
       return DataSyncResult(success: true, count: broadcastsQuery.docs.length);
-
     } catch (e) {
       developer.log(
         '[UserDataSyncService] ❌ Error syncing broadcasts: $e',
@@ -413,19 +421,19 @@ class DataSyncResult {
 class UserDataSyncResult {
   bool profileSynced = false;
   String profileType = 'none';
-  
+
   bool snapsSynced = false;
   int snapsCount = 0;
-  
+
   bool conversationsSynced = false;
   int conversationsCount = 0;
-  
+
   bool messagesSynced = false;
   int messagesCount = 0;
-  
+
   bool broadcastsSynced = false;
   int broadcastsCount = 0;
-  
+
   DateTime? syncCompletedAt;
   String? errorMessage;
 
@@ -443,7 +451,7 @@ class UserDataSyncResult {
 
   String get summary {
     if (!isSuccess) return 'Failed: $errorMessage';
-    
+
     return '''
 Profile: $profileType (${profileSynced ? 'synced' : 'failed'})
 Snaps: $snapsCount (${snapsSynced ? 'synced' : 'failed'})
@@ -452,4 +460,4 @@ Messages: $messagesCount (${messagesSynced ? 'synced' : 'failed'})
 ${profileType == 'vendor' ? 'Broadcasts: $broadcastsCount (${broadcastsSynced ? 'synced' : 'failed'})' : ''}
 Completed: ${syncCompletedAt?.toString() ?? 'Not completed'}''';
   }
-} 
+}

@@ -130,10 +130,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           preferredSize: const Size.fromHeight(40),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.sunsetAmber.withValues(alpha: 0.1),
               border: Border(
@@ -146,11 +143,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.auto_delete,
-                  size: 16,
-                  color: AppColors.sunsetAmber,
-                ),
+                Icon(Icons.auto_delete, size: 16, color: AppColors.sunsetAmber),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

@@ -127,7 +127,8 @@ class RAGService {
   late Box<Map> _cacheBox;
   bool _isInitialized = false;
   final RAGFeedbackService _feedbackService = RAGFeedbackService();
-  final RAGPersonalizationService _personalizationService = RAGPersonalizationService();
+  final RAGPersonalizationService _personalizationService =
+      RAGPersonalizationService();
 
   /// Initialize the RAG service
   Future<void> initialize() async {
@@ -273,13 +274,13 @@ class RAGService {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         currentUserId = currentUser.uid;
-        
-        // Get enhanced preferences from personalization service
-        userPreferences = await _personalizationService.getEnhancedUserPreferences(
-          userId: currentUserId,
-        );
 
-        if (userPreferences.isNotEmpty && userPreferences['hasSignificantData'] == true) {
+        // Get enhanced preferences from personalization service
+        userPreferences = await _personalizationService
+            .getEnhancedUserPreferences(userId: currentUserId);
+
+        if (userPreferences.isNotEmpty &&
+            userPreferences['hasSignificantData'] == true) {
           developer.log(
             '[RAGService] Enhanced user preferences loaded: ${userPreferences['preferredContentType']} content, ${userPreferences['preferredKeywords']?.length ?? 0} keywords, confidence: ${userPreferences['personalizationConfidence']}',
             name: 'RAGService',
@@ -289,7 +290,7 @@ class RAGService {
             '[RAGService] Insufficient personalization data, using basic preferences',
             name: 'RAGService',
           );
-          
+
           // Fallback to basic feedback-based preferences
           userPreferences = await _feedbackService.getUserPreferences(
             userId: currentUserId,
@@ -462,16 +463,22 @@ class RAGService {
       List<FAQResult> rankedFaqs = faqs;
       if (faqs.isNotEmpty && currentUserId != null) {
         try {
-          final userInterests = await _personalizationService.getUserInterests(userId: currentUserId);
+          final userInterests = await _personalizationService.getUserInterests(
+            userId: currentUserId,
+          );
           if (userInterests.hasSignificantData) {
-            rankedFaqs = _personalizationService.rankContentByPreferences<FAQResult>(
-              faqs,
-              userInterests,
-              (faq) => faq.score,
-              (faq) => [faq.question, faq.answer].join(' ').toLowerCase().split(' '),
-              (faq) => faq.category,
-            );
-            
+            rankedFaqs = _personalizationService
+                .rankContentByPreferences<FAQResult>(
+                  faqs,
+                  userInterests,
+                  (faq) => faq.score,
+                  (faq) => [
+                    faq.question,
+                    faq.answer,
+                  ].join(' ').toLowerCase().split(' '),
+                  (faq) => faq.category,
+                );
+
             developer.log(
               '[RAGService] Applied personalized ranking to ${faqs.length} FAQs (confidence: ${userInterests.personalizationConfidence.toStringAsFixed(2)})',
               name: 'RAGService',
@@ -733,9 +740,13 @@ class RAGService {
   }
 
   /// Get user personalization analytics
-  Future<Map<String, dynamic>> getUserPersonalizationAnalytics({String? userId}) async {
+  Future<Map<String, dynamic>> getUserPersonalizationAnalytics({
+    String? userId,
+  }) async {
     try {
-      return await _personalizationService.getUserInterestAnalytics(userId: userId);
+      return await _personalizationService.getUserInterestAnalytics(
+        userId: userId,
+      );
     } catch (e) {
       developer.log(
         '[RAGService] Error getting personalization analytics: $e',
@@ -746,17 +757,18 @@ class RAGService {
   }
 
   /// Get personalization service instance (for external access)
-  RAGPersonalizationService get personalizationService => _personalizationService;
+  RAGPersonalizationService get personalizationService =>
+      _personalizationService;
 
   /// Delete user data (for account deletion)
   Future<void> deleteUserData(String userId) async {
     try {
       // Delete user interests
       await _personalizationService.deleteUserInterests(userId);
-      
+
       // Clear cache
       _personalizationService.clearCache(userId: userId);
-      
+
       developer.log(
         '[RAGService] Deleted RAG user data for: $userId',
         name: 'RAGService',

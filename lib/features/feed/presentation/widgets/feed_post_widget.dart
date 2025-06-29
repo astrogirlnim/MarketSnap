@@ -427,11 +427,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     debugPrint(
       '[FeedPostWidget] 🖼️ Processing image for snap $snapId with filterType: "$filterType"',
     );
-    
-    debugPrint(
-      '[FeedPostWidget] 📸 Image URL: "$mediaUrl"'
-    );
-    
+
+    debugPrint('[FeedPostWidget] 📸 Image URL: "$mediaUrl"');
+
     // Check if mediaUrl is valid
     if (mediaUrl.isEmpty) {
       debugPrint('[FeedPostWidget] ❌ ERROR: Empty mediaUrl for snap $snapId');
@@ -451,7 +449,7 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
         ),
       );
     }
-    
+
     // ✅ FIX: Images are already processed with LUT filters during capture
     // The mediaUrl points to the filtered image, so no additional overlay is needed
     debugPrint(
@@ -468,14 +466,19 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) {
-              debugPrint('[FeedPostWidget] ✅ Image loaded successfully for snap $snapId');
+              debugPrint(
+                '[FeedPostWidget] ✅ Image loaded successfully for snap $snapId',
+              );
               return child;
             }
             final progress = loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
                 : null;
-            debugPrint('[FeedPostWidget] ⏳ Loading image for snap $snapId: ${(progress ?? 0.0) * 100}%');
-            
+            debugPrint(
+              '[FeedPostWidget] ⏳ Loading image for snap $snapId: ${(progress ?? 0.0) * 100}%',
+            );
+
             return Container(
               width: double.infinity,
               height: 300,
@@ -499,7 +502,9 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             );
           },
           errorBuilder: (context, error, stackTrace) {
-            debugPrint('[FeedPostWidget] ❌ ERROR loading image for snap $snapId: $error');
+            debugPrint(
+              '[FeedPostWidget] ❌ ERROR loading image for snap $snapId: $error',
+            );
             debugPrint('[FeedPostWidget] 🔗 Failed URL: $mediaUrl');
             debugPrint('[FeedPostWidget] 📚 Stack trace: $stackTrace');
             return Container(
@@ -511,7 +516,10 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
                 children: [
                   const Icon(Icons.error, color: Colors.red, size: 48),
                   const SizedBox(height: 8),
-                  const Text('Failed to load image', style: TextStyle(color: Colors.red)),
+                  const Text(
+                    'Failed to load image',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'URL: ${mediaUrl.length > 50 ? '${mediaUrl.substring(0, 50)}...' : mediaUrl}',

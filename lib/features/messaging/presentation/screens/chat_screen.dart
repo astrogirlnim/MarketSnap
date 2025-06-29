@@ -193,10 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
           // Ephemeral messaging info banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.sunsetAmber.withValues(alpha: 0.1),
               border: Border(
@@ -209,11 +206,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.schedule,
-                  size: 16,
-                  color: AppColors.sunsetAmber,
-                ),
+                Icon(Icons.schedule, size: 16, color: AppColors.sunsetAmber),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -232,7 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          
+
           Expanded(
             child: StreamBuilder<List<Message>>(
               stream: _messagingService.getConversationMessages(

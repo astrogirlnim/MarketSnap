@@ -64,9 +64,9 @@ class ChatBubble extends StatelessWidget {
               message.text,
               style: AppTypography.body.copyWith(color: textColor),
             ),
-            
+
             const SizedBox(height: AppSpacing.xs),
-            
+
             // Timestamp and ephemeral indicator row
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -75,30 +75,30 @@ class ChatBubble extends StatelessWidget {
                 Icon(
                   Icons.access_time,
                   size: 12,
-                  color: isMe 
+                  color: isMe
                       ? Colors.white.withValues(alpha: 0.7)
                       : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 4),
-                
+
                 // Timestamp
                 Text(
                   _formatTimestamp(message.createdAt),
                   style: AppTypography.caption.copyWith(
-                    color: isMe 
+                    color: isMe
                         ? Colors.white.withValues(alpha: 0.7)
                         : AppColors.textSecondary,
                     fontSize: 10,
                   ),
                 ),
-                
+
                 const SizedBox(width: 6),
-                
+
                 // Ephemeral indicator text - time remaining
                 Text(
                   _getExpiryText(message.expiresAt),
                   style: AppTypography.caption.copyWith(
-                    color: isMe 
+                    color: isMe
                         ? Colors.white.withValues(alpha: 0.6)
                         : AppColors.sunsetAmber,
                     fontSize: 9,
@@ -133,11 +133,11 @@ class ChatBubble extends StatelessWidget {
   String _getExpiryText(DateTime expiresAt) {
     final now = DateTime.now();
     final timeRemaining = expiresAt.difference(now);
-    
+
     if (timeRemaining.isNegative) {
       return 'Expired';
     }
-    
+
     if (timeRemaining.inHours >= 1) {
       return '${timeRemaining.inHours}h';
     } else if (timeRemaining.inMinutes >= 1) {

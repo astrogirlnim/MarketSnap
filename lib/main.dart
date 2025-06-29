@@ -91,33 +91,48 @@ Future<void> main() async {
         String authHost;
         if (defaultTargetPlatform == TargetPlatform.iOS) {
           authHost = 'localhost'; // iOS simulator uses localhost to reach host
-          debugPrint('[main] Configuring iOS emulator to connect to host machine at $authHost...');
+          debugPrint(
+            '[main] Configuring iOS emulator to connect to host machine at $authHost...',
+          );
           // Add a longer delay to ensure Firebase is fully initialized on iOS
           await Future.delayed(const Duration(milliseconds: 500));
         } else {
           authHost = '10.0.2.2'; // Android emulator uses 10.0.2.2 to reach host
-          debugPrint('[main] Configuring Android emulator to connect to host machine at $authHost...');
+          debugPrint(
+            '[main] Configuring Android emulator to connect to host machine at $authHost...',
+          );
           await Future.delayed(const Duration(milliseconds: 300));
         }
 
         // Configure Firebase Auth emulator
-        debugPrint('[main] ✅ Auth emulator configured with platform-specific host: $authHost');
+        debugPrint(
+          '[main] ✅ Auth emulator configured with platform-specific host: $authHost',
+        );
         await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
-        debugPrint('[main] Platform-specific emulator configuration ensures consistent Firebase instance');
+        debugPrint(
+          '[main] Platform-specific emulator configuration ensures consistent Firebase instance',
+        );
 
         // Configure Firestore emulator
-        debugPrint('[main] ✅ Firestore emulator configured with platform-specific host: $authHost');
+        debugPrint(
+          '[main] ✅ Firestore emulator configured with platform-specific host: $authHost',
+        );
         FirebaseFirestore.instance.useFirestoreEmulator(authHost, 8080);
         debugPrint('[main] Firestore settings configured for emulator mode.');
 
         // Configure Storage emulator
-        debugPrint('[main] ✅ Storage emulator configured with platform-specific host: $authHost');
+        debugPrint(
+          '[main] ✅ Storage emulator configured with platform-specific host: $authHost',
+        );
         await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
 
         // Configure Functions emulator
-        debugPrint('[main] ✅ Functions emulator configured with platform-specific host: $authHost');
-        FirebaseFunctions.instanceFor(region: 'us-central1')
-            .useFunctionsEmulator(authHost, 5001);
+        debugPrint(
+          '[main] ✅ Functions emulator configured with platform-specific host: $authHost',
+        );
+        FirebaseFunctions.instanceFor(
+          region: 'us-central1',
+        ).useFunctionsEmulator(authHost, 5001);
 
         debugPrint('[main] Firebase emulators configured successfully.');
 
@@ -125,7 +140,9 @@ Future<void> main() async {
         debugPrint(
           '[main] Debug mode: Skipping App Check initialization to prevent auth issues.',
         );
-        debugPrint('[main] App Check will be enabled in production builds only.');
+        debugPrint(
+          '[main] App Check will be enabled in production builds only.',
+        );
       } catch (e) {
         debugPrint('[main] ⚠️ Error configuring emulators: $e');
         // Continue without emulators in case of configuration errors
@@ -508,7 +525,9 @@ Future<void> main() async {
       hiveService: hiveService,
       profileUpdateNotifier: profileUpdateNotifier,
     );
-    debugPrint('[main] ✅ User data sync service initialized - cross-platform data consistency enabled');
+    debugPrint(
+      '[main] ✅ User data sync service initialized - cross-platform data consistency enabled',
+    );
   } catch (e) {
     debugPrint('[main] Error initializing user data sync service: $e');
     // Create fallback user data sync service
@@ -532,7 +551,9 @@ Future<void> main() async {
       hiveService: hiveService,
       profileUpdateNotifier: profileUpdateNotifier,
     );
-    debugPrint('[main] ✅ Auth issue fix service initialized - profile mismatch fixes enabled');
+    debugPrint(
+      '[main] ✅ Auth issue fix service initialized - profile mismatch fixes enabled',
+    );
   } catch (e) {
     debugPrint('[main] Error initializing auth issue fix service: $e');
     // Create fallback auth issue fix service
@@ -655,16 +676,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
 
     try {
-      debugPrint('[AuthWrapper] 🔧 Attempting to fix auth profile mismatch first');
+      debugPrint(
+        '[AuthWrapper] 🔧 Attempting to fix auth profile mismatch first',
+      );
 
       // ✅ NEW: Try to fix authentication profile mismatch issues first
-      final authIssueFixed = await authIssueFixService.fixAuthenticationProfileMismatch();
+      final authIssueFixed = await authIssueFixService
+          .fixAuthenticationProfileMismatch();
       debugPrint('[AuthWrapper] 🔧 Auth issue fix result: $authIssueFixed');
 
       if (authIssueFixed) {
-        debugPrint('[AuthWrapper] ✅ Authentication profile mismatch fixed - user has existing profile');
+        debugPrint(
+          '[AuthWrapper] ✅ Authentication profile mismatch fixed - user has existing profile',
+        );
         // Skip account linking since we already found and fixed the profile
-        
+
         debugPrint('[AuthWrapper] 🔔 Saving FCM token');
         // Save FCM token
         final token = await pushNotificationService.getFCMToken();
@@ -678,11 +704,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
           debugPrint('[AuthWrapper] ⚠️ No FCM token available');
         }
 
-        debugPrint('[AuthWrapper] 🏁 Post-authentication flow completed with auth fix');
+        debugPrint(
+          '[AuthWrapper] 🏁 Post-authentication flow completed with auth fix',
+        );
         return true;
       }
 
-      debugPrint('[AuthWrapper] 🔗 Auth fix didn\'t find existing profile, proceeding with account linking');
+      debugPrint(
+        '[AuthWrapper] 🔗 Auth fix didn\'t find existing profile, proceeding with account linking',
+      );
 
       // Handle account linking after sign-in
       final hasExistingProfile = await accountLinkingService

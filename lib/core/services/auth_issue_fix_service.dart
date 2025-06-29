@@ -29,7 +29,7 @@ class AuthIssueFixService {
   /// Returns true if a profile was found and fixed, false if user needs to create a profile
   Future<bool> fixAuthenticationProfileMismatch() async {
     debugPrint('[AuthIssueFixService] 🔧 Starting authentication profile fix');
-    
+
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       debugPrint('[AuthIssueFixService] ❌ No authenticated user');
@@ -42,11 +42,17 @@ class AuthIssueFixService {
 
     try {
       // Step 1: Check if current UID already has a profile
-      final hasCurrentVendorProfile = await _checkVendorProfileExists(currentUser.uid);
-      final hasCurrentRegularProfile = await _checkRegularProfileExists(currentUser.uid);
+      final hasCurrentVendorProfile = await _checkVendorProfileExists(
+        currentUser.uid,
+      );
+      final hasCurrentRegularProfile = await _checkRegularProfileExists(
+        currentUser.uid,
+      );
 
       if (hasCurrentVendorProfile || hasCurrentRegularProfile) {
-        debugPrint('[AuthIssueFixService] ✅ User already has profile with current UID');
+        debugPrint(
+          '[AuthIssueFixService] ✅ User already has profile with current UID',
+        );
         return true;
       }
 
@@ -56,30 +62,46 @@ class AuthIssueFixService {
 
       // Search by phone number
       if (currentUser.phoneNumber != null) {
-        debugPrint('[AuthIssueFixService] 🔍 Searching by phone: ${currentUser.phoneNumber}');
-        
-        existingVendorProfile = await _findVendorByPhone(currentUser.phoneNumber!);
+        debugPrint(
+          '[AuthIssueFixService] 🔍 Searching by phone: ${currentUser.phoneNumber}',
+        );
+
+        existingVendorProfile = await _findVendorByPhone(
+          currentUser.phoneNumber!,
+        );
         if (existingVendorProfile != null) {
           debugPrint('[AuthIssueFixService] ✅ Found vendor profile by phone');
         } else {
-          existingRegularProfile = await _findRegularUserByPhone(currentUser.phoneNumber!);
+          existingRegularProfile = await _findRegularUserByPhone(
+            currentUser.phoneNumber!,
+          );
           if (existingRegularProfile != null) {
-            debugPrint('[AuthIssueFixService] ✅ Found regular user profile by phone');
+            debugPrint(
+              '[AuthIssueFixService] ✅ Found regular user profile by phone',
+            );
           }
         }
       }
 
       // Search by email if no phone match
-      if (existingVendorProfile == null && existingRegularProfile == null && currentUser.email != null) {
-        debugPrint('[AuthIssueFixService] 🔍 Searching by email: ${currentUser.email}');
-        
+      if (existingVendorProfile == null &&
+          existingRegularProfile == null &&
+          currentUser.email != null) {
+        debugPrint(
+          '[AuthIssueFixService] 🔍 Searching by email: ${currentUser.email}',
+        );
+
         existingVendorProfile = await _findVendorByEmail(currentUser.email!);
         if (existingVendorProfile != null) {
           debugPrint('[AuthIssueFixService] ✅ Found vendor profile by email');
         } else {
-          existingRegularProfile = await _findRegularUserByEmail(currentUser.email!);
+          existingRegularProfile = await _findRegularUserByEmail(
+            currentUser.email!,
+          );
           if (existingRegularProfile != null) {
-            debugPrint('[AuthIssueFixService] ✅ Found regular user profile by email');
+            debugPrint(
+              '[AuthIssueFixService] ✅ Found regular user profile by email',
+            );
           }
         }
       }
@@ -95,7 +117,6 @@ class AuthIssueFixService {
 
       debugPrint('[AuthIssueFixService] ❌ No existing profile found for user');
       return false;
-
     } catch (e, stackTrace) {
       debugPrint('[AuthIssueFixService] ❌ Error fixing authentication: $e');
       debugPrint('[AuthIssueFixService] Stack trace: $stackTrace');
@@ -131,7 +152,9 @@ class AuthIssueFixService {
   }
 
   /// Find regular user profile by phone number
-  Future<RegularUserProfile?> _findRegularUserByPhone(String phoneNumber) async {
+  Future<RegularUserProfile?> _findRegularUserByPhone(
+    String phoneNumber,
+  ) async {
     final query = await _firestore
         .collection('regularUsers')
         .where('phoneNumber', isEqualTo: phoneNumber)
@@ -176,9 +199,13 @@ class AuthIssueFixService {
   }
 
   /// Copy vendor profile to current user UID
-  Future<void> _copyVendorProfileToCurrentUser(VendorProfile existingProfile) async {
+  Future<void> _copyVendorProfileToCurrentUser(
+    VendorProfile existingProfile,
+  ) async {
     final currentUser = _auth.currentUser!;
-    debugPrint('[AuthIssueFixService] 🔄 Copying vendor profile to current UID: ${currentUser.uid}');
+    debugPrint(
+      '[AuthIssueFixService] 🔄 Copying vendor profile to current UID: ${currentUser.uid}',
+    );
 
     // Update profile with current user's info
     final updatedProfile = existingProfile.copyWith(
@@ -205,9 +232,13 @@ class AuthIssueFixService {
   }
 
   /// Copy regular user profile to current user UID
-  Future<void> _copyRegularProfileToCurrentUser(RegularUserProfile existingProfile) async {
+  Future<void> _copyRegularProfileToCurrentUser(
+    RegularUserProfile existingProfile,
+  ) async {
     final currentUser = _auth.currentUser!;
-    debugPrint('[AuthIssueFixService] 🔄 Copying regular user profile to current UID: ${currentUser.uid}');
+    debugPrint(
+      '[AuthIssueFixService] 🔄 Copying regular user profile to current UID: ${currentUser.uid}',
+    );
 
     // Update profile with current user's info
     final updatedProfile = existingProfile.copyWith(
@@ -230,7 +261,9 @@ class AuthIssueFixService {
     // Notify listeners
     _profileUpdateNotifier.notifyRegularUserProfileUpdate(updatedProfile);
 
-    debugPrint('[AuthIssueFixService] ✅ Regular user profile copied successfully');
+    debugPrint(
+      '[AuthIssueFixService] ✅ Regular user profile copied successfully',
+    );
   }
 
   /// Get diagnostic information about current authentication state
@@ -254,7 +287,7 @@ class AuthIssueFixService {
     // Check current UID profiles
     final hasVendor = await _checkVendorProfileExists(currentUser.uid);
     final hasRegular = await _checkRegularProfileExists(currentUser.uid);
-    
+
     diagnostics['currentUidProfiles'] = {
       'hasVendorProfile': hasVendor,
       'hasRegularProfile': hasRegular,
@@ -263,8 +296,10 @@ class AuthIssueFixService {
     // Search for profiles by contact info
     if (currentUser.phoneNumber != null) {
       final vendorByPhone = await _findVendorByPhone(currentUser.phoneNumber!);
-      final regularByPhone = await _findRegularUserByPhone(currentUser.phoneNumber!);
-      
+      final regularByPhone = await _findRegularUserByPhone(
+        currentUser.phoneNumber!,
+      );
+
       diagnostics['profilesByPhone'] = {
         'vendorProfile': vendorByPhone?.toMap(),
         'regularProfile': regularByPhone?.toMap(),
@@ -274,7 +309,7 @@ class AuthIssueFixService {
     if (currentUser.email != null) {
       final vendorByEmail = await _findVendorByEmail(currentUser.email!);
       final regularByEmail = await _findRegularUserByEmail(currentUser.email!);
-      
+
       diagnostics['profilesByEmail'] = {
         'vendorProfile': vendorByEmail?.toMap(),
         'regularProfile': regularByEmail?.toMap(),
@@ -283,4 +318,4 @@ class AuthIssueFixService {
 
     return diagnostics;
   }
-} 
+}

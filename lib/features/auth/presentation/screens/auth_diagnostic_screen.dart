@@ -32,7 +32,7 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
     try {
       final auth = FirebaseAuth.instance;
       final firestore = FirebaseFirestore.instance;
-      
+
       // Check current authentication status
       final currentUser = auth.currentUser;
       if (currentUser == null) {
@@ -50,15 +50,19 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
         diagnosticInfo += 'Email: ${currentUser.email}\n';
         diagnosticInfo += 'Phone: ${currentUser.phoneNumber}\n';
         diagnosticInfo += 'Display Name: ${currentUser.displayName}\n';
-        diagnosticInfo += 'Provider Data: ${currentUser.providerData.map((p) => p.providerId).join(', ')}\n\n';
+        diagnosticInfo +=
+            'Provider Data: ${currentUser.providerData.map((p) => p.providerId).join(', ')}\n\n';
       });
 
       // Check for vendor profile with current UID
       setState(() {
         diagnosticInfo += '🔍 CHECKING VENDOR PROFILE...\n';
       });
-      
-      final vendorDoc = await firestore.collection('vendors').doc(currentUser.uid).get();
+
+      final vendorDoc = await firestore
+          .collection('vendors')
+          .doc(currentUser.uid)
+          .get();
       if (vendorDoc.exists) {
         setState(() {
           diagnosticInfo += '✅ VENDOR PROFILE FOUND for current UID\n';
@@ -74,8 +78,11 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       setState(() {
         diagnosticInfo += '🔍 CHECKING REGULAR USER PROFILE...\n';
       });
-      
-      final regularDoc = await firestore.collection('regularUsers').doc(currentUser.uid).get();
+
+      final regularDoc = await firestore
+          .collection('regularUsers')
+          .doc(currentUser.uid)
+          .get();
       if (regularDoc.exists) {
         setState(() {
           diagnosticInfo += '✅ REGULAR USER PROFILE FOUND for current UID\n';
@@ -90,7 +97,8 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       // Search for profiles by phone number
       if (currentUser.phoneNumber != null) {
         setState(() {
-          diagnosticInfo += '🔍 SEARCHING PROFILES BY PHONE: ${currentUser.phoneNumber}\n';
+          diagnosticInfo +=
+              '🔍 SEARCHING PROFILES BY PHONE: ${currentUser.phoneNumber}\n';
         });
 
         final vendorPhoneQuery = await firestore
@@ -127,7 +135,8 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       // Search for profiles by email
       if (currentUser.email != null) {
         setState(() {
-          diagnosticInfo += '🔍 SEARCHING PROFILES BY EMAIL: ${currentUser.email}\n';
+          diagnosticInfo +=
+              '🔍 SEARCHING PROFILES BY EMAIL: ${currentUser.email}\n';
         });
 
         final vendorEmailQuery = await firestore
@@ -165,7 +174,7 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       setState(() {
         diagnosticInfo += '📋 ALL VENDOR PROFILES IN DATABASE:\n';
       });
-      
+
       final allVendors = await firestore.collection('vendors').get();
       if (allVendors.docs.isEmpty) {
         setState(() {
@@ -185,7 +194,7 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       setState(() {
         diagnosticInfo += '📋 ALL REGULAR USER PROFILES IN DATABASE:\n';
       });
-      
+
       final allRegular = await firestore.collection('regularUsers').get();
       if (allRegular.docs.isEmpty) {
         setState(() {
@@ -206,11 +215,12 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
         diagnosticInfo += '🏁 DIAGNOSTICS COMPLETE\n';
         diagnosticInfo += '═══════════════════════════════════════\n';
         diagnosticInfo += 'RECOMMENDATION:\n';
-        diagnosticInfo += 'If profiles exist with different UIDs but matching\n';
-        diagnosticInfo += 'phone/email, the AccountLinkingService should copy\n';
+        diagnosticInfo +=
+            'If profiles exist with different UIDs but matching\n';
+        diagnosticInfo +=
+            'phone/email, the AccountLinkingService should copy\n';
         diagnosticInfo += 'the existing profile to your current UID.\n';
       });
-
     } catch (e) {
       setState(() {
         diagnosticInfo += '❌ DIAGNOSTIC ERROR: $e\n';
@@ -229,18 +239,21 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
     });
 
     try {
-      final authIssueFixed = await main.authIssueFixService.fixAuthenticationProfileMismatch();
-      
+      final authIssueFixed = await main.authIssueFixService
+          .fixAuthenticationProfileMismatch();
+
       setState(() {
         if (authIssueFixed) {
           diagnosticInfo += '✅ AUTHENTICATION ISSUE FIXED!\n';
-          diagnosticInfo += 'Your existing profile has been found and linked to your current account.\n';
+          diagnosticInfo +=
+              'Your existing profile has been found and linked to your current account.\n';
           diagnosticInfo += 'You should now be able to access your profile.\n';
           diagnosticInfo += '\nPlease restart the app to see the changes.\n';
         } else {
           diagnosticInfo += '❌ NO EXISTING PROFILE FOUND TO FIX\n';
           diagnosticInfo += 'This means you need to create a new profile.\n';
-          diagnosticInfo += 'Close this screen and complete the profile creation process.\n';
+          diagnosticInfo +=
+              'Close this screen and complete the profile creation process.\n';
         }
       });
     } catch (e) {
@@ -302,11 +315,17 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     child: Text(
                       isLoading ? 'Running...' : 'Refresh',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -317,11 +336,17 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     child: Text(
                       'Fix Auth Issue',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -332,4 +357,4 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
       ),
     );
   }
-} 
+}

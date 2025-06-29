@@ -751,16 +751,25 @@ export const getRecipeSnippet = createAIHelper(
             })
             .join(", ");
 
+          const confScore = personalizationConfidence.toFixed(2);
+          const satScore = satisfactionScore.toFixed(2);
+          const topCategories = preferredCategories.slice(0, 3).join(", ");
+          const topSearches = recentSearchTerms.slice(0, 3).join(", ");
+
           userPreferencesContext = `
 
-ENHANCED USER PREFERENCES (confidence: ${personalizationConfidence.toFixed(2)}, ${totalPositiveFeedback} positive interactions):
+ENHANCED USER PREFERENCES (confidence: ${confScore}, ` +
+            `${totalPositiveFeedback} positive interactions):
 - Highly preferred ingredients: ${topKeywords}
-- Preferred food categories: ${preferredCategories.slice(0, 3).join(", ")}
+- Preferred food categories: ${topCategories}
 - Content preference: ${preferredContentType}
-- User satisfaction score: ${satisfactionScore.toFixed(2)}
-- Recent search interests: ${recentSearchTerms.slice(0, 3).join(", ")}
-- IMPORTANT: Strongly prioritize suggestions that include the user's preferred ingredients and categories
-- IMPORTANT: Tailor recipe complexity and style to user's demonstrated preferences`;
+- User satisfaction score: ${satScore}
+- Recent search interests: ${topSearches}
+- Favorite vendors: ${favoriteVendors.slice(0, 2).join(", ")}
+- IMPORTANT: Strongly prioritize suggestions that include the user's ` +
+            `preferred ingredients and categories
+- IMPORTANT: Tailor recipe complexity and style to user's ` +
+            "demonstrated preferences";
 
           logger.log(
             "[getRecipeSnippet] Using enhanced personalization: " +
