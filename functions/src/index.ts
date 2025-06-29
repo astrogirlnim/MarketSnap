@@ -7,7 +7,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {logger} from "firebase-functions";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
-import {CallableContext} from "firebase-functions/v1/https";
+import {onCall, CallableRequest} from "firebase-functions/v2/https";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -412,15 +412,12 @@ export const sendMessageNotification = onDocumentCreated(
 // --- AI Helper Functions (Phase 2 Scaffolding) ---
 
 // Configuration for AI Functions - support both environment variables
-// and Firebase config
+// Firebase Functions v2 uses environment variables instead of functions.config()
 const AI_FUNCTIONS_ENABLED =
-  process.env.AI_FUNCTIONS_ENABLED === "true" ||
-  functions.config().ai?.functions_enabled === "true" ||
-  functions.config().marketsnap?.ai?.enabled === "true";
+  process.env.AI_FUNCTIONS_ENABLED === "true";
 
 const OPENAI_API_KEY =
-  process.env.OPENAI_API_KEY ||
-  functions.config().marketsnap?.openai?.key;
+  process.env.OPENAI_API_KEY;
 
 /**
  * A disabled-aware wrapper for HTTPS callable functions.
@@ -432,9 +429,10 @@ const OPENAI_API_KEY =
 const createAIHelper = (
   functionName: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handler: (data: any, context: CallableContext) => any
+  handler: (data: any, request: CallableRequest) => any
 ) => {
-  return functions.https.onCall(async (data, context) => {
+  return onCall(async (request) => {
+    const data = request.data;
     logger.log(`[${functionName}] received request.`);
 
     // Allow calls from Firebase emulator during development
@@ -442,14 +440,14 @@ const createAIHelper = (
       logger.log(`[${functionName}] Running in emulator mode`);
     } else {
       // In production, require authentication
-      if (!context.auth) {
+      if (!request.auth) {
         logger.error(`[${functionName}] Authentication required`);
         throw new functions.https.HttpsError(
           "unauthenticated",
           "Authentication required"
         );
       }
-      logger.log(`[${functionName}] Authenticated user: ${context.auth.uid}`);
+      logger.log(`[${functionName}] Authenticated user: ${request.auth.uid}`);
     }
 
     if (!AI_FUNCTIONS_ENABLED) {
@@ -476,8 +474,8 @@ const createAIHelper = (
       `sk-...${OPENAI_API_KEY.slice(-4)}`
     );
 
-    // TODO: Phase 4 - Replace with actual implementation
-    return handler(data, context);
+    // Call the actual handler
+    return handler(data, request);
   });
 };
 
@@ -687,7 +685,7 @@ export const getRecipeSnippet = createAIHelper(
       // Get OpenAI API key
       const OPENAI_API_KEY =
         process.env.OPENAI_API_KEY ||
-        functions.config().marketsnap?.openai?.key;
+        process.env.OPENAI_API_KEY;
       if (!OPENAI_API_KEY) {
         logger.error("[getRecipeSnippet] OpenAI API key not found");
         throw new functions.https.HttpsError(
@@ -955,7 +953,7 @@ export const vectorSearchFAQ = createAIHelper(
       // Get OpenAI API key
       const OPENAI_API_KEY =
         process.env.OPENAI_API_KEY ||
-        functions.config().marketsnap?.openai?.key;
+        process.env.OPENAI_API_KEY;
       if (!OPENAI_API_KEY) {
         logger.error("[vectorSearchFAQ] OpenAI API key not found");
         throw new functions.https.HttpsError(
@@ -1180,12 +1178,13 @@ export const vectorSearchFAQ = createAIHelper(
  * Cloud Function to delete a user account and all associated data
  * Handles cascading deletion across all collections and storage
  */
-export const deleteUserAccount = functions.https.onCall(
-  async (data, context) => {
+export const deleteUserAccount = onCall(
+  async (request: CallableRequest<{uid: string; timestamp: string}>) => {
+    const data = request.data;
     logger.log("[deleteUserAccount] 🗑️ Account deletion request received");
 
     // Verify authentication
-    if (!context.auth) {
+    if (!request.auth) {
       logger.error("[deleteUserAccount] ❌ Unauthorized request");
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -1193,7 +1192,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
     }
 
-    const requestingUid = context.auth.uid;
+    const requestingUid = request.auth.uid;
     const targetUid = data.uid;
     const timestamp = data.timestamp;
 
@@ -1612,7 +1611,7 @@ export const batchVectorizeFAQs = createAIHelper(
   "batchVectorizeFAQs",
   async (
     data: {vendorId?: string; limit?: number},
-    context: CallableContext
+    context: CallableRequest
   ) => {
     logger.log("[batchVectorizeFAQs] Starting batch vectorization");
     logger.log("[batchVectorizeFAQs] Input data:", data);
@@ -1649,7 +1648,7 @@ export const batchVectorizeFAQs = createAIHelper(
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
     const openaiKey = isEmulator ?
       process.env.OPENAI_API_KEY :
-      functions.config().openai?.api_key;
+      process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
       logger.error("[batchVectorizeFAQs] OpenAI API key not found");
@@ -1814,7 +1813,7 @@ export const autoVectorizeFAQ = onDocumentCreated(
       const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
       const openaiKey = isEmulator ?
         process.env.OPENAI_API_KEY :
-        functions.config().openai?.api_key;
+        process.env.OPENAI_API_KEY;
 
       if (!openaiKey) {
         logger.error("[autoVectorizeFAQ] OpenAI API key not found");

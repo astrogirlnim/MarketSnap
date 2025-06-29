@@ -292,7 +292,7 @@ From the latest authentication flow logs:
 #### Key Findings
 1. **✅ AccountLinkingService Fix Working:** Both user types are properly detected and linked
 2. **✅ AuthWrapper Logic Executing:** "User has existing profile - going to main app" logged correctly
-3. **✅ MainShellScreen Initializing:** User type detection working for both vendor and regular users
+3. **✅ MainShellScreen Initializing:** User type detection and screen initialization successful
 4. **❌ Navigation Still Failing:** Despite successful flow, users still redirected to login screen
 
 #### Technical Evidence
@@ -1026,3 +1026,132 @@ return Container(
 - Comprehensive documentation created for future reference
 - Testing confirms stable UI across all screen sizes
 - No remaining console errors or visual artifacts
+
+---
+
+### **Firebase Functions Deployment Error - autoVectorizeFAQ Trigger Type Change (January 30, 2025)**
+
+**Issue**: CI/CD pipeline deployment failing with "Changing from an HTTPS function to a background triggered function is not allowed"
+**Status**: 🔍 **IDENTIFIED - REQUIRES FUNCTION DELETION AND REDEPLOYMENT**
+
+**Problem Description**:
+```bash
+Error: [autoVectorizeFAQ(us-central1)] Changing from an HTTPS function to a background triggered function is not allowed. Please delete your function and create a new one instead.
+Error: Process completed with exit code 1.
+```
+
+**Root Cause Analysis - COMPLETED ✅**:
+
+**Primary Issue: Firebase Function Trigger Type Change**
+- The `autoVectorizeFAQ` function was previously deployed as an **HTTPS function** (callable)
+- Current code defines it as a **Firestore trigger** using `onDocumentCreated()`
+- Firebase doesn't allow changing function trigger types without deletion/recreation
+
+**Function Definition Analysis**:
+```typescript
+// CURRENT CODE (Firestore Trigger):
+export const autoVectorizeFAQ = onDocumentCreated(
+  "faqs/{faqId}",
+  async (event) => {
+    // Auto-vectorize when new FAQ documents are created
+  }
+);
+
+// PREVIOUS DEPLOYMENT (Likely HTTPS Callable):
+// export const autoVectorizeFAQ = functions.https.onCall(...)
+```
+
+**Context & Development History**:
+- Function likely started as HTTPS callable during development
+- Changed to Firestore trigger for automatic vectorization
+- Previous deployment in production/staging retained the old trigger type
+- CI/CD pipeline attempting to deploy the new trigger type causes conflict
+
+**Deployment Error Flow**:
+```
+GitHub Actions Deploy → Firebase Functions Upload → 
+Trigger Type Validation → 
+ERROR: Cannot change HTTPS → Firestore trigger → 
+Deployment Failure
+```
+
+**Solution Strategy - IMMEDIATE ACTION REQUIRED**:
+
+**Option 1: Manual Function Deletion (Recommended)**
+```bash
+# Delete the existing function from Firebase Console or CLI
+firebase functions:delete autoVectorizeFAQ --project $FIREBASE_PROJECT_ID
+
+# Then redeploy normally
+firebase deploy --only functions
+```
+
+**Option 2: Rename Function (Alternative)**
+```typescript
+// Rename to avoid conflict
+export const autoVectorizeFAQv2 = onDocumentCreated(
+  "faqs/{faqId}",
+  async (event) => {
+    // Same implementation
+  }
+);
+```
+
+**Option 3: Update CI/CD Pipeline (Automated)**
+```yaml
+# Add to deploy.yml before deployment
+- name: Clean up conflicting functions
+  run: |
+    echo "🧹 Checking for function trigger type conflicts..."
+    firebase functions:delete autoVectorizeFAQ --project ${{ secrets.FIREBASE_PROJECT_ID }} --force || echo "Function not found or already deleted"
+    echo "✅ Function cleanup completed"
+```
+
+**Impact Assessment**:
+- **Deployment**: ❌ Blocked until function deletion
+- **Production Services**: ✅ Unaffected (existing functions continue running)
+- **Development**: ✅ Local emulator unaffected
+- **Auto-vectorization**: ⚠️ Will be temporarily disabled until redeployment
+
+**Recommended Resolution Steps**:
+
+**Step 1: Immediate Fix**
+```bash
+# Delete the conflicting function
+firebase functions:delete autoVectorizeFAQ --project marketsnap-app --force
+```
+
+**Step 2: Verify Deployment**
+```bash
+# Redeploy functions
+firebase deploy --only functions --project marketsnap-app
+```
+
+**Step 3: Test Functionality**
+```bash
+# Verify auto-vectorization works with Firestore trigger
+# Create test FAQ → Check faqVectors collection for automatic embedding
+```
+
+**Prevention for Future**:
+- Document function trigger types in memory bank
+- Add function deletion step to CI/CD for trigger type changes
+- Use function versioning for major architectural changes
+
+**Technical Notes**:
+- This is a Firebase platform limitation, not a code issue
+- The new Firestore trigger design is architecturally superior
+- Auto-vectorization will work better with document creation triggers
+- No data loss expected during function recreation
+
+**Priority**: 🚨 **HIGH - BLOCKS DEPLOYMENT**
+
+**Expected Resolution Time**: 5-10 minutes for manual deletion and redeployment
+
+**Testing Requirements After Fix**:
+1. ✅ Verify `batchVectorizeFAQs` callable function works
+2. ✅ Verify `autoVectorizeFAQ` trigger activates on FAQ creation  
+3. ✅ Confirm FAQ vectors are automatically generated
+4. ✅ Validate CI/CD pipeline completes successfully
+
+---
