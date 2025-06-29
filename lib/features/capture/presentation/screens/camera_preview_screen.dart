@@ -80,9 +80,41 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('[CameraPreviewScreen] ========== INIT STATE START ==========');
+    
+    // Add lifecycle observer for app state changes
     WidgetsBinding.instance.addObserver(this);
+    
+    // ✅ CAMERA UNAVAILABLE FIX: Initialize widget visibility state
     _isWidgetVisible = true;
-    _initializeCamera();
+    
+    debugPrint('[CameraPreviewScreen] Lifecycle observer added, widget marked as visible');
+
+    // ✅ CAMERA UNAVAILABLE FIX: Initialize camera with post-frame callback to ensure widget is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('[CameraPreviewScreen] Post-frame callback: initializing camera...');
+      if (mounted) {
+        _initializeCamera();
+      } else {
+        debugPrint('[CameraPreviewScreen] Widget not mounted in post-frame callback');
+      }
+    });
+    
+    debugPrint('[CameraPreviewScreen] ========== INIT STATE END ==========');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('[CameraPreviewScreen] ========== DEPENDENCIES CHANGED ==========');
+    
+    // ✅ CAMERA UNAVAILABLE FIX: Reinitialize camera when dependencies change (like tab switching)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isWidgetVisible) {
+        debugPrint('[CameraPreviewScreen] Dependencies changed, reinitializing camera...');
+        _initializeCameraWithDelay();
+      }
+    });
   }
 
   @override
@@ -136,27 +168,44 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     }
   }
 
-  /// ✅ BUFFER OVERFLOW FIX: Handle app resumed with proper error handling
+  /// ✅ CAMERA UNAVAILABLE FIX: Enhanced app resumed handling with better error recovery
   Future<void> _handleAppResumed() async {
+    debugPrint('[CameraPreviewScreen] ========== APP RESUMED HANDLING ==========');
+    
     try {
       final success = await _cameraService.handleAppInForeground();
 
+      debugPrint('[CameraPreviewScreen] Camera service resume result: $success');
+
       if (!success && mounted) {
-        // If camera resume failed, try full reinitialization
+        debugPrint('[CameraPreviewScreen] Camera resume failed, attempting full reinitialization...');
         await _initializeCamera();
       }
     } catch (e) {
+      debugPrint('[CameraPreviewScreen] Error during app resume: $e');
       if (mounted) {
-        // Fallback to full reinitialization
+        debugPrint('[CameraPreviewScreen] Fallback to full reinitialization after error');
         await _initializeCamera();
       }
     }
+    
+    debugPrint('[CameraPreviewScreen] ========== APP RESUMED HANDLING COMPLETE ==========');
   }
 
-  /// Initialize camera service and controller
+  /// ✅ CAMERA UNAVAILABLE FIX: Enhanced initialization with comprehensive retry logic and better error handling
   Future<void> _initializeCamera() async {
-    // ✅ BUFFER OVERFLOW FIX: Only initialize if widget is visible and mounted
+    debugPrint('[CameraPreviewScreen] ========== CAMERA INITIALIZATION START ==========');
+    debugPrint('[CameraPreviewScreen] Widget state - visible: $_isWidgetVisible, mounted: $mounted');
+    
+    // ✅ CAMERA UNAVAILABLE FIX: Only initialize if widget is ready and mounted
     if (!_isWidgetVisible || !mounted) {
+      debugPrint('[CameraPreviewScreen] Skipping initialization - widget not ready');
+      return;
+    }
+
+    // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts
+    if (_isInitializing) {
+      debugPrint('[CameraPreviewScreen] Already initializing, skipping duplicate attempt');
       return;
     }
 
@@ -166,41 +215,70 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     });
 
     try {
-      // Initialize camera service
+      // ✅ CAMERA UNAVAILABLE FIX: Enhanced service initialization check
       if (!_cameraService.isInitialized) {
+        debugPrint('[CameraPreviewScreen] Camera service not initialized, initializing...');
         final serviceInitialized = await _cameraService.initialize();
         if (!serviceInitialized) {
-          throw Exception(
-            _cameraService.lastError ?? 'Failed to initialize camera service',
-          );
+          final error = _cameraService.lastError ?? 'Failed to initialize camera service';
+          debugPrint('[CameraPreviewScreen] ERROR: Service initialization failed - $error');
+          throw Exception(error);
         }
+        debugPrint('[CameraPreviewScreen] ✅ Camera service initialized successfully');
       }
 
-      // Initialize camera controller
-      final controllerInitialized = await _cameraService.initializeCamera();
+      // ✅ CAMERA UNAVAILABLE FIX: Use enhanced initialization with retry logic
+      debugPrint('[CameraPreviewScreen] Initializing camera controller with retry logic...');
+      final controllerInitialized = await _cameraService.initializeCameraWithRetry();
+      
       if (!controllerInitialized) {
-        throw Exception(
-          _cameraService.lastError ?? 'Failed to initialize camera controller',
-        );
+        final error = _cameraService.lastError ?? 'Failed to initialize camera controller after retries';
+        debugPrint('[CameraPreviewScreen] ERROR: Controller initialization failed - $error');
+        throw Exception(error);
       }
+
+      debugPrint('[CameraPreviewScreen] ✅ Camera controller initialized successfully');
 
       // Set initial flash mode
       _currentFlashMode = _cameraService.getCurrentFlashMode();
+      debugPrint('[CameraPreviewScreen] Flash mode set to: $_currentFlashMode');
 
       if (mounted) {
         setState(() {
           _isInitializing = false;
           _errorMessage = null;
         });
+        debugPrint('[CameraPreviewScreen] ✅ UI state updated - camera ready');
       }
+
     } catch (e) {
+      debugPrint('[CameraPreviewScreen] ❌ Camera initialization failed: $e');
+      
       if (mounted) {
         setState(() {
           _isInitializing = false;
           _errorMessage = e.toString();
         });
+        debugPrint('[CameraPreviewScreen] UI state updated with error message');
       }
     }
+    
+    debugPrint('[CameraPreviewScreen] ========== CAMERA INITIALIZATION END ==========');
+  }
+
+  /// ✅ CAMERA UNAVAILABLE FIX: Enhanced initialization method with delayed retry for tab switching
+  Future<void> _initializeCameraWithDelay() async {
+    debugPrint('[CameraPreviewScreen] Delayed camera initialization starting...');
+    
+    // Small delay to allow tab switching to complete
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    if (!mounted) {
+      debugPrint('[CameraPreviewScreen] Widget no longer mounted, skipping delayed initialization');
+      return;
+    }
+    
+    await _initializeCamera();
   }
 
   /// Capture a photo using the camera service
@@ -1169,3 +1247,4 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     );
   }
 }
+
