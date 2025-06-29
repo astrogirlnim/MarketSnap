@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
@@ -11,6 +13,8 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../auth/application/auth_service.dart';
+import '../../../../core/models/regular_user_profile.dart';
+import '../../../../main.dart' as main;
 
 /// Regular User Profile Form Screen
 /// Simplified profile for regular users (no stall info, just basic profile)
@@ -38,20 +42,59 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   final AuthService _authService = AuthService();
 
   String? _localAvatarPath;
+  String? _avatarURL;
   String? _errorMessage;
   bool _isLoading = false;
   bool _isSaving = false;
+  StreamSubscription<RegularUserProfile>? _profileUpdateSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadExistingProfile();
+    
+    // ✅ Listen for profile updates from sync process
+    _profileUpdateSubscription = main.profileUpdateNotifier.regularUserProfileUpdates.listen(_onProfileUpdate);
   }
 
   @override
   void dispose() {
     _displayNameController.dispose();
+    
+    // ✅ Cancel profile update subscription
+    _profileUpdateSubscription?.cancel();
+    
     super.dispose();
+  }
+
+  /// ✅ Handle profile updates from sync process
+  void _onProfileUpdate(RegularUserProfile profile) {
+    // Only update if it's the current user's profile
+    final currentUid = widget.profileService.currentUserUid;
+    if (profile.uid == currentUid && mounted) {
+      developer.log(
+        '[RegularUserProfileScreen] 📢 Received profile update from sync - updating UI',
+        name: 'RegularUserProfileScreen',
+      );
+      setState(() {
+        _displayNameController.text = profile.displayName;
+        _localAvatarPath = profile.localAvatarPath;
+        _avatarURL = profile.avatarURL;
+      });
+      
+      developer.log(
+        '[RegularUserProfileScreen] ✅ UI updated with synced avatar state:',
+        name: 'RegularUserProfileScreen',
+      );
+      developer.log(
+        '[RegularUserProfileScreen] - Local path: $_localAvatarPath',
+        name: 'RegularUserProfileScreen',
+      );
+      developer.log(
+        '[RegularUserProfileScreen] - Remote URL: $_avatarURL',
+        name: 'RegularUserProfileScreen',
+      );
+    }
   }
 
   /// Loads existing profile data if available
@@ -74,10 +117,37 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           '[RegularUserProfileScreen] Found existing regular profile: ${regularProfile.displayName}',
           name: 'RegularUserProfileScreen',
         );
+        developer.log(
+          '[RegularUserProfileScreen] 🖼️ Avatar status:',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - localAvatarPath: ${regularProfile.localAvatarPath}',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - avatarURL: ${regularProfile.avatarURL}',
+          name: 'RegularUserProfileScreen',
+        );
+        
         setState(() {
           _displayNameController.text = regularProfile.displayName;
           _localAvatarPath = regularProfile.localAvatarPath;
+          _avatarURL = regularProfile.avatarURL;
         });
+        
+        developer.log(
+          '[RegularUserProfileScreen] ✅ Profile loaded with avatar state:',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - Local path: $_localAvatarPath',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - Remote URL: $_avatarURL',
+          name: 'RegularUserProfileScreen',
+        );
       } else {
         developer.log(
           '[RegularUserProfileScreen] No existing regular profile found',
@@ -117,6 +187,11 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       if (image != null) {
         setState(() {
           _localAvatarPath = image.path;
+          _avatarURL = null;
+          developer.log(
+            '[RegularUserProfileScreen] 🖼️ New local avatar selected, clearing remote URL',
+            name: 'RegularUserProfileScreen',
+          );
         });
         developer.log(
           '[RegularUserProfileScreen] Avatar selected: ${image.path}',
@@ -170,7 +245,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (_localAvatarPath != null)
+                if (_localAvatarPath != null || _avatarURL != null)
                   MarketSnapSecondaryButton(
                     text: 'Remove Photo',
                     icon: Icons.delete,
@@ -178,7 +253,12 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                       Navigator.pop(context);
                       setState(() {
                         _localAvatarPath = null;
+                        _avatarURL = null;
                       });
+                      developer.log(
+                        '[RegularUserProfileScreen] 🗑️ Avatar removed (both local and remote)',
+                        name: 'RegularUserProfileScreen',
+                      );
                     },
                   ),
               ],
@@ -207,7 +287,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     }
 
     developer.log(
-      '[RegularUserProfileScreen] Saving regular user profile',
+      '[RegularUserProfileScreen] 🔄 Starting regular user profile save process',
       name: 'RegularUserProfileScreen',
     );
 
@@ -217,15 +297,47 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     });
 
     try {
+      // Save profile with comprehensive avatar handling
       await widget.profileService.saveRegularUserProfile(
         displayName: _displayNameController.text,
         localAvatarPath: _localAvatarPath,
       );
 
       developer.log(
-        '[RegularUserProfileScreen] Regular profile saved successfully',
+        '[RegularUserProfileScreen] ✅ Regular profile saved successfully',
         name: 'RegularUserProfileScreen',
       );
+
+      // ✅ CRITICAL FIX: Wait for sync completion instead of arbitrary delay
+      developer.log(
+        '[RegularUserProfileScreen] ⏳ Waiting for sync process to complete...',
+        name: 'RegularUserProfileScreen',
+      );
+      final currentUid = widget.profileService.currentUserUid;
+      if (currentUid != null) {
+        // Note: We can use the waitForSyncCompletion method or implement a similar one for regular users
+        // For now, let's use a more intelligent approach by checking the profile state
+        final syncCompleted = await _waitForRegularUserSyncCompletion(
+          currentUid,
+          timeout: const Duration(seconds: 15),
+        );
+        
+        if (syncCompleted) {
+          developer.log(
+            '[RegularUserProfileScreen] ✅ Sync completed successfully',
+            name: 'RegularUserProfileScreen',
+          );
+          // Reload profile to get the final synced state
+          await _loadExistingProfile();
+        } else {
+          developer.log(
+            '[RegularUserProfileScreen] ⚠️ Sync timed out, but profile saved locally',
+            name: 'RegularUserProfileScreen',
+          );
+          // Still reload to get current state
+          await _loadExistingProfile();
+        }
+      }
 
       // Show success message
       if (mounted) {
@@ -247,7 +359,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       }
     } catch (e) {
       developer.log(
-        '[RegularUserProfileScreen] Error saving profile: $e',
+        '[RegularUserProfileScreen] ❌ Error saving profile: $e',
         name: 'RegularUserProfileScreen',
       );
       _showErrorMessage('Failed to save profile: $e');
@@ -260,6 +372,45 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     }
   }
 
+  /// ✅ NEW METHOD: Wait for regular user sync completion with proper result handling
+  Future<bool> _waitForRegularUserSyncCompletion(String uid, {Duration timeout = const Duration(seconds: 30)}) async {
+    developer.log(
+      '[RegularUserProfileScreen] ⏳ Waiting for regular user sync completion for UID: $uid',
+      name: 'RegularUserProfileScreen',
+    );
+    
+    final stopwatch = Stopwatch()..start();
+    
+    while (stopwatch.elapsed < timeout) {
+      final profile = widget.profileService.getCurrentRegularUserProfile();
+      
+      if (profile == null) {
+        developer.log(
+          '[RegularUserProfileScreen] ❌ Profile not found during sync wait',
+          name: 'RegularUserProfileScreen',
+        );
+        return false;
+      }
+      
+      if (!profile.needsSync) {
+        developer.log(
+          '[RegularUserProfileScreen] ✅ Sync completed in ${stopwatch.elapsed.inMilliseconds}ms',
+          name: 'RegularUserProfileScreen',
+        );
+        return true;
+      }
+      
+      // Check every 100ms
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    
+    developer.log(
+      '[RegularUserProfileScreen] ⏰ Sync wait timed out after ${timeout.inSeconds}s',
+      name: 'RegularUserProfileScreen',
+    );
+    return false;
+  }
+
   /// Shows error message
   void _showErrorMessage(String message) {
     setState(() {
@@ -269,6 +420,35 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
 
   /// Builds the avatar section
   Widget _buildAvatarSection() {
+    final bool hasLocalAvatar = _localAvatarPath != null;
+    final bool hasRemoteAvatar = _avatarURL?.isNotEmpty == true;
+    final bool hasAnyAvatar = hasLocalAvatar || hasRemoteAvatar;
+    
+    developer.log(
+      '[RegularUserProfileScreen] 🖼️ Avatar display logic:',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - hasLocalAvatar: $hasLocalAvatar',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - hasRemoteAvatar: $hasRemoteAvatar',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - hasAnyAvatar: $hasAnyAvatar',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - _localAvatarPath: $_localAvatarPath',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - _avatarURL: $_avatarURL',
+      name: 'RegularUserProfileScreen',
+    );
+    
     return Column(
       children: [
         GestureDetector(
@@ -281,19 +461,59 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
               color: AppColors.eggshell,
               border: Border.all(color: AppColors.seedBrown, width: 2),
             ),
-            child: _localAvatarPath != null
+            child: hasAnyAvatar
                 ? ClipOval(
-                    child: Image.file(
-                      File(_localAvatarPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.broken_image,
-                          size: 48,
-                          color: AppColors.soilTaupe,
-                        );
-                      },
-                    ),
+                    child: hasLocalAvatar
+                        ? Image.file(
+                            File(_localAvatarPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              developer.log(
+                                '[RegularUserProfileScreen] ❌ Local avatar load error: $error',
+                                name: 'RegularUserProfileScreen',
+                              );
+                              return Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.soilTaupe,
+                              );
+                            },
+                          )
+                        : Image.network(
+                            _avatarURL!,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) {
+                                developer.log(
+                                  '[RegularUserProfileScreen] ✅ Remote avatar loaded successfully',
+                                  name: 'RegularUserProfileScreen',
+                                );
+                                return child;
+                              }
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.marketBlue,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              developer.log(
+                                '[RegularUserProfileScreen] ❌ Remote avatar load error: $error',
+                                name: 'RegularUserProfileScreen',
+                              );
+                              return Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.soilTaupe,
+                              );
+                            },
+                          ),
                   )
                 : Icon(
                     Icons.person_add_alt_1,
@@ -306,7 +526,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         GestureDetector(
           onTap: _showAvatarOptions,
           child: Text(
-            _localAvatarPath != null ? 'Change Avatar' : 'Add Avatar',
+            hasAnyAvatar ? 'Change Avatar' : 'Add Avatar',
             style: AppTypography.body.copyWith(
               color: AppColors.marketBlue,
               fontWeight: FontWeight.w600,
@@ -319,6 +539,19 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           textAlign: TextAlign.center,
         ),
+        if (kDebugMode && hasAnyAvatar) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            hasLocalAvatar 
+                ? '🔵 Local avatar selected (will upload)' 
+                : '🟢 Synced avatar from server',
+            style: AppTypography.caption.copyWith(
+              color: hasLocalAvatar ? Colors.blue : Colors.green,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ],
     );
   }

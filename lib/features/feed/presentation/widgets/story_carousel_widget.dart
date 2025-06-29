@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADD: For defaultTargetPlatform
 import 'package:flutter/services.dart';
 import '../../domain/models/story_item_model.dart';
 import '../../application/feed_service.dart';
@@ -45,6 +46,7 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
         itemCount: widget.stories.length,
         itemBuilder: (context, index) {
           final story = widget.stories[index];
+          debugPrint('[StoryCarousel] Building story item for: ${story.vendorName}');
           return _buildStoryItem(story);
         },
       ),
@@ -58,50 +60,50 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
 
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onStoryTap?.call(story);
+        if (widget.onStoryTap != null) {
+          widget.onStoryTap!(story);
+        }
       },
       onLongPress: isCurrentUser ? () => _showStoryDeleteOptions(story) : null,
       child: Container(
-        width: 70,
-        margin: const EdgeInsets.only(right: AppSpacing.sm),
+        width: 80,
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
         child: Column(
           children: [
-            // Story ring with progress indicator and delete overlay
             Stack(
               children: [
-                // Progress ring background
                 Container(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: story.hasUnseenSnaps
-                          ? AppColors.harvestOrange
-                          : AppColors.seedBrown,
-                      width: 2,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.marketBlue, AppColors.harvestOrange],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(3),
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.marketBlue,
-                      backgroundImage: story.vendorAvatarUrl.isNotEmpty
-                          ? NetworkImage(story.vendorAvatarUrl)
-                          : null,
-                      child: story.vendorAvatarUrl.isEmpty
-                          ? Text(
-                              story.vendorName.isNotEmpty
-                                  ? story.vendorName[0].toUpperCase()
-                                  : 'V',
-                              style: AppTypography.bodyLG.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            )
-                          : null,
-                    ),
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppColors.eggshell,
+                    backgroundImage: story.vendorAvatarUrl.isNotEmpty
+                        ? NetworkImage(_rewriteUrlForCurrentPlatform(story.vendorAvatarUrl))
+                        : null,
+                    child: story.vendorAvatarUrl.isEmpty
+                        ? Text(
+                            story.vendorName.isNotEmpty
+                                ? story.vendorName[0].toUpperCase()
+                                : '?',
+                            style: AppTypography.bodyLG.copyWith(
+                              color: AppColors.marketBlue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                    onBackgroundImageError: (exception, stackTrace) {
+                      debugPrint('[StoryCarousel] ❌ Avatar load error for ${story.vendorName}: $exception');
+                    },
                   ),
                 ),
 
@@ -155,13 +157,11 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
             Text(
               story.vendorName,
               style: AppTypography.caption.copyWith(
-                color: isCurrentUser
-                    ? AppColors.marketBlue
-                    : AppColors.soilCharcoal,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -399,5 +399,33 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
         );
       }
     }
+  }
+
+  /// ✅ CROSS-PLATFORM URL REWRITING: Ensures avatars work across iOS/Android emulators
+  /// iOS emulator: localhost URLs need to be rewritten to use the device's host
+  /// Android emulator: 10.0.2.2 URLs need to be rewritten to use localhost for iOS
+  String _rewriteUrlForCurrentPlatform(String originalUrl) {
+    // Only rewrite Firebase Storage emulator URLs
+    if (!originalUrl.contains('googleapis.com') && 
+        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
+      
+      debugPrint('[StoryCarousel] 🔄 URL rewriting for cross-platform compatibility');
+      debugPrint('[StoryCarousel] - Original URL: $originalUrl');
+      
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // iOS: Convert Android emulator URL to iOS format
+        final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
+        debugPrint('[StoryCarousel] - iOS rewrite: $rewritten');
+        return rewritten;
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        // Android: Convert iOS emulator URL to Android format  
+        final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
+        debugPrint('[StoryCarousel] - Android rewrite: $rewritten');
+        return rewritten;
+      }
+    }
+    
+    // No rewriting needed for production URLs or non-emulator environments
+    return originalUrl;
   }
 }

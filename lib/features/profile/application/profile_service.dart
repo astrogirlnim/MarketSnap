@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:developer' as developer;
 
 import '../../../core/models/vendor_profile.dart';
 import '../../../core/models/regular_user_profile.dart';
@@ -62,11 +63,38 @@ class ProfileService {
       throw Exception('User must be authenticated to save profile');
     }
 
-    debugPrint('[ProfileService] Saving profile for user: $uid');
+    debugPrint('[ProfileService] 🔄 Starting profile save for user: $uid');
     debugPrint('[ProfileService] Profile data: $stallName in $marketCity');
+    debugPrint('[ProfileService] 🖼️ Avatar handling:');
+    debugPrint('[ProfileService] - localAvatarPath parameter: $localAvatarPath');
 
-    // Get existing profile or create new one
+    // Get existing profile to understand current avatar state
     final existingProfile = _hiveService.getVendorProfile(uid);
+    debugPrint('[ProfileService] 📋 Existing profile analysis:');
+    debugPrint('[ProfileService] - Existing profile found: ${existingProfile != null}');
+    debugPrint('[ProfileService] - Existing avatarURL: ${existingProfile?.avatarURL}');
+    debugPrint('[ProfileService] - Existing localAvatarPath: ${existingProfile?.localAvatarPath}');
+    
+    // ✅ CRITICAL FIX: Smart avatar state management
+    String? avatarURL;
+    String? finalLocalAvatarPath;
+    
+    if (localAvatarPath != null) {
+      // User selected a new avatar - use it and clear existing URL
+      debugPrint('[ProfileService] 🆕 New avatar selected - will upload after save');
+      finalLocalAvatarPath = localAvatarPath;
+      avatarURL = null; // Clear existing URL since we have new local image
+    } else if (existingProfile?.avatarURL != null) {
+      // No new avatar, preserve existing remote URL
+      debugPrint('[ProfileService] 🔄 No new avatar - preserving existing remote URL');
+      avatarURL = existingProfile!.avatarURL;
+      finalLocalAvatarPath = null; // Clear local path since we have remote URL
+    } else {
+      // No avatar at all
+      debugPrint('[ProfileService] ℹ️ No avatar data available');
+      avatarURL = null;
+      finalLocalAvatarPath = null;
+    }
 
     final profile = VendorProfile(
       uid: uid,
@@ -74,47 +102,178 @@ class ProfileService {
       stallName: stallName.trim(),
       marketCity: marketCity.trim(),
       allowLocation: allowLocation,
-      localAvatarPath: localAvatarPath,
-      avatarURL: existingProfile?.avatarURL, // Preserve existing avatar URL
-      needsSync: true, // Mark for sync since we're updating locally
+      localAvatarPath: finalLocalAvatarPath,
+      avatarURL: avatarURL,
+      needsSync: true, // Always mark for sync when saving
       lastUpdated: DateTime.now(),
     );
 
+    debugPrint('[ProfileService] 📦 Final profile state before save:');
+    debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
+    debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
+    debugPrint('[ProfileService] - needsSync: ${profile.needsSync}');
+
+    // Save locally first (offline-first approach)
     await _hiveService.saveVendorProfile(profile);
-    debugPrint('[ProfileService] Profile saved locally successfully');
+    debugPrint('[ProfileService] ✅ Profile saved to local storage successfully');
 
-    // 📢 Broadcast profile update to all listeners
+    // 📢 Broadcast immediate profile update
     _profileUpdateNotifier.notifyVendorProfileUpdate(profile);
-    debugPrint(
-      '[ProfileService] 📢 Profile update broadcasted for: ${profile.displayName}',
-    );
+    debugPrint('[ProfileService] 📢 Profile update broadcasted for: ${profile.displayName}');
 
-    // Try to sync immediately if online - but don't block the UI
-    _attemptImmediateSync(uid);
+    // ✅ CRITICAL FIX: Attempt sync with comprehensive error handling and retry
+    try {
+      await _syncProfileWithRetry(uid);
+    } catch (e) {
+      debugPrint('[ProfileService] ⚠️ Initial sync failed but profile saved locally: $e');
+      // Don't throw - offline-first means local save succeeds even if sync fails
+    }
 
     // Also try to save FCM token now that profile exists
     _attemptFCMTokenSave();
   }
 
-  /// Attempts to sync profile immediately without blocking the UI
-  void _attemptImmediateSync(String uid) {
-    debugPrint('[ProfileService] Attempting immediate sync for UID: $uid');
-
-    syncProfileToFirestore(uid)
-        .timeout(
-          const Duration(seconds: 5), // 5 second timeout
-          onTimeout: () {
-            debugPrint(
-              '[ProfileService] Sync timed out after 5 seconds - will retry later',
-            );
-            return;
-          },
-        )
-        .catchError((error) {
-          debugPrint('[ProfileService] Immediate sync failed: $error');
-          // Don't throw - offline-first means we save locally and sync when possible
-        });
+  /// ✅ NEW METHOD: Sync profile with retry logic and comprehensive avatar handling
+  Future<void> _syncProfileWithRetry(String uid, {int maxRetries = 3}) async {
+    developer.log(
+      'Starting sync with retry for UID: $uid',
+      name: 'ProfileService.Sync',
+      level: 1000,
+      error: {'uid': uid, 'retries': maxRetries},
+    );
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        developer.log('Sync attempt $attempt/$maxRetries', name: 'ProfileService.Sync');
+        
+        final success = await _performProfileSync(uid);
+        if (success) {
+          developer.log(
+            '✅ Profile sync completed successfully on attempt $attempt',
+            name: 'ProfileService.Sync',
+            level: 500
+          );
+          return;
+        } else {
+          developer.log(
+            '❌ Profile sync failed on attempt $attempt, but no exception was thrown.',
+            name: 'ProfileService.Sync',
+            level: 1200
+          );
+        }
+      } catch (e, s) {
+        developer.log(
+          '❌ Sync attempt $attempt failed with exception.',
+          name: 'ProfileService.Sync',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
+        if (attempt == maxRetries) {
+          developer.log(
+            '🚨 All sync attempts failed - giving up',
+            name: 'ProfileService.Sync',
+            level: 2000,
+            error: e,
+            stackTrace: s,
+          );
+          rethrow;
+        } else {
+          // Wait before retry with exponential backoff
+          final waitTime = Duration(seconds: attempt * 2);
+          debugPrint('[ProfileService] ⏳ Waiting ${waitTime.inSeconds}s before retry...');
+          await Future.delayed(waitTime);
+        }
+      }
+    }
   }
+
+  /// ✅ NEW METHOD: Perform actual profile sync with comprehensive avatar upload handling
+  Future<bool> _performProfileSync(String uid) async {
+    developer.log(
+      'Performing profile sync for UID: $uid',
+      name: 'ProfileService.Sync.Perform',
+      level: 1000,
+      error: {'uid': uid},
+    );
+
+    final profile = _hiveService.getVendorProfile(uid);
+    if (profile == null) {
+      developer.log('❌ No profile found locally for UID: $uid', name: 'ProfileService.Sync.Perform', level: 1200);
+      return false;
+    }
+
+    if (!profile.needsSync) {
+      developer.log('✅ Profile already synced for UID: $uid', name: 'ProfileService.Sync.Perform');
+      return true;
+    }
+
+    developer.log(
+      '🖼️ Avatar sync analysis:',
+      name: 'ProfileService.Sync.Perform',
+      error: {
+        'localAvatarPath': profile.localAvatarPath,
+        'avatarURL': profile.avatarURL,
+      }
+    );
+
+    // Handle avatar upload if needed
+    String? finalAvatarURL = profile.avatarURL;
+    
+    if (profile.localAvatarPath != null) {
+      developer.log('📤 Uploading local avatar to Firebase Storage...', name: 'ProfileService.Sync.Perform');
+      try {
+        finalAvatarURL = await uploadAvatar(profile.localAvatarPath!);
+        developer.log('✅ Avatar uploaded successfully: $finalAvatarURL', name: 'ProfileService.Sync.Perform');
+      } catch (e, s) {
+        developer.log(
+          '❌ Avatar upload failed',
+          name: 'ProfileService.Sync.Perform',
+          error: e,
+          stackTrace: s,
+          level: 1500,
+        );
+        throw Exception('Avatar upload failed: $e');
+      }
+    }
+
+    // Create final profile for Firestore with updated avatar URL
+    final profileToSync = profile.copyWith(
+      avatarURL: finalAvatarURL,
+      localAvatarPath: null, // Clear local path after successful upload
+      needsSync: false, // Mark as synced
+    );
+
+    developer.log(
+      '📤 Syncing profile to Firestore...',
+      name: 'ProfileService.Sync.Perform',
+      error: profileToSync.toFirestore(),
+    );
+
+    // Write to Firestore
+    await _firestore
+        .collection('vendors')
+        .doc(uid)
+        .set(profileToSync.toFirestore())
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Firestore write timed out after 15 seconds'),
+        );
+
+    debugPrint('[ProfileService] ✅ Firestore write completed successfully');
+
+    // Update local storage with synced profile
+    await _hiveService.saveVendorProfile(profileToSync);
+    debugPrint('[ProfileService] ✅ Local profile updated with sync results');
+
+    // 📢 Broadcast final profile update with correct avatar URL
+    _profileUpdateNotifier.notifyVendorProfileUpdate(profileToSync);
+    debugPrint('[ProfileService] 📢 Final profile update broadcasted after sync');
+
+    return true;
+  }
+
+
 
   /// Attempts to save FCM token after profile creation
   void _attemptFCMTokenSave() {
@@ -179,167 +338,97 @@ class ProfileService {
       throw Exception('User must be authenticated to upload avatar');
     }
 
-    debugPrint('[ProfileService] Uploading avatar for user: $uid');
+    developer.log(
+      '📤 Starting avatar upload for user: $uid',
+      name: 'ProfileService.Upload',
+      error: {'uid': uid, 'path': localPath}
+    );
 
     try {
       final file = File(localPath);
       if (!await file.exists()) {
+        developer.log('❌ Avatar file does not exist: $localPath', name: 'ProfileService.Upload', level: 1500);
         throw Exception('Avatar file does not exist: $localPath');
+      }
+
+      // Check file size for reasonable limits
+      final fileSize = await file.length();
+      developer.log('File size: $fileSize bytes', name: 'ProfileService.Upload');
+      
+      if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        developer.log('❌ Avatar file too large', name: 'ProfileService.Upload', level: 1200, error: {'size': fileSize});
+        throw Exception('Avatar file too large ($fileSize bytes). Maximum size is 5MB.');
       }
 
       // Create a reference to the avatar location
       final ref = _storage.ref().child('vendors/$uid/avatar.jpg');
 
-      // Upload the file
-      debugPrint('[ProfileService] Starting avatar upload...');
-      final uploadTask = ref.putFile(file);
+      // Upload the file with metadata
+      developer.log('📤 Uploading to Firebase Storage...', name: 'ProfileService.Upload');
+      final uploadTask = ref.putFile(
+        file,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'uploadedAt': DateTime.now().toIso8601String(),
+            'uploadedBy': uid,
+          },
+        ),
+      );
 
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      debugPrint('[ProfileService] Avatar uploaded successfully: $downloadUrl');
+      developer.log(
+        '✅ Avatar uploaded successfully: $downloadUrl',
+        name: 'ProfileService.Upload',
+        error: {'url': downloadUrl, 'path': 'vendors/$uid/avatar.jpg'},
+      );
+      
       return downloadUrl;
-    } catch (e) {
-      debugPrint('[ProfileService] Error uploading avatar: $e');
+    } catch (e, s) {
+      developer.log(
+        '❌ Avatar upload failed',
+        name: 'ProfileService.Upload',
+        level: 1500,
+        error: e,
+        stackTrace: s,
+      );
       throw Exception('Failed to upload avatar: $e');
     }
   }
 
-  /// Syncs a vendor profile from local storage to Firestore
-  Future<void> syncProfileToFirestore(String uid) async {
-    debugPrint('[ProfileService] Syncing profile to Firestore for UID: $uid');
-
-    final profile = _hiveService.getVendorProfile(uid);
-    if (profile == null) {
-      debugPrint('[ProfileService] No profile found locally for UID: $uid');
-      return;
-    }
-
-    if (!profile.needsSync) {
-      debugPrint('[ProfileService] Profile already synced for UID: $uid');
-      return;
-    }
-
-    try {
-      debugPrint('[ProfileService] Starting Firestore sync process...');
-
-      // Upload avatar if we have a local path but no URL
-      String? avatarURL = profile.avatarURL;
-      if (profile.localAvatarPath != null && profile.avatarURL == null) {
-        debugPrint('[ProfileService] Uploading avatar before profile sync');
-        avatarURL = await uploadAvatar(profile.localAvatarPath!);
+  /// ✅ UPDATED METHOD: Wait for sync completion with proper result handling
+  Future<bool> waitForSyncCompletion(String uid, {Duration timeout = const Duration(seconds: 30)}) async {
+    debugPrint('[ProfileService] ⏳ Waiting for sync completion for UID: $uid');
+    
+    final stopwatch = Stopwatch()..start();
+    
+    while (stopwatch.elapsed < timeout) {
+      final profile = _hiveService.getVendorProfile(uid);
+      
+      if (profile == null) {
+        debugPrint('[ProfileService] ❌ Profile not found during sync wait');
+        return false;
       }
-
-      // Update profile with avatar URL if we got one
-      final profileToSync = avatarURL != null
-          ? profile.copyWith(avatarURL: avatarURL, localAvatarPath: null)
-          : profile;
-
-      debugPrint(
-        '[ProfileService] Writing profile to Firestore collection: vendors/$uid',
-      );
-
-      // Sync to Firestore with timeout and detailed error handling
-      await _firestore
-          .collection('vendors')
-          .doc(uid)
-          .set(profileToSync.toFirestore())
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw Exception(
-              'Firestore write operation timed out after 10 seconds',
-            ),
-          );
-
-      debugPrint('[ProfileService] Firestore write completed successfully');
-
-      // Mark as synced locally
-      await _hiveService.markProfileAsSynced(uid);
-
-      // Save updated profile with avatar URL
-      if (avatarURL != null) {
-        final finalProfile = profileToSync.copyWith(needsSync: false);
-        await _hiveService.saveVendorProfile(finalProfile);
-
-        // 📢 Broadcast profile update since avatar URL was updated
-        _profileUpdateNotifier.notifyVendorProfileUpdate(finalProfile);
-        debugPrint(
-          '[ProfileService] 📢 Profile update broadcasted after avatar sync for: ${finalProfile.displayName}',
-        );
+      
+      if (!profile.needsSync) {
+        debugPrint('[ProfileService] ✅ Sync completed in ${stopwatch.elapsed.inMilliseconds}ms');
+        return true;
       }
-
-      debugPrint('[ProfileService] Profile synced to Firestore successfully');
-    } on FirebaseException catch (e) {
-      debugPrint(
-        '[ProfileService] Firebase error during sync: ${e.code} - ${e.message}',
-      );
-      throw Exception('Firebase sync failed: ${e.message}');
-    } catch (e) {
-      debugPrint('[ProfileService] Error syncing profile to Firestore: $e');
-
-      // Additional diagnostics for Firestore connection issues
-      if (e.toString().contains('FRAME_SIZE_ERROR') ||
-          e.toString().contains('Failed to connect') ||
-          e.toString().contains('INTERNAL')) {
-        debugPrint(
-          '[ProfileService] Detected Firestore emulator connection issue',
-        );
-        debugPrint(
-          '[ProfileService] This is likely due to emulator connectivity problems',
-        );
-      }
-
-      throw Exception('Failed to sync profile: $e');
+      
+      // Check every 100ms
+      await Future.delayed(const Duration(milliseconds: 100));
     }
+    
+    debugPrint('[ProfileService] ⏰ Sync wait timed out after ${timeout.inSeconds}s');
+    return false;
   }
 
-  /// Saves the FCM token to the user's profile in Firestore and locally
-  Future<void> saveFCMToken(String token) async {
-    final uid = currentUserUid;
-    if (uid == null) return;
-
-    debugPrint('[ProfileService] Saving FCM token for user $uid');
-    try {
-      // Check if user has vendor or regular user profile to determine collection
-      final vendorProfile = getCurrentUserProfile();
-      final regularProfile = getCurrentRegularUserProfile();
-
-      if (vendorProfile != null) {
-        // User is a vendor - save to vendors collection
-        debugPrint('[ProfileService] Saving FCM token to vendors collection');
-        await _firestore.collection('vendors').doc(uid).set(
-          {'fcmToken': token},
-          SetOptions(
-            merge: true,
-          ), // Use merge to avoid overwriting existing data
-        );
-      } else if (regularProfile != null) {
-        // User is a regular user - save to regularUsers collection
-        debugPrint(
-          '[ProfileService] Saving FCM token to regularUsers collection',
-        );
-        await _firestore.collection('regularUsers').doc(uid).set(
-          {'fcmToken': token},
-          SetOptions(
-            merge: true,
-          ), // Use merge to avoid overwriting existing data
-        );
-      } else {
-        // User hasn't completed profile setup yet - skip FCM token saving for now
-        debugPrint(
-          '[ProfileService] User profile not complete yet, skipping FCM token save',
-        );
-        debugPrint(
-          '[ProfileService] FCM token will be saved when profile is created',
-        );
-        return;
-      }
-
-      debugPrint('[ProfileService] FCM token saved to Firestore successfully');
-    } catch (e) {
-      debugPrint('[ProfileService] Error saving FCM token: $e');
-      // Don't rethrow, not a critical error for UI
-    }
+  /// ✅ UPDATED METHOD: Legacy sync method - now delegates to new implementation
+  Future<void> syncProfileToFirestore(String uid) async {
+    debugPrint('[ProfileService] 🔄 Legacy syncProfileToFirestore called - delegating to new implementation');
+    await _performProfileSync(uid);
   }
 
   /// Loads vendor profile from Firestore and caches locally
@@ -381,7 +470,7 @@ class ProfileService {
 
     for (final profile in profilesNeedingSync) {
       try {
-        await syncProfileToFirestore(profile.uid);
+        await _performProfileSync(profile.uid);
       } catch (e) {
         debugPrint(
           '[ProfileService] Failed to sync profile ${profile.uid}: $e',
@@ -448,7 +537,7 @@ class ProfileService {
     return _hiveService.getRegularUserProfile(uid);
   }
 
-  /// Creates or updates a regular user profile locally
+  /// ✅ UPDATED METHOD: Creates or updates a regular user profile with improved avatar handling
   Future<void> saveRegularUserProfile({
     required String displayName,
     String? localAvatarPath,
@@ -458,7 +547,9 @@ class ProfileService {
       throw Exception('User must be authenticated to save profile');
     }
 
-    debugPrint('[ProfileService] Saving regular user profile for UID: $uid');
+    debugPrint('[ProfileService] 🔄 Starting regular user profile save for UID: $uid');
+    debugPrint('[ProfileService] 🖼️ Avatar handling:');
+    debugPrint('[ProfileService] - localAvatarPath parameter: $localAvatarPath');
 
     try {
       // Get current user's contact info from auth
@@ -466,33 +557,63 @@ class ProfileService {
       final phoneNumber = user?.phoneNumber;
       final email = user?.email;
 
+      // Get existing profile to understand current avatar state
+      final existingProfile = _hiveService.getRegularUserProfile(uid);
+      debugPrint('[ProfileService] 📋 Existing regular user profile analysis:');
+      debugPrint('[ProfileService] - Existing profile found: ${existingProfile != null}');
+      debugPrint('[ProfileService] - Existing avatarURL: ${existingProfile?.avatarURL}');
+      debugPrint('[ProfileService] - Existing localAvatarPath: ${existingProfile?.localAvatarPath}');
+      
+      // ✅ CRITICAL FIX: Smart avatar state management for regular users
+      String? avatarURL;
+      String? finalLocalAvatarPath;
+      
+      if (localAvatarPath != null) {
+        // User selected a new avatar - use it and clear existing URL
+        debugPrint('[ProfileService] 🆕 New avatar selected - will upload after save');
+        finalLocalAvatarPath = localAvatarPath;
+        avatarURL = null; // Clear existing URL since we have new local image
+      } else if (existingProfile?.avatarURL != null) {
+        // No new avatar, preserve existing remote URL
+        debugPrint('[ProfileService] 🔄 No new avatar - preserving existing remote URL');
+        avatarURL = existingProfile!.avatarURL;
+        finalLocalAvatarPath = null; // Clear local path since we have remote URL
+      } else {
+        // No avatar at all
+        debugPrint('[ProfileService] ℹ️ No avatar data available');
+        avatarURL = null;
+        finalLocalAvatarPath = null;
+      }
+
       final profile = RegularUserProfile(
         uid: uid,
         displayName: displayName.trim(),
-        localAvatarPath: localAvatarPath,
+        localAvatarPath: finalLocalAvatarPath,
         phoneNumber: phoneNumber,
         email: email,
-        needsSync: true,
+        avatarURL: avatarURL,
+        needsSync: true, // Always mark for sync when saving
       );
 
-      // Save locally
+      debugPrint('[ProfileService] 📦 Final regular user profile state before save:');
+      debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
+      debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
+      debugPrint('[ProfileService] - needsSync: ${profile.needsSync}');
+
+      // Save locally first (offline-first approach)
       await _hiveService.saveRegularUserProfile(profile);
+      debugPrint('[ProfileService] ✅ Regular user profile saved to local storage successfully');
 
-      debugPrint('[ProfileService] Regular user profile saved locally');
-
-      // 📢 Broadcast profile update to all listeners
+      // 📢 Broadcast immediate profile update
       _profileUpdateNotifier.notifyRegularUserProfileUpdate(profile);
-      debugPrint(
-        '[ProfileService] 📢 Regular user profile update broadcasted for: ${profile.displayName}',
-      );
+      debugPrint('[ProfileService] 📢 Regular user profile update broadcasted for: ${profile.displayName}');
 
-      // Try to sync to Firestore if online
+      // ✅ CRITICAL FIX: Attempt sync with comprehensive error handling and retry
       try {
-        await syncRegularUserProfileToFirestore(uid);
+        await _syncRegularUserProfileWithRetry(uid);
       } catch (e) {
-        debugPrint(
-          '[ProfileService] Profile saved locally, will sync when online: $e',
-        );
+        debugPrint('[ProfileService] ⚠️ Initial sync failed but regular user profile saved locally: $e');
+        // Don't throw - offline-first means local save succeeds even if sync fails
       }
 
       // Also try to save FCM token now that profile exists
@@ -503,94 +624,263 @@ class ProfileService {
     }
   }
 
-  /// Syncs a regular user profile from local storage to Firestore
-  Future<void> syncRegularUserProfileToFirestore(String uid) async {
-    debugPrint(
-      '[ProfileService] Syncing regular user profile to Firestore for UID: $uid',
+  /// ✅ NEW METHOD: Sync regular user profile with retry logic and comprehensive avatar handling
+  Future<void> _syncRegularUserProfileWithRetry(String uid, {int maxRetries = 3}) async {
+    developer.log(
+      'Starting regular user profile sync with retry for UID: $uid',
+      name: 'ProfileService.Sync.Regular',
+      level: 1000,
+      error: {'uid': uid, 'retries': maxRetries},
+    );
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        developer.log('Sync attempt $attempt/$maxRetries for regular user', name: 'ProfileService.Sync.Regular');
+        
+        final success = await _performRegularUserProfileSync(uid);
+        if (success) {
+          developer.log(
+            '✅ Regular user profile sync completed successfully on attempt $attempt',
+            name: 'ProfileService.Sync.Regular',
+            level: 500
+          );
+          return;
+        } else {
+          developer.log(
+            '❌ Regular user profile sync failed on attempt $attempt, but no exception was thrown.',
+            name: 'ProfileService.Sync.Regular',
+            level: 1200,
+          );
+        }
+      } catch (e, s) {
+        developer.log(
+          '❌ Regular user sync attempt $attempt failed with exception.',
+          name: 'ProfileService.Sync.Regular',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
+        if (attempt == maxRetries) {
+          developer.log(
+            '🚨 All regular user sync attempts failed - giving up',
+            name: 'ProfileService.Sync.Regular',
+            level: 2000,
+            error: e,
+            stackTrace: s,
+          );
+          rethrow;
+        } else {
+          // Wait before retry with exponential backoff
+          final waitTime = Duration(seconds: attempt * 2);
+          debugPrint('[ProfileService] ⏳ Waiting ${waitTime.inSeconds}s before retry...');
+          await Future.delayed(waitTime);
+        }
+      }
+    }
+  }
+
+  /// ✅ NEW METHOD: Perform actual regular user profile sync with comprehensive avatar upload handling
+  Future<bool> _performRegularUserProfileSync(String uid) async {
+    developer.log(
+      'Performing regular user profile sync for UID: $uid',
+      name: 'ProfileService.Sync.Perform.Regular',
+      level: 1000,
+      error: {'uid': uid},
     );
 
     final profile = _hiveService.getRegularUserProfile(uid);
     if (profile == null) {
-      debugPrint(
-        '[ProfileService] No regular user profile found locally for UID: $uid',
-      );
-      return;
+      developer.log('❌ No regular user profile found locally for UID: $uid', name: 'ProfileService.Sync.Perform.Regular', level: 1200);
+      return false;
     }
 
     if (!profile.needsSync) {
-      debugPrint(
-        '[ProfileService] Regular user profile already synced for UID: $uid',
-      );
-      return;
+      developer.log('✅ Regular user profile already synced for UID: $uid', name: 'ProfileService.Sync.Perform.Regular');
+      return true;
     }
 
+    developer.log(
+      '🖼️ Regular user avatar sync analysis:',
+      name: 'ProfileService.Sync.Perform.Regular',
+      error: {
+        'localAvatarPath': profile.localAvatarPath,
+        'avatarURL': profile.avatarURL,
+      }
+    );
+
+    // Handle avatar upload if needed
+    String? finalAvatarURL = profile.avatarURL;
+    
+    if (profile.localAvatarPath != null) {
+      developer.log('📤 Uploading regular user local avatar to Firebase Storage...', name: 'ProfileService.Sync.Perform.Regular');
+      try {
+        // Use different storage path for regular users
+        finalAvatarURL = await _uploadRegularUserAvatar(profile.localAvatarPath!, uid);
+        developer.log('✅ Regular user avatar uploaded successfully: $finalAvatarURL', name: 'ProfileService.Sync.Perform.Regular');
+      } catch (e, s) {
+        developer.log(
+          '❌ Regular user avatar upload failed',
+          name: 'ProfileService.Sync.Perform.Regular',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
+        throw Exception('Regular user avatar upload failed: $e');
+      }
+    }
+
+    // Create final profile for Firestore with updated avatar URL
+    final profileToSync = profile.copyWith(
+      avatarURL: finalAvatarURL,
+      localAvatarPath: null, // Clear local path after successful upload
+      needsSync: false, // Mark as synced
+    );
+
+    developer.log(
+      '📤 Syncing regular user profile to Firestore...',
+      name: 'ProfileService.Sync.Perform.Regular',
+      error: profileToSync.toFirestore(),
+    );
+
+    // Write to Firestore regular users collection
+    await _firestore
+        .collection('regularUsers')
+        .doc(uid)
+        .set(profileToSync.toFirestore())
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Firestore write timed out after 15 seconds'),
+        );
+
+    debugPrint('[ProfileService] ✅ Regular user profile Firestore write completed successfully');
+
+    // Update local storage with synced profile
+    await _hiveService.saveRegularUserProfile(profileToSync);
+    debugPrint('[ProfileService] ✅ Local regular user profile updated with sync results');
+
+    // 📢 Broadcast final profile update with correct avatar URL
+    _profileUpdateNotifier.notifyRegularUserProfileUpdate(profileToSync);
+    debugPrint('[ProfileService] 📢 Final regular user profile update broadcasted after sync');
+
+    return true;
+  }
+
+  /// ✅ NEW METHOD: Upload regular user avatar with proper storage path
+  Future<String?> _uploadRegularUserAvatar(String localPath, String uid) async {
+    developer.log(
+      '📤 Starting regular user avatar upload for UID: $uid',
+      name: 'ProfileService.Upload.Regular',
+      error: {'uid': uid, 'path': localPath}
+    );
+
     try {
-      debugPrint(
-        '[ProfileService] Starting regular user profile Firestore sync process...',
-      );
-
-      // Upload avatar if we have a local path but no URL
-      String? avatarURL = profile.avatarURL;
-      if (profile.localAvatarPath != null && profile.avatarURL == null) {
-        debugPrint(
-          '[ProfileService] Uploading avatar before regular user profile sync',
-        );
-        avatarURL = await uploadAvatar(profile.localAvatarPath!);
+      final file = File(localPath);
+      if (!await file.exists()) {
+        developer.log('❌ Regular user avatar file does not exist: $localPath', name: 'ProfileService.Upload.Regular', level: 1500);
+        throw Exception('Regular user avatar file does not exist: $localPath');
       }
 
-      // Update profile with avatar URL if we got one
-      final profileToSync = avatarURL != null
-          ? profile.copyWith(avatarURL: avatarURL, localAvatarPath: null)
-          : profile;
-
-      debugPrint(
-        '[ProfileService] Writing regular user profile to Firestore collection: regularUsers/$uid',
-      );
-
-      // Sync to Firestore regular users collection
-      await _firestore
-          .collection('regularUsers')
-          .doc(uid)
-          .set(profileToSync.toFirestore())
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw Exception(
-              'Firestore write operation timed out after 10 seconds',
-            ),
-          );
-
-      debugPrint(
-        '[ProfileService] Regular user profile Firestore write completed successfully',
-      );
-
-      // Mark as synced locally
-      final finalProfile = profileToSync.copyWith(needsSync: false);
-      await _hiveService.saveRegularUserProfile(finalProfile);
-
-      // 📢 Broadcast profile update if avatar was updated
-      if (avatarURL != null) {
-        _profileUpdateNotifier.notifyRegularUserProfileUpdate(finalProfile);
-        debugPrint(
-          '[ProfileService] 📢 Regular user profile update broadcasted after avatar sync for: ${finalProfile.displayName}',
-        );
+      // Check file size for reasonable limits
+      final fileSize = await file.length();
+      developer.log('File size: $fileSize bytes', name: 'ProfileService.Upload.Regular');
+      
+      if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        developer.log('❌ Regular user avatar file too large', name: 'ProfileService.Upload.Regular', level: 1200, error: {'size': fileSize});
+        throw Exception('Regular user avatar file too large ($fileSize bytes). Maximum size is 5MB.');
       }
 
-      debugPrint(
-        '[ProfileService] Regular user profile synced to Firestore successfully',
+      // Create a reference to the regular user avatar location
+      final ref = _storage.ref().child('regularUsers/$uid/avatar.jpg');
+
+      // Upload the file with metadata
+      developer.log('📤 Uploading regular user avatar to Firebase Storage...', name: 'ProfileService.Upload.Regular');
+      final uploadTask = ref.putFile(
+        file,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'uploadedAt': DateTime.now().toIso8601String(),
+            'uploadedBy': uid,
+            'userType': 'regular',
+          },
+        ),
       );
-    } catch (e) {
-      debugPrint(
-        '[ProfileService] Error syncing regular user profile to Firestore: $e',
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      developer.log(
+        '✅ Regular user avatar uploaded successfully: $downloadUrl',
+        name: 'ProfileService.Upload.Regular',
+        error: {'url': downloadUrl, 'path': 'regularUsers/$uid/avatar.jpg'},
       );
-      throw Exception('Failed to sync regular user profile: $e');
+      
+      return downloadUrl;
+    } catch (e, s) {
+      developer.log(
+        '❌ Regular user avatar upload failed',
+        name: 'ProfileService.Upload.Regular',
+        level: 1500,
+        error: e,
+        stackTrace: s,
+      );
+      throw Exception('Failed to upload regular user avatar: $e');
     }
   }
 
-  /// Checks if the current user has a complete regular user profile
-  bool hasCompleteRegularUserProfile() {
+  /// ✅ UPDATED METHOD: Legacy regular user sync method - now delegates to new implementation
+  Future<void> syncRegularUserProfileToFirestore(String uid) async {
+    debugPrint('[ProfileService] 🔄 Legacy syncRegularUserProfileToFirestore called - delegating to new implementation');
+    await _performRegularUserProfileSync(uid);
+  }
+
+  /// Saves the FCM token to the user's profile in Firestore and locally
+  Future<void> saveFCMToken(String token) async {
     final uid = currentUserUid;
-    if (uid == null) return false;
-    return _hiveService.hasCompleteRegularUserProfile(uid);
+    if (uid == null) return;
+
+    debugPrint('[ProfileService] Saving FCM token for user $uid');
+    try {
+      // Check if user has vendor or regular user profile to determine collection
+      final vendorProfile = getCurrentUserProfile();
+      final regularProfile = getCurrentRegularUserProfile();
+
+      if (vendorProfile != null) {
+        // User is a vendor - save to vendors collection
+        debugPrint('[ProfileService] Saving FCM token to vendors collection');
+        await _firestore.collection('vendors').doc(uid).set(
+          {'fcmToken': token},
+          SetOptions(
+            merge: true,
+          ), // Use merge to avoid overwriting existing data
+        );
+      } else if (regularProfile != null) {
+        // User is a regular user - save to regularUsers collection
+        debugPrint(
+          '[ProfileService] Saving FCM token to regularUsers collection',
+        );
+        await _firestore.collection('regularUsers').doc(uid).set(
+          {'fcmToken': token},
+          SetOptions(
+            merge: true,
+          ), // Use merge to avoid overwriting existing data
+        );
+      } else {
+        // User hasn't completed profile setup yet - skip FCM token saving for now
+        debugPrint(
+          '[ProfileService] User profile not complete yet, skipping FCM token save',
+        );
+        debugPrint(
+          '[ProfileService] FCM token will be saved when profile is created',
+        );
+        return;
+      }
+
+      debugPrint('[ProfileService] FCM token saved to Firestore successfully');
+    } catch (e) {
+      debugPrint('[ProfileService] Error saving FCM token: $e');
+      // Don't rethrow, not a critical error for UI
+    }
   }
 
   /// Loads regular user profile from Firestore and caches locally
@@ -713,5 +1003,12 @@ class ProfileService {
       );
       throw Exception('Failed to load user profile: $e');
     }
+  }
+
+  /// Checks if the current user has a complete regular user profile
+  bool hasCompleteRegularUserProfile() {
+    final uid = currentUserUid;
+    if (uid == null) return false;
+    return _hiveService.hasCompleteRegularUserProfile(uid);
   }
 }
