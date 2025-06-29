@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/models/story_item_model.dart';
-import '../../domain/models/snap_model.dart';
+import '../../domain/models/snap_model.dart' as snap_models;
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
-import '../../../../shared/presentation/theme/app_spacing.dart';
-import '../../../../core/models/pending_media.dart';
 
 /// Story viewer screen that displays stories from different vendors
 /// Allows horizontal swiping between vendors and auto-advance through individual snaps
@@ -101,8 +98,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   /// Get duration for a snap based on media type
-  Duration _getSnapDuration(Snap snap) {
-    return snap.mediaType == MediaType.video ? _videoDuration : _imageDuration;
+  Duration _getSnapDuration(snap_models.Snap snap) {
+    return snap.mediaType == snap_models.MediaType.video ? _videoDuration : _imageDuration;
   }
 
   /// Start playing the current snap
@@ -113,7 +110,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     debugPrint('[StoryViewer] Starting snap ${_currentSnapIndex + 1}/${currentStory.snaps.length} for vendor ${currentStory.vendorName}');
     
     // Initialize video if needed
-    if (currentSnap.mediaType == MediaType.video) {
+    if (currentSnap.mediaType == snap_models.MediaType.video) {
       _initializeVideo(currentSnap.mediaUrl);
     } else {
       _videoController?.dispose();
@@ -367,8 +364,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   /// Build snap content (image or video)
-  Widget _buildSnapContent(Snap snap) {
-    if (snap.mediaType == MediaType.video) {
+  Widget _buildSnapContent(snap_models.Snap snap) {
+    if (snap.mediaType == snap_models.MediaType.video) {
       return _buildVideoContent(snap);
     } else {
       return _buildImageContent(snap);
@@ -376,7 +373,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   /// Build video content with filter overlay
-  Widget _buildVideoContent(Snap snap) {
+  Widget _buildVideoContent(snap_models.Snap snap) {
     if (!_isVideoInitialized || _videoController == null) {
       return Container(
         color: Colors.black,
@@ -414,7 +411,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   /// Build image content with filter overlay
-  Widget _buildImageContent(Snap snap) {
+  Widget _buildImageContent(snap_models.Snap snap) {
     // Apply filter overlay for images
     Color overlayColor = Colors.transparent;
     final filterType = snap.filterType;
@@ -549,8 +546,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   /// Build caption overlay at bottom
-  Widget _buildCaptionOverlay(Snap snap) {
-    if (snap.caption.isEmpty) return const SizedBox.shrink();
+  Widget _buildCaptionOverlay(snap_models.Snap snap) {
+    if (snap.caption == null || snap.caption!.isEmpty) return const SizedBox.shrink();
     
     return Positioned(
       bottom: 80,
@@ -563,7 +560,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
-          snap.caption,
+          snap.caption!,
           style: AppTypography.body.copyWith(color: Colors.white),
         ),
       ),

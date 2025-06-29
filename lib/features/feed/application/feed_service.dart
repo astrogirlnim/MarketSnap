@@ -154,28 +154,50 @@ class FeedService {
   Stream<List<String>> _getFollowedVendorsStream(String userId) {
     // Note: For now, we'll poll the follow service periodically
     // In a production app, you might want to cache this or use Firestore streams
-    return Stream.periodic(const Duration(minutes: 5), (_) => null)
-        .startWith(null)
-        .asyncMap((_) async {
-          try {
-            // Get followed vendors using direct Firestore query
-            final followedIds = await _getFollowedVendorIds(userId);
-            
-            // Also include current user's own stories
-            if (!followedIds.contains(userId)) {
-              followedIds.add(userId);
-            }
-            
-            return followedIds;
-          } catch (e) {
-            developer.log(
-              '[FeedService] Error getting followed vendors: $e',
-              name: 'FeedService',
-            );
-            // Fallback to just current user
-            return [userId];
+    
+    // Create a controller that starts with an immediate value
+    late StreamController<List<String>> controller;
+    
+    // Start with immediate execution
+    Future<void> getFollowedVendors() async {
+      try {
+        final followedIds = await _getFollowedVendorIds(userId);
+        
+        // Also include current user's own stories
+        if (!followedIds.contains(userId)) {
+          followedIds.add(userId);
+        }
+        
+        if (!controller.isClosed) {
+          controller.add(followedIds);
+        }
+      } catch (e) {
+        developer.log(
+          '[FeedService] Error getting followed vendors: $e',
+          name: 'FeedService',
+        );
+        // Fallback to just current user
+        if (!controller.isClosed) {
+          controller.add([userId]);
+        }
+      }
+    }
+    
+    controller = StreamController<List<String>>.broadcast(
+      onListen: () {
+        // Execute immediately on listen
+        getFollowedVendors();
+        
+        // Set up periodic updates
+        Timer.periodic(const Duration(minutes: 5), (_) {
+          if (!controller.isClosed) {
+            getFollowedVendors();
           }
         });
+      },
+    );
+    
+    return controller.stream;
   }
 
   /// Get the list of vendor IDs that the current user is following
