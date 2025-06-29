@@ -474,38 +474,37 @@ jobs:
           
           cd ..
 
+      - name: Fix Deployment Issues
+        run: |
+          echo "🔧 Running deployment issue fixes..."
+          chmod +x scripts/fix_deployment_issues.sh
+          ./scripts/fix_deployment_issues.sh
+
       - name: Deploy Firebase Backend
         run: |
-          echo "🚀 Deploying Firebase backend with caching optimizations..."
+          echo "🚀 Deploying Firebase backend with enhanced stability..."
           
           cd functions
           
-          # Check if dependencies are cached
-          if [ -d "node_modules" ]; then
-            echo "✅ Node.js dependencies cache restored"
+          # Verify dependencies are installed (should be done by fix script)
+          if [ ! -d "node_modules" ]; then
+            echo "⚠️  Installing dependencies as backup..."
+            npm install
           fi
           
-          # Install dependencies (will be fast if cached)
-          npm install
-          
-          # Check if TypeScript build is cached
-          if [ -d "lib" ]; then
-            echo "✅ Functions build cache restored"
+          # Verify build is complete (should be done by fix script)
+          if [ ! -d "lib" ]; then
+            echo "⚠️  Building functions as backup..."
+            npm run build
           fi
-          
-          # Build (will be fast if cached and no TS changes)
-          npm run build
           
           cd ..
           
-          # Deploy with verbose output
-          firebase deploy --only functions,firestore,storage --non-interactive --debug || {
-            echo "❌ Firebase deployment failed, retrying once..."
-            sleep 5
-            firebase deploy --only functions,firestore,storage --non-interactive
-          }
+          # Deploy with enhanced error handling
+          echo "📦 Starting final deployment verification..."
+          firebase deploy --only functions,firestore,storage --non-interactive --debug
           
-          echo "✅ Firebase backend deployed successfully with optimized caching"
+          echo "✅ Firebase backend deployed successfully with enhanced stability"
 
       - name: Activate Service Account for gcloud
         run: |
