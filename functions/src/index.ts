@@ -412,7 +412,7 @@ export const sendMessageNotification = onDocumentCreated(
 // --- AI Helper Functions (Phase 2 Scaffolding) ---
 
 // Configuration for AI Functions - support both environment variables
-// Firebase Functions v2 uses environment variables instead of functions.config()
+// Firebase Functions v2 uses environment variables instead of functions.config
 const AI_FUNCTIONS_ENABLED =
   process.env.AI_FUNCTIONS_ENABLED === "true";
 
