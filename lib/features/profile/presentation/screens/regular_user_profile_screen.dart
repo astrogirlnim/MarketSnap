@@ -10,7 +10,8 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
-import '../../../auth/application/auth_service.dart';
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/services/profile_update_notifier.dart';
 
 /// Regular User Profile Form Screen
 /// Simplified profile for regular users (no stall info, just basic profile)
@@ -36,8 +37,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   final _displayNameController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   final AuthService _authService = AuthService();
+  final ProfileUpdateNotifier _profileUpdateNotifier = ProfileUpdateNotifier();
 
   String? _localAvatarPath;
+  String? _avatarURL;
   String? _errorMessage;
   bool _isLoading = false;
   bool _isSaving = false;
@@ -46,12 +49,45 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
   void initState() {
     super.initState();
     _loadExistingProfile();
+    _listenToProfileUpdates();
   }
 
   @override
   void dispose() {
     _displayNameController.dispose();
     super.dispose();
+  }
+
+  /// ✅ FIX: Listen to profile updates and refresh avatar display
+  void _listenToProfileUpdates() {
+    _profileUpdateNotifier.regularUserProfileUpdates.listen((updatedProfile) {
+      final currentUser = widget.profileService.currentUserUid;
+      if (currentUser == updatedProfile.uid && mounted) {
+        developer.log(
+          '[RegularUserProfileScreen] 🔄 Profile update received - refreshing avatar display',
+          name: 'RegularUserProfileScreen',
+        );
+        setState(() {
+          _avatarURL = updatedProfile.avatarURL;
+          // Keep local path if it still exists and is valid
+          if (_localAvatarPath != null && !File(_localAvatarPath!).existsSync()) {
+            _localAvatarPath = null;
+          }
+        });
+        developer.log(
+          '[RegularUserProfileScreen] 🖼️ Avatar display refreshed:',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - avatarURL: $_avatarURL',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - localAvatarPath: $_localAvatarPath',
+          name: 'RegularUserProfileScreen',
+        );
+      }
+    });
   }
 
   /// Loads existing profile data if available
@@ -77,7 +113,20 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         setState(() {
           _displayNameController.text = regularProfile.displayName;
           _localAvatarPath = regularProfile.localAvatarPath;
+          _avatarURL = regularProfile.avatarURL;
         });
+        developer.log(
+          '[RegularUserProfileScreen] 🖼️ Avatar state loaded:',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - localAvatarPath: $_localAvatarPath',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - avatarURL: $_avatarURL',
+          name: 'RegularUserProfileScreen',
+        );
       } else {
         developer.log(
           '[RegularUserProfileScreen] No existing regular profile found',
@@ -120,6 +169,10 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         });
         developer.log(
           '[RegularUserProfileScreen] Avatar selected: ${image.path}',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] 🖼️ New local avatar selected: ${image.path}',
           name: 'RegularUserProfileScreen',
         );
       }
@@ -170,7 +223,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (_localAvatarPath != null)
+                if (_hasAvatar)
                   MarketSnapSecondaryButton(
                     text: 'Remove Photo',
                     icon: Icons.delete,
@@ -178,6 +231,11 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                       Navigator.pop(context);
                       setState(() {
                         _localAvatarPath = null;
+                        _avatarURL = null;
+                        developer.log(
+                          '[RegularUserProfileScreen] 🖼️ Avatar removed - both local and URL cleared',
+                          name: 'RegularUserProfileScreen',
+                        );
                       });
                     },
                   ),
@@ -267,6 +325,25 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     });
   }
 
+  /// ✅ FIX: Helper method to determine which avatar to display
+  String? get _displayAvatarPath {
+    // Priority: 1. Local path (new/unsaved), 2. Uploaded URL (saved)
+    if (_localAvatarPath != null && File(_localAvatarPath!).existsSync()) {
+      return _localAvatarPath;
+    }
+    return _avatarURL;
+  }
+
+  /// ✅ FIX: Helper method to check if we have any avatar
+  bool get _hasAvatar {
+    return _displayAvatarPath != null;
+  }
+
+  /// ✅ FIX: Helper method to determine if avatar is local file vs network URL
+  bool get _isLocalAvatar {
+    return _localAvatarPath != null && File(_localAvatarPath!).existsSync();
+  }
+
   /// Builds the avatar section
   Widget _buildAvatarSection() {
     return Column(
@@ -281,19 +358,49 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
               color: AppColors.eggshell,
               border: Border.all(color: AppColors.seedBrown, width: 2),
             ),
-            child: _localAvatarPath != null
+            child: _hasAvatar
                 ? ClipOval(
-                    child: Image.file(
-                      File(_localAvatarPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.broken_image,
-                          size: 48,
-                          color: AppColors.soilTaupe,
-                        );
-                      },
-                    ),
+                    child: _isLocalAvatar
+                        ? Image.file(
+                            File(_localAvatarPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              developer.log(
+                                '[RegularUserProfileScreen] 🖼️ Local image error: $error',
+                                name: 'RegularUserProfileScreen',
+                              );
+                              return _buildFallbackNetworkImage();
+                            },
+                          )
+                        : Image.network(
+                            _avatarURL!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              developer.log(
+                                '[RegularUserProfileScreen] 🖼️ Network image error: $error',
+                                name: 'RegularUserProfileScreen',
+                              );
+                              return Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.soilTaupe,
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.marketBlue,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                   )
                 : Icon(
                     Icons.person_add_alt_1,
@@ -306,7 +413,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         GestureDetector(
           onTap: _showAvatarOptions,
           child: Text(
-            _localAvatarPath != null ? 'Change Avatar' : 'Add Avatar',
+            _hasAvatar ? 'Change Avatar' : 'Add Avatar',
             style: AppTypography.body.copyWith(
               color: AppColors.marketBlue,
               fontWeight: FontWeight.w600,
@@ -320,6 +427,28 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  /// ✅ FIX: Fallback widget when local image fails but network URL exists
+  Widget _buildFallbackNetworkImage() {
+    if (_avatarURL != null) {
+      return Image.network(
+        _avatarURL!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(
+            Icons.broken_image,
+            size: 48,
+            color: AppColors.soilTaupe,
+          );
+        },
+      );
+    }
+    return Icon(
+      Icons.broken_image,
+      size: 48,
+      color: AppColors.soilTaupe,
     );
   }
 
@@ -429,6 +558,38 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         );
       }
     }
+  }
+
+  /// ✅ FIX: Listen to profile updates and refresh avatar display
+  void _listenToProfileUpdates() {
+    _profileUpdateNotifier.regularUserProfileUpdates.listen((updatedProfile) {
+      final currentUser = widget.profileService.currentUserUid;
+      if (currentUser == updatedProfile.uid && mounted) {
+        developer.log(
+          '[RegularUserProfileScreen] 🔄 Profile update received - refreshing avatar display',
+          name: 'RegularUserProfileScreen',
+        );
+        setState(() {
+          _avatarURL = updatedProfile.avatarURL;
+          // Keep local path if it still exists and is valid
+          if (_localAvatarPath != null && !File(_localAvatarPath!).existsSync()) {
+            _localAvatarPath = null;
+          }
+        });
+        developer.log(
+          '[RegularUserProfileScreen] 🖼️ Avatar display refreshed:',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - avatarURL: $_avatarURL',
+          name: 'RegularUserProfileScreen',
+        );
+        developer.log(
+          '[RegularUserProfileScreen] - localAvatarPath: $_localAvatarPath',
+          name: 'RegularUserProfileScreen',
+        );
+      }
+    });
   }
 
   @override
