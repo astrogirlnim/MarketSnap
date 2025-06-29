@@ -18,14 +18,18 @@ async function addTestData() {
   console.log('🧪 Adding test data to MarketSnap Firestore emulator using Admin SDK...');
   
   try {
-    // Better placeholder images using picsum.photos (reliable service)
-    const PLACEHOLDER_IMAGES = {
-      avatar1: 'https://picsum.photos/50/50?random=1',
-      avatar2: 'https://picsum.photos/50/50?random=2', 
-      avatar3: 'https://picsum.photos/50/50?random=3',
-      media1: 'https://picsum.photos/400/300?random=10',
-      media2: 'https://picsum.photos/400/300?random=11',
-      media3: 'https://picsum.photos/400/300?random=12'
+    // ✅ FIXED: Using consistent static images instead of random picsum URLs
+    // These URLs will show the SAME image on all devices
+    const CONSISTENT_IMAGES = {
+      avatar1: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
+      avatar2: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face', 
+      avatar3: 'https://images.unsplash.com/photo-1494790108755-2616b612b790?w=50&h=50&fit=crop&crop=face',
+      // Specific food images that are consistent
+      strawberries: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=300&fit=crop',
+      tomatoes: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop',
+      bread: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&h=300&fit=crop',
+      greens: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop',
+      candles: 'https://images.unsplash.com/photo-1536431311719-398b6704d4cc?w=400&h=300&fit=crop'
     };
 
     // Test snaps data
@@ -34,8 +38,8 @@ async function addTestData() {
         id: 'test-strawberries-1',
         vendorId: 'vendor-berry-patch',
         vendorName: 'Berry Patch',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
-        mediaUrl: 'https://picsum.photos/400/300?random=101',
+        vendorAvatarUrl: CONSISTENT_IMAGES.avatar1,
+        mediaUrl: CONSISTENT_IMAGES.strawberries,
         mediaType: 'photo',
         caption: 'Just picked these sweet, juicy strawberries! Perfect for pies, jams, or just eating fresh.\n🍓 #fresh #berries #farmstand',
         filterType: null,
@@ -46,8 +50,8 @@ async function addTestData() {
         id: 'test-tomatoes-2', 
         vendorId: 'vendor-test-user',
         vendorName: 'Test',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
-        mediaUrl: 'https://picsum.photos/400/300?random=102',
+        vendorAvatarUrl: CONSISTENT_IMAGES.avatar2,
+        mediaUrl: CONSISTENT_IMAGES.tomatoes,
         mediaType: 'photo',
         caption: 'Fresh organic tomatoes just picked this morning! 🍅',
         filterType: null,
@@ -58,8 +62,8 @@ async function addTestData() {
         id: 'test-sourdough-3',
         vendorId: 'vendor-sunrise-bakery',
         vendorName: 'Sunrise Bakery',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar3,
-        mediaUrl: 'https://picsum.photos/400/300?random=103',
+        vendorAvatarUrl: CONSISTENT_IMAGES.avatar3,
+        mediaUrl: CONSISTENT_IMAGES.bread,
         mediaType: 'photo', 
         caption: 'Warm sourdough just out of the oven! 🍞',
         filterType: null,
@@ -70,8 +74,8 @@ async function addTestData() {
         id: 'test-leafy-greens-4',
         vendorId: 'vendor-green-garden',
         vendorName: 'Green Garden',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar1,
-        mediaUrl: 'https://picsum.photos/400/300?random=104',
+        vendorAvatarUrl: CONSISTENT_IMAGES.avatar1,
+        mediaUrl: CONSISTENT_IMAGES.greens,
         mediaType: 'photo',
         caption: 'Beautiful leafy greens ready for your salad! 🥬',
         filterType: null,
@@ -82,8 +86,8 @@ async function addTestData() {
         id: 'test-craft-candle-5',
         vendorId: 'vendor-craft-corner',
         vendorName: 'Craft Corner',
-        vendorAvatarUrl: PLACEHOLDER_IMAGES.avatar2,
-        mediaUrl: 'https://picsum.photos/400/300?random=105',
+        vendorAvatarUrl: CONSISTENT_IMAGES.avatar2,
+        mediaUrl: CONSISTENT_IMAGES.candles,
         mediaType: 'photo',
         caption: 'Handmade lavender scented candles - perfect for relaxation! 🕯️ Made with natural soy wax and essential oils.',
         filterType: null,

@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'rag_feedback_service.dart';
+import 'rag_personalization_service.dart';
 import '../models/rag_feedback.dart';
 
 /// Recipe snippet response model
@@ -126,6 +127,8 @@ class RAGService {
   late Box<Map> _cacheBox;
   bool _isInitialized = false;
   final RAGFeedbackService _feedbackService = RAGFeedbackService();
+  final RAGPersonalizationService _personalizationService =
+      RAGPersonalizationService();
 
   /// Initialize the RAG service
   Future<void> initialize() async {
@@ -264,21 +267,33 @@ class RAGService {
       name: 'RAGService',
     );
 
-    // Get user preferences from feedback history to improve suggestions
+    // Get enhanced user preferences from personalization service
     Map<String, dynamic> userPreferences = {};
     String? currentUserId;
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         currentUserId = currentUser.uid;
-        userPreferences = await _feedbackService.getUserPreferences(
-          userId: currentUserId,
-        );
 
-        if (userPreferences.isNotEmpty) {
+        // Get enhanced preferences from personalization service
+        userPreferences = await _personalizationService
+            .getEnhancedUserPreferences(userId: currentUserId);
+
+        if (userPreferences.isNotEmpty &&
+            userPreferences['hasSignificantData'] == true) {
           developer.log(
-            '[RAGService] User preferences loaded: ${userPreferences['preferredContentType']} content, ${userPreferences['preferredKeywords']?.length ?? 0} preferred keywords',
+            '[RAGService] Enhanced user preferences loaded: ${userPreferences['preferredContentType']} content, ${userPreferences['preferredKeywords']?.length ?? 0} keywords, confidence: ${userPreferences['personalizationConfidence']}',
             name: 'RAGService',
+          );
+        } else {
+          developer.log(
+            '[RAGService] Insufficient personalization data, using basic preferences',
+            name: 'RAGService',
+          );
+
+          // Fallback to basic feedback-based preferences
+          userPreferences = await _feedbackService.getUserPreferences(
+            userId: currentUserId,
           );
         }
       }
@@ -444,15 +459,49 @@ class RAGService {
         );
       }
 
-      // Create enhancement data
+      // Apply personalized ranking to FAQs if we have user data
+      List<FAQResult> rankedFaqs = faqs;
+      if (faqs.isNotEmpty && currentUserId != null) {
+        try {
+          final userInterests = await _personalizationService.getUserInterests(
+            userId: currentUserId,
+          );
+          if (userInterests.hasSignificantData) {
+            rankedFaqs = _personalizationService
+                .rankContentByPreferences<FAQResult>(
+                  faqs,
+                  userInterests,
+                  (faq) => faq.score,
+                  (faq) => [
+                    faq.question,
+                    faq.answer,
+                  ].join(' ').toLowerCase().split(' '),
+                  (faq) => faq.category,
+                );
+
+            developer.log(
+              '[RAGService] Applied personalized ranking to ${faqs.length} FAQs (confidence: ${userInterests.personalizationConfidence.toStringAsFixed(2)})',
+              name: 'RAGService',
+            );
+          }
+        } catch (e) {
+          developer.log(
+            '[RAGService] Error applying personalized ranking: $e',
+            name: 'RAGService',
+          );
+          // Continue with unranked results
+        }
+      }
+
+      // Create enhancement data with ranked results
       final enhancementData = SnapEnhancementData(
         recipe: recipe,
-        faqs: faqs,
+        faqs: rankedFaqs,
         query: caption,
       );
 
       developer.log(
-        '[RAGService] Created enhancement data - Recipe: ${recipe != null}, FAQs: ${faqs.length}',
+        '[RAGService] Created enhancement data - Recipe: ${recipe != null}, FAQs: ${rankedFaqs.length}',
         name: 'RAGService',
       );
       developer.log(
@@ -550,6 +599,7 @@ class RAGService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
+      // Record feedback in traditional feedback service
       if (contentType == RAGContentType.recipe) {
         await _feedbackService.recordRecipeFeedback(
           snapId: snapId,
@@ -572,6 +622,42 @@ class RAGService {
           userComment: userComment,
           metadata: metadata,
         );
+      }
+
+      // Also process feedback for personalization (async, non-blocking)
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final feedback = contentType == RAGContentType.recipe
+            ? RAGFeedback.recipe(
+                userId: currentUser.uid,
+                snapId: snapId,
+                vendorId: vendorId,
+                action: action,
+                recipeHash: contentId,
+                recipeName: contentTitle,
+                relevanceScore: relevanceScore,
+                userComment: userComment,
+                metadata: metadata,
+              )
+            : RAGFeedback.faq(
+                userId: currentUser.uid,
+                snapId: snapId,
+                vendorId: vendorId,
+                action: action,
+                faqId: contentId,
+                faqQuestion: contentTitle,
+                relevanceScore: relevanceScore,
+                userComment: userComment,
+                metadata: metadata,
+              );
+
+        // Process feedback for personalization (non-blocking)
+        _personalizationService.processFeedback(feedback).catchError((e) {
+          developer.log(
+            '[RAGService] Error processing feedback for personalization: $e',
+            name: 'RAGService',
+          );
+        });
       }
 
       developer.log(
@@ -651,5 +737,48 @@ class RAGService {
       'totalEntries': _cacheBox.length,
       'cacheExpiryHours': _cacheExpiry.inHours,
     };
+  }
+
+  /// Get user personalization analytics
+  Future<Map<String, dynamic>> getUserPersonalizationAnalytics({
+    String? userId,
+  }) async {
+    try {
+      return await _personalizationService.getUserInterestAnalytics(
+        userId: userId,
+      );
+    } catch (e) {
+      developer.log(
+        '[RAGService] Error getting personalization analytics: $e',
+        name: 'RAGService',
+      );
+      return {};
+    }
+  }
+
+  /// Get personalization service instance (for external access)
+  RAGPersonalizationService get personalizationService =>
+      _personalizationService;
+
+  /// Delete user data (for account deletion)
+  Future<void> deleteUserData(String userId) async {
+    try {
+      // Delete user interests
+      await _personalizationService.deleteUserInterests(userId);
+
+      // Clear cache
+      _personalizationService.clearCache(userId: userId);
+
+      developer.log(
+        '[RAGService] Deleted RAG user data for: $userId',
+        name: 'RAGService',
+      );
+    } catch (e) {
+      developer.log(
+        '[RAGService] Error deleting user data: $e',
+        name: 'RAGService',
+      );
+      throw Exception('Failed to delete RAG user data: $e');
+    }
   }
 }

@@ -98,17 +98,15 @@ class ConversationListItem extends StatelessWidget {
         children: [
           Text(
             timeago.format(lastMessage.createdAt),
-            style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 2),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.schedule,
-                size: 10,
-                color: AppColors.sunsetAmber,
-              ),
+              Icon(Icons.schedule, size: 10, color: AppColors.sunsetAmber),
               const SizedBox(width: 2),
               Text(
                 _getExpiryText(lastMessage.expiresAt),
@@ -130,11 +128,11 @@ class ConversationListItem extends StatelessWidget {
   String _getExpiryText(DateTime expiresAt) {
     final now = DateTime.now();
     final timeRemaining = expiresAt.difference(now);
-    
+
     if (timeRemaining.isNegative) {
       return 'Expired';
     }
-    
+
     if (timeRemaining.inHours >= 1) {
       return '${timeRemaining.inHours}h left';
     } else if (timeRemaining.inMinutes >= 1) {

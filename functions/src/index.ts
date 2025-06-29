@@ -723,7 +723,7 @@ export const getRecipeSnippet = createAIHelper(
         apiKey: OPENAI_API_KEY,
       });
 
-      // Build user preferences context
+      // Build enhanced user preferences context
       let userPreferencesContext = "";
       if (userPreferences && Object.keys(userPreferences).length > 0) {
         const preferredKeywords = userPreferences.preferredKeywords || [];
@@ -732,21 +732,67 @@ export const getRecipeSnippet = createAIHelper(
           userPreferences.preferredContentType || "balanced";
         const totalPositiveFeedback =
           userPreferences.totalPositiveFeedback || 0;
+        const satisfactionScore = userPreferences.satisfactionScore || 0;
+        const personalizationConfidence =
+          userPreferences.personalizationConfidence || 0;
+        const recentSearchTerms = userPreferences.recentSearchTerms || [];
+        const favoriteVendors = userPreferences.favoriteVendors || [];
+        const keywordRelevanceScores =
+          userPreferences.keywordRelevanceScores || {};
+        const hasSignificantData = userPreferences.hasSignificantData || false;
 
-        userPreferencesContext = `
+        if (hasSignificantData && personalizationConfidence > 0.3) {
+          // Enhanced personalization for users with sufficient data
+          const topKeywords = preferredKeywords
+            .slice(0, 5)
+            .map((keyword: string) => {
+              const score = keywordRelevanceScores[keyword];
+              return score ? `${keyword} (${score.toFixed(2)})` : keyword;
+            })
+            .join(", ");
 
-USER PREFERENCES (based on ${totalPositiveFeedback} positive interactions):
+          const confScore = personalizationConfidence.toFixed(2);
+          const satScore = satisfactionScore.toFixed(2);
+          const topCategories = preferredCategories.slice(0, 3).join(", ");
+          const topSearches = recentSearchTerms.slice(0, 3).join(", ");
+
+          userPreferencesContext = `
+
+ENHANCED USER PREFERENCES (confidence: ${confScore}, ` +
+            `${totalPositiveFeedback} positive interactions):
+- Highly preferred ingredients: ${topKeywords}
+- Preferred food categories: ${topCategories}
+- Content preference: ${preferredContentType}
+- User satisfaction score: ${satScore}
+- Recent search interests: ${topSearches}
+- Favorite vendors: ${favoriteVendors.slice(0, 2).join(", ")}
+- IMPORTANT: Strongly prioritize suggestions that include the user's ` +
+            `preferred ingredients and categories
+- IMPORTANT: Tailor recipe complexity and style to user's ` +
+            "demonstrated preferences";
+
+          logger.log(
+            "[getRecipeSnippet] Using enhanced personalization: " +
+            `confidence ${personalizationConfidence.toFixed(2)}, ` +
+            `${preferredKeywords.length} keywords, ` +
+            `satisfaction ${satisfactionScore.toFixed(2)}`
+          );
+        } else {
+          // Basic personalization for users with limited data
+          userPreferencesContext = `
+
+USER PREFERENCES (based on ${totalPositiveFeedback} interactions):
 - Preferred ingredients: ${preferredKeywords.slice(0, 5).join(", ")}
 - Preferred food categories: ${preferredCategories.slice(0, 3).join(", ")}
 - Content preference: ${preferredContentType}
 - When possible, incorporate these preferred elements into suggestions`;
 
-        logger.log(
-          "[getRecipeSnippet] Using user preferences: " +
-          `${preferredKeywords.length} keywords, ` +
-          `${preferredCategories.length} categories, ` +
-          `${preferredContentType} content type`
-        );
+          logger.log(
+            "[getRecipeSnippet] Using basic preferences: " +
+            `${preferredKeywords.length} keywords, ` +
+            `${preferredCategories.length} categories`
+          );
+        }
       }
 
       // Build context-aware prompt for recipe generation
