@@ -825,22 +825,33 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                             ),
                           ],
                           
-                          // Embedding status
-                          Row(
-                            children: [
-                              Icon(
-                                faq.embedding != null ? Icons.check_circle : Icons.schedule,
-                                size: 14,
-                                color: faq.embedding != null ? AppColors.leafGreen : AppColors.sunsetAmber,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                faq.embedding != null ? 'Vectorized' : 'Pending vectorization',
-                                style: AppTypography.caption.copyWith(
+                          // Vectorization status
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: faq.embedding != null 
+                                  ? AppColors.leafGreen.withValues(alpha: 0.1)
+                                  : AppColors.sunsetAmber.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  faq.embedding != null ? Icons.verified : Icons.schedule,
+                                  size: 14,
                                   color: faq.embedding != null ? AppColors.leafGreen : AppColors.sunsetAmber,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  faq.embedding != null ? 'Enhanced' : 'Basic matching',
+                                  style: AppTypography.caption.copyWith(
+                                    color: faq.embedding != null ? AppColors.leafGreen : AppColors.sunsetAmber,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1004,34 +1015,59 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  '${_faqs.where((faq) => faq.embedding == null).length} of ${_faqs.length} FAQs need vectorization for optimal search results.',
-                  style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                MarketSnapCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: AppColors.marketBlue, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            'FAQ Search Status',
+                            style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '${_faqs.where((faq) => faq.embedding == null).length} of ${_faqs.length} FAQs need vectorization for enhanced search accuracy.\n\n'
+                        'Note: FAQs work with basic keyword matching even without vectorization. '
+                        'Vectorization improves search relevance and personalization.',
+                        style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                      ),
+                    ],
+                  ),
                 ),
                 if (_faqs.any((faq) => faq.embedding == null)) ...[
                   const SizedBox(height: AppSpacing.md),
                   SizedBox(
-                    width: double.infinity,
+                    width: 200,
+                    height: 40,
                     child: ElevatedButton.icon(
                       onPressed: _isLoading ? null : _batchVectorizeAllFAQs,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.marketBlue,
+                        foregroundColor: AppColors.eggshell,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                      ),
                       icon: _isLoading 
                           ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.eggshell),
                               ),
                             )
-                          : const Icon(Icons.auto_fix_high, size: 18),
-                      label: Text(_isLoading ? 'Vectorizing...' : 'Vectorize Pending FAQs'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.sunsetAmber,
-                        foregroundColor: Colors.white,
-                        elevation: AppSpacing.elevationSm,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          : const Icon(Icons.auto_fix_high, size: 16),
+                      label: Text(
+                        _isLoading ? 'Processing...' : 'Enhance All',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.eggshell,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
