@@ -1583,3 +1583,262 @@ export const deleteUserAccount = functions.https.onCall(
     }
   }
 );
+
+/**
+ * Batch vectorization function for FAQs
+ * Generates embeddings for FAQs that don't have them yet
+ */
+export const batchVectorizeFAQs = createAIHelper(
+  "batchVectorizeFAQs",
+  async (data: any, context: CallableContext) => {
+    logger.log("[batchVectorizeFAQs] Starting batch vectorization");
+    logger.log("[batchVectorizeFAQs] Input data:", data);
+
+    const {vendorId, limit = 50} = data;
+
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to vectorize FAQs."
+      );
+    }
+
+    // Check for OpenAI API key
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+    const openaiKey = isEmulator ?
+      process.env.OPENAI_API_KEY :
+      functions.config().openai?.api_key;
+
+    if (!openaiKey) {
+      logger.error("[batchVectorizeFAQs] OpenAI API key not found");
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "OpenAI API key not configured"
+      );
+    }
+
+    logger.log(
+      `[batchVectorizeFAQs] Found OpenAI Key: ${openaiKey.substring(0, 10)}...`
+    );
+
+    try {
+      // Import OpenAI
+      let OpenAI;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error(
+          "[batchVectorizeFAQs] OpenAI package not installed:",
+          importError
+        );
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "OpenAI package not available"
+        );
+      }
+
+      const openai = new OpenAI({apiKey: openaiKey});
+
+      // Query for FAQs without embeddings
+      let query = db.collection("faqVectors")
+        .where("embedding", "==", null)
+        .limit(limit);
+
+      if (vendorId) {
+        query = query.where("vendorId", "==", vendorId);
+        logger.log(
+          `[batchVectorizeFAQs] Processing FAQs for vendor: ${vendorId}`
+        );
+      } else {
+        logger.log("[batchVectorizeFAQs] Processing FAQs for all vendors");
+      }
+
+      const faqVectorSnapshot = await query.get();
+
+      if (faqVectorSnapshot.empty) {
+        logger.log("[batchVectorizeFAQs] No FAQs need vectorization");
+        return {
+          success: true,
+          processed: 0,
+          message: "No FAQs need vectorization",
+          timestamp: admin.firestore.Timestamp.now(),
+        };
+      }
+
+      logger.log(
+        `[batchVectorizeFAQs] Found ${faqVectorSnapshot.docs.length} ` +
+        "FAQs to vectorize"
+      );
+
+      const results = {
+        processed: 0,
+        errors: [] as string[],
+        success: true,
+      };
+
+      // Process each FAQ
+      for (const faqDoc of faqVectorSnapshot.docs) {
+        const faqData = faqDoc.data();
+        const faqId = faqDoc.id;
+
+        try {
+          logger.log(`[batchVectorizeFAQs] Processing FAQ ${faqId}`);
+
+          // Create text for embedding (combine question and answer)
+          const embeddingText = `${faqData.question} ${faqData.answer}`;
+
+          // Generate embedding
+          const embeddingResponse = await openai.embeddings.create({
+            model: "text-embedding-3-small",
+            input: embeddingText,
+          });
+
+          const embedding = embeddingResponse.data[0].embedding;
+
+          logger.log(
+            `[batchVectorizeFAQs] Generated embedding for FAQ ${faqId} ` +
+            `with ${embedding.length} dimensions`
+          );
+
+          // Update the faqVector document with the embedding
+          await db.collection("faqVectors").doc(faqId).update({
+            embedding: embedding,
+            updatedAt: admin.firestore.Timestamp.now(),
+          });
+
+          results.processed++;
+          logger.log(
+            `[batchVectorizeFAQs] ✅ Updated FAQ ${faqId} with embedding`
+          );
+        } catch (faqError) {
+          const errorMessage = faqError instanceof Error ?
+            faqError.message : "Unknown error";
+          logger.error(
+            `[batchVectorizeFAQs] ❌ Error processing FAQ ${faqId}: ` +
+            errorMessage
+          );
+          results.errors.push(`FAQ ${faqId}: ${errorMessage}`);
+          results.success = false;
+        }
+      }
+
+      logger.log(
+        `[batchVectorizeFAQs] Batch vectorization completed. ` +
+        `Processed: ${results.processed}, Errors: ${results.errors.length}`
+      );
+
+      return {
+        success: results.success,
+        processed: results.processed,
+        errors: results.errors,
+        message: results.success ?
+          `Successfully vectorized ${results.processed} FAQs` :
+          `Vectorized ${results.processed} FAQs with ${results.errors.length} errors`,
+        timestamp: admin.firestore.Timestamp.now(),
+      };
+    } catch (error) {
+      logger.error("[batchVectorizeFAQs] Error in batch vectorization:", error);
+
+      const errorMessage = error instanceof Error ?
+        error.message : "Unknown error";
+
+      throw new functions.https.HttpsError(
+        "internal",
+        `Batch vectorization failed: ${errorMessage}`
+      );
+    }
+  }
+);
+
+/**
+ * Firestore trigger to automatically vectorize FAQs when created
+ */
+export const autoVectorizeFAQ = onDocumentCreated(
+  "faqs/{faqId}",
+  async (event) => {
+    const faqId = event.params.faqId;
+    const faqData = event.data?.data();
+
+    if (!faqData) {
+      logger.error("[autoVectorizeFAQ] No FAQ data in document");
+      return;
+    }
+
+    logger.log(`[autoVectorizeFAQ] Auto-vectorizing new FAQ: ${faqId}`);
+
+    try {
+      // Check for OpenAI API key
+      const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+      const openaiKey = isEmulator ?
+        process.env.OPENAI_API_KEY :
+        functions.config().openai?.api_key;
+
+      if (!openaiKey) {
+        logger.error("[autoVectorizeFAQ] OpenAI API key not found");
+        return;
+      }
+
+      // Import OpenAI
+      let OpenAI;
+      try {
+        OpenAI = (await import("openai")).default;
+      } catch (importError) {
+        logger.error(
+          "[autoVectorizeFAQ] OpenAI package not installed:",
+          importError
+        );
+        return;
+      }
+
+      const openai = new OpenAI({apiKey: openaiKey});
+
+      // Create text for embedding
+      const embeddingText = `${faqData.question} ${faqData.answer}`;
+
+      // Generate embedding
+      const embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: embeddingText,
+      });
+
+      const embedding = embeddingResponse.data[0].embedding;
+
+      logger.log(
+        `[autoVectorizeFAQ] Generated embedding with ${embedding.length} ` +
+        "dimensions"
+      );
+
+      // Check if faqVector already exists
+      const faqVectorRef = db.collection("faqVectors").doc(faqId);
+      const faqVectorDoc = await faqVectorRef.get();
+
+      if (faqVectorDoc.exists) {
+        // Update existing faqVector with embedding
+        await faqVectorRef.update({
+          embedding: embedding,
+          updatedAt: admin.firestore.Timestamp.now(),
+        });
+        logger.log(`[autoVectorizeFAQ] ✅ Updated existing faqVector ${faqId}`);
+      } else {
+        // Create new faqVector with embedding
+        await faqVectorRef.set({
+          faqId: faqId,
+          vendorId: faqData.vendorId,
+          question: faqData.question,
+          answer: faqData.answer,
+          category: faqData.category,
+          keywords: faqData.keywords || [],
+          embedding: embedding,
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        });
+        logger.log(`[autoVectorizeFAQ] ✅ Created new faqVector ${faqId}`);
+      }
+    } catch (error) {
+      logger.error(
+        `[autoVectorizeFAQ] Error auto-vectorizing FAQ ${faqId}:`,
+        error
+      );
+    }
+  }
+);

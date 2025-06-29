@@ -9,6 +9,7 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../auth/application/auth_service.dart';
+import 'vendor_knowledge_base_screen.dart';
 
 /// Vendor Profile Form Screen
 /// Allows vendors to create/edit their profile with stall name, market city, and avatar upload
@@ -329,6 +330,20 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
   }
 
+  /// Navigate to vendor knowledge base screen
+  void _navigateToKnowledgeBase(BuildContext context) {
+    developer.log(
+      '[VendorProfileScreen] Navigating to knowledge base screen',
+      name: 'VendorProfileScreen',
+    );
+
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(
+      builder: (context) => const VendorKnowledgeBaseScreen(),
+    ));
+  }
+
   /// Sign out the current user
   Future<void> _signOut() async {
     debugPrint('[VendorProfileScreen] User sign out requested');
@@ -547,6 +562,53 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                         isLoading: _isSaving,
                         onPressed: _saveProfile,
                         icon: Icons.save,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+
+                      // Vendor Management Section
+                      Container(
+                        width: double.infinity,
+                        padding: AppSpacing.edgeInsetsCard,
+                        decoration: BoxDecoration(
+                          color: AppColors.leafGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          border: Border.all(color: AppColors.leafGreen.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome,
+                                  color: AppColors.leafGreen,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Smart Features',
+                                  style: AppTypography.h2.copyWith(color: AppColors.leafGreen),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Manage your AI-powered customer assistance and view analytics.',
+                              style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            MarketSnapSecondaryButton(
+                              text: 'Knowledge Base',
+                              icon: Icons.quiz,
+                              onPressed: () => _navigateToKnowledgeBase(context),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Create FAQs that automatically appear when customers post about your products.',
+                              style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
