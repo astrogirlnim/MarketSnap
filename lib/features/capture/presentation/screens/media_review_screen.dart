@@ -113,6 +113,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
     // Initialize connectivity monitoring
     _initializeConnectivity();
+
+    // Initialize posting preference from user settings
+    _initializePostingPreference();
   }
 
   @override
@@ -295,7 +298,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Post the media with applied filters and caption
+  /// Post media with enhanced debugging for story vs feed routing
   Future<void> _postMedia() async {
     if (_isPosting) return;
 
@@ -313,6 +316,16 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final caption = _captionController.text;
       final mediaType = widget.mediaType;
 
+      // 🔍 ENHANCED DEBUGGING: Log posting choice and routing logic
+      debugPrint('');
+      debugPrint('========== POSTING MEDIA DEBUG ==========');
+      debugPrint('[MediaReviewScreen] 🎯 User posting choice: ${_postToStory ? 'STORIES' : 'FEED'}');
+      debugPrint('[MediaReviewScreen] 📱 Media type: ${mediaType.name}');
+      debugPrint('[MediaReviewScreen] 📝 Caption: "$caption"');
+      debugPrint('[MediaReviewScreen] 🎨 Filter: ${_selectedFilter.name}');
+      debugPrint('[MediaReviewScreen] 👤 User ID: ${currentUser.uid}');
+      debugPrint('==========================================');
+
       final pendingItem = PendingMediaItem(
         filePath: mediaPath,
         caption: caption,
@@ -322,9 +335,12 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         isStory: _postToStory,
       );
 
-      debugPrint(
-        '[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})',
-      );
+      // 🔍 ENHANCED DEBUGGING: Verify PendingMediaItem creation
+      debugPrint('[MediaReviewScreen] ✅ PendingMediaItem created:');
+      debugPrint('[MediaReviewScreen]    - ID: ${pendingItem.id}');
+      debugPrint('[MediaReviewScreen]    - isStory: ${pendingItem.isStory}');
+      debugPrint('[MediaReviewScreen]    - filterType: "${pendingItem.filterType}"');
+      debugPrint('[MediaReviewScreen]    - mediaType: ${pendingItem.mediaType.name}');
 
       // Phase 4.4: Save to device gallery BEFORE adding to queue
       // This ensures the file still exists at the original path
@@ -332,11 +348,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
+      // 🔍 ENHANCED DEBUGGING: Confirm queue addition
+      debugPrint('[MediaReviewScreen] ✅ Added to Hive queue successfully');
+
       // Show different behavior based on connectivity
       if (_hasConnectivity) {
         // Online: Try immediate sync with timeout
         debugPrint(
-          '[MediaReviewScreen] Online - attempting immediate sync with timeout',
+          '[MediaReviewScreen] 🌐 Online - attempting immediate sync with timeout',
         );
 
         try {
@@ -345,7 +364,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             const Duration(seconds: 10),
             onTimeout: () {
               debugPrint(
-                '[MediaReviewScreen] Immediate sync timed out - will continue in background',
+                '[MediaReviewScreen] ⏱️ Immediate sync timed out - will continue in background',
               );
               throw TimeoutException(
                 'Upload timed out',
@@ -356,6 +375,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
           // Success - immediate upload completed
           if (mounted) {
+            // 🔍 ENHANCED DEBUGGING: Log successful posting
+            debugPrint('[MediaReviewScreen] 🎉 Immediate sync completed successfully');
+            debugPrint('[MediaReviewScreen] 📍 Posted to: ${_postToStory ? 'STORIES' : 'FEED'}');
+            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -371,6 +394,10 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         } on TimeoutException {
           // Timeout - let it continue in background
           if (mounted) {
+            // 🔍 ENHANCED DEBUGGING: Log background posting
+            debugPrint('[MediaReviewScreen] 📤 Posting continuing in background');
+            debugPrint('[MediaReviewScreen] 📍 Will post to: ${_postToStory ? 'STORIES' : 'FEED'}');
+            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -388,8 +415,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       } else {
         // Offline: Add to queue and show offline message with queue count
         debugPrint(
-          '[MediaReviewScreen] Offline - added to queue for later upload',
+          '[MediaReviewScreen] 📶 Offline - added to queue for later upload',
         );
+        debugPrint('[MediaReviewScreen] 📍 Queued for: ${_postToStory ? 'STORIES' : 'FEED'}');
 
         if (mounted) {
           // Get current queue count for better user feedback
@@ -398,6 +426,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         }
       }
     } catch (e) {
+      // 🔍 ENHANCED DEBUGGING: Log posting errors
+      debugPrint('[MediaReviewScreen] ❌ Error during posting: $e');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -412,6 +443,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           _isPosting = false;
         });
       }
+      
+      // 🔍 ENHANCED DEBUGGING: Log posting completion
+      debugPrint('[MediaReviewScreen] 🏁 Posting process completed');
+      debugPrint('==========================================');
+      debugPrint('');
     }
   }
 
@@ -781,7 +817,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 // Feed option
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _postToStory = false),
+                    onTap: () => _updatePostingChoice(false),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
@@ -816,7 +852,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                 // Stories option  
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _postToStory = true),
+                    onTap: () => _updatePostingChoice(true),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
@@ -1042,6 +1078,44 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         '[MediaReviewScreen] Connectivity changed: ${hasConnection ? 'ONLINE' : 'OFFLINE'}',
       );
     }
+  }
+
+  /// Initialize posting preference from stored user settings
+  void _initializePostingPreference() {
+    try {
+      final preferStories = main.settingsService.getPreferredPostingChoice();
+      setState(() {
+        _postToStory = preferStories;
+      });
+      
+      debugPrint(
+        '[MediaReviewScreen] 🎯 Initialized posting preference: ${_postToStory ? 'Stories' : 'Feed'} (from user settings)',
+      );
+    } catch (e) {
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Error loading posting preference, using default (Feed): $e',
+      );
+      // Keep default value of false (Feed)
+    }
+  }
+
+  /// Update posting choice and save preference for future sessions
+  void _updatePostingChoice(bool postToStory) {
+    setState(() {
+      _postToStory = postToStory;
+    });
+
+    debugPrint(
+      '[MediaReviewScreen] 🎯 User changed posting choice to: ${postToStory ? 'Stories' : 'Feed'}',
+    );
+
+    // Save preference asynchronously (don't block UI)
+    main.settingsService.updatePreferredPostingChoice(postToStory).catchError((error) {
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Failed to save posting preference: $error',
+      );
+      // Continue anyway - preference saving failure shouldn't block posting
+    });
   }
 
   @override

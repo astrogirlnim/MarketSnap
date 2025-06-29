@@ -20,19 +20,22 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       enableCoarseLocation: fields[0] as bool,
       autoCompressVideo: fields[1] as bool,
       saveToDeviceDefault: fields[2] as bool,
+      preferStoryPosting: fields[3] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserSettings obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.enableCoarseLocation)
       ..writeByte(1)
       ..write(obj.autoCompressVideo)
       ..writeByte(2)
-      ..write(obj.saveToDeviceDefault);
+      ..write(obj.saveToDeviceDefault)
+      ..writeByte(3)
+      ..write(obj.preferStoryPosting);
   }
 
   @override

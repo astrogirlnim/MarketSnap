@@ -21,14 +21,21 @@ class UserSettings extends HiveObject {
   @HiveField(2)
   bool saveToDeviceDefault;
 
+  /// Whether the user prefers to post to stories by default.
+  /// Remembers the last posting choice (story vs feed) for better UX.
+  /// Defaults to false (feed posting).
+  @HiveField(3)
+  bool preferStoryPosting;
+
   UserSettings({
     this.enableCoarseLocation = false,
     this.autoCompressVideo = true,
     this.saveToDeviceDefault = false,
+    this.preferStoryPosting = false,
   });
 
   @override
   String toString() {
-    return 'UserSettings(enableCoarseLocation: $enableCoarseLocation, autoCompressVideo: $autoCompressVideo, saveToDeviceDefault: $saveToDeviceDefault)';
+    return 'UserSettings(enableCoarseLocation: $enableCoarseLocation, autoCompressVideo: $autoCompressVideo, saveToDeviceDefault: $saveToDeviceDefault, preferStoryPosting: $preferStoryPosting)';
   }
 }
