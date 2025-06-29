@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as developer;
 
 import '../../../../shared/presentation/theme/app_colors.dart';
@@ -496,7 +497,16 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     try {
       developer.log('[VendorKnowledgeBaseScreen] Starting batch vectorization for vendor: $_currentVendorId');
       
-      // Call the Cloud Function
+      // Verify user is authenticated before calling Cloud Function
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      developer.log('[VendorKnowledgeBaseScreen] Authenticated user: ${currentUser.uid}');
+      developer.log('[VendorKnowledgeBaseScreen] User email: ${currentUser.email}');
+      
+      // Use the default Firebase Functions instance (already configured for emulator in main.dart)
       final callable = FirebaseFunctions.instance.httpsCallable('batchVectorizeFAQs');
       final result = await callable.call({
         'vendorId': _currentVendorId,
@@ -526,18 +536,29 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] Error during batch vectorization: $e');
       
-      String errorMessage = 'Error vectorizing FAQs';
-      
-      // Handle specific error types with user-friendly messages
-      if (e.toString().contains('failed-precondition') || 
-          e.toString().contains('OpenAI API key')) {
-        errorMessage = 'AI service unavailable. Please contact support.';
-      } else if (e.toString().contains('unauthenticated')) {
-        errorMessage = 'Authentication error. Please try signing in again.';
-      } else if (e.toString().contains('INTERNAL')) {
-        errorMessage = 'Service temporarily unavailable. Please try again later.';
-      } else {
-        errorMessage = 'Failed to vectorize FAQs. Please try again.';
+      String errorMessage = 'Failed to vectorize FAQs. Please try again.';
+
+      if (e is FirebaseFunctionsException) {
+        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Code: ${e.code}');
+        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Message: ${e.message}');
+        developer.log('[VendorKnowledgeBaseScreen] Firebase Functions Exception Details: ${e.details}');
+        
+        switch (e.code) {
+          case 'unauthenticated':
+            errorMessage = 'Authentication error. Please sign in again.';
+            break;
+          case 'failed-precondition':
+            errorMessage = 'AI service not configured. Please contact support.';
+            break;
+          case 'internal':
+            errorMessage = 'An internal service error occurred. Please try again later.';
+            break;
+          case 'unavailable':
+             errorMessage = 'Network connection issue. Please check your connection.';
+            break;
+          default:
+            errorMessage = 'An unknown error occurred. Code: ${e.code}';
+        }
       }
       
       if (mounted) {
