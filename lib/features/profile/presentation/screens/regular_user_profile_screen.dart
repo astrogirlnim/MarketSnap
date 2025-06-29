@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
@@ -15,7 +16,6 @@ import '../../../auth/application/auth_service.dart';
 import '../../../../core/services/profile_update_notifier.dart';
 import '../../../../core/models/regular_user_profile.dart';
 import '../../../../main.dart' as main;
-import 'dart:async';
 
 /// Regular User Profile Form Screen
 /// Simplified profile for regular users (no stall info, just basic profile)
@@ -288,7 +288,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     }
 
     developer.log(
-      '[RegularUserProfileScreen] Saving regular user profile',
+      '[RegularUserProfileScreen] 🔄 Starting regular user profile save process',
       name: 'RegularUserProfileScreen',
     );
 
@@ -298,24 +298,47 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     });
 
     try {
+      // Save profile with comprehensive avatar handling
       await widget.profileService.saveRegularUserProfile(
         displayName: _displayNameController.text,
         localAvatarPath: _localAvatarPath,
       );
 
       developer.log(
-        '[RegularUserProfileScreen] Regular profile saved successfully',
+        '[RegularUserProfileScreen] ✅ Regular profile saved successfully',
         name: 'RegularUserProfileScreen',
       );
 
-      // ✅ CRITICAL FIX: Reload profile to get updated avatar URL after sync
+      // ✅ CRITICAL FIX: Wait for sync completion instead of arbitrary delay
       developer.log(
-        '[RegularUserProfileScreen] 🔄 Reloading profile to get updated avatar state',
+        '[RegularUserProfileScreen] ⏳ Waiting for sync process to complete...',
         name: 'RegularUserProfileScreen',
       );
-      // Give the sync process a moment to complete
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _loadExistingProfile();
+      final currentUid = widget.profileService.currentUserUid;
+      if (currentUid != null) {
+        // Note: We can use the waitForSyncCompletion method or implement a similar one for regular users
+        // For now, let's use a more intelligent approach by checking the profile state
+        final syncCompleted = await _waitForRegularUserSyncCompletion(
+          currentUid,
+          timeout: const Duration(seconds: 15),
+        );
+        
+        if (syncCompleted) {
+          developer.log(
+            '[RegularUserProfileScreen] ✅ Sync completed successfully',
+            name: 'RegularUserProfileScreen',
+          );
+          // Reload profile to get the final synced state
+          await _loadExistingProfile();
+        } else {
+          developer.log(
+            '[RegularUserProfileScreen] ⚠️ Sync timed out, but profile saved locally',
+            name: 'RegularUserProfileScreen',
+          );
+          // Still reload to get current state
+          await _loadExistingProfile();
+        }
+      }
 
       // Show success message
       if (mounted) {
@@ -337,7 +360,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
       }
     } catch (e) {
       developer.log(
-        '[RegularUserProfileScreen] Error saving profile: $e',
+        '[RegularUserProfileScreen] ❌ Error saving profile: $e',
         name: 'RegularUserProfileScreen',
       );
       _showErrorMessage('Failed to save profile: $e');
@@ -348,6 +371,45 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
         });
       }
     }
+  }
+
+  /// ✅ NEW METHOD: Wait for regular user sync completion with proper result handling
+  Future<bool> _waitForRegularUserSyncCompletion(String uid, {Duration timeout = const Duration(seconds: 30)}) async {
+    developer.log(
+      '[RegularUserProfileScreen] ⏳ Waiting for regular user sync completion for UID: $uid',
+      name: 'RegularUserProfileScreen',
+    );
+    
+    final stopwatch = Stopwatch()..start();
+    
+    while (stopwatch.elapsed < timeout) {
+      final profile = widget.profileService.getCurrentRegularUserProfile();
+      
+      if (profile == null) {
+        developer.log(
+          '[RegularUserProfileScreen] ❌ Profile not found during sync wait',
+          name: 'RegularUserProfileScreen',
+        );
+        return false;
+      }
+      
+      if (!profile.needsSync) {
+        developer.log(
+          '[RegularUserProfileScreen] ✅ Sync completed in ${stopwatch.elapsed.inMilliseconds}ms',
+          name: 'RegularUserProfileScreen',
+        );
+        return true;
+      }
+      
+      // Check every 100ms
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    
+    developer.log(
+      '[RegularUserProfileScreen] ⏰ Sync wait timed out after ${timeout.inSeconds}s',
+      name: 'RegularUserProfileScreen',
+    );
+    return false;
   }
 
   /// Shows error message
@@ -377,6 +439,14 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
     );
     developer.log(
       '[RegularUserProfileScreen] - hasAnyAvatar: $hasAnyAvatar',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - _localAvatarPath: $_localAvatarPath',
+      name: 'RegularUserProfileScreen',
+    );
+    developer.log(
+      '[RegularUserProfileScreen] - _avatarURL: $_avatarURL',
       name: 'RegularUserProfileScreen',
     );
     
@@ -416,7 +486,7 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) {
                                 developer.log(
-                                  '[RegularUserProfileScreen] ✅ Remote avatar loaded',
+                                  '[RegularUserProfileScreen] ✅ Remote avatar loaded successfully',
                                   name: 'RegularUserProfileScreen',
                                 );
                                 return child;
@@ -474,8 +544,8 @@ class _RegularUserProfileScreenState extends State<RegularUserProfileScreen> {
           const SizedBox(height: AppSpacing.xs),
           Text(
             hasLocalAvatar 
-                ? '🔵 Local avatar selected' 
-                : '🟢 Uploaded avatar from server',
+                ? '🔵 Local avatar selected (will upload)' 
+                : '🟢 Synced avatar from server',
             style: AppTypography.caption.copyWith(
               color: hasLocalAvatar ? Colors.blue : Colors.green,
               fontWeight: FontWeight.w500,

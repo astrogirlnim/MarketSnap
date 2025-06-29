@@ -253,7 +253,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       return;
     }
 
-    debugPrint('[VendorProfileScreen] Saving profile');
+    debugPrint('[VendorProfileScreen] 🔄 Starting profile save process');
 
     setState(() {
       _isSaving = true;
@@ -261,6 +261,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     });
 
     try {
+      // Save profile with comprehensive avatar handling
       await widget.profileService.saveProfile(
         displayName: _displayNameController.text,
         stallName: _stallNameController.text,
@@ -269,13 +270,27 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         localAvatarPath: _localAvatarPath,
       );
 
-      debugPrint('[VendorProfileScreen] Profile saved successfully');
+      debugPrint('[VendorProfileScreen] ✅ Profile saved successfully');
 
-      // ✅ CRITICAL FIX: Reload profile to get updated avatar URL after sync
-      debugPrint('[VendorProfileScreen] 🔄 Reloading profile to get updated avatar state');
-      // Give the sync process a moment to complete
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _loadExistingProfile();
+      // ✅ CRITICAL FIX: Wait for sync completion instead of arbitrary delay
+      debugPrint('[VendorProfileScreen] ⏳ Waiting for sync process to complete...');
+      final currentUid = widget.profileService.currentUserUid;
+      if (currentUid != null) {
+        final syncCompleted = await widget.profileService.waitForSyncCompletion(
+          currentUid,
+          timeout: const Duration(seconds: 15),
+        );
+        
+        if (syncCompleted) {
+          debugPrint('[VendorProfileScreen] ✅ Sync completed successfully');
+          // Reload profile to get the final synced state
+          await _loadExistingProfile();
+        } else {
+          debugPrint('[VendorProfileScreen] ⚠️ Sync timed out, but profile saved locally');
+          // Still reload to get current state
+          await _loadExistingProfile();
+        }
+      }
 
       // Show success message
       if (mounted) {
@@ -296,7 +311,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         widget.onProfileComplete?.call();
       }
     } catch (e) {
-      debugPrint('[VendorProfileScreen] Error saving profile: $e');
+      debugPrint('[VendorProfileScreen] ❌ Error saving profile: $e');
       _showErrorMessage('Failed to save profile: $e');
     } finally {
       if (mounted) {
@@ -324,6 +339,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     debugPrint('[VendorProfileScreen] - hasLocalAvatar: $hasLocalAvatar');
     debugPrint('[VendorProfileScreen] - hasRemoteAvatar: $hasRemoteAvatar');
     debugPrint('[VendorProfileScreen] - hasAnyAvatar: $hasAnyAvatar');
+    debugPrint('[VendorProfileScreen] - _localAvatarPath: $_localAvatarPath');
+    debugPrint('[VendorProfileScreen] - _avatarURL: $_avatarURL');
     
     return Column(
       children: [
@@ -357,7 +374,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                             fit: BoxFit.cover,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) {
-                                debugPrint('[VendorProfileScreen] ✅ Remote avatar loaded');
+                                debugPrint('[VendorProfileScreen] ✅ Remote avatar loaded successfully');
                                 return child;
                               }
                               return Center(
@@ -410,8 +427,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           const SizedBox(height: AppSpacing.xs),
           Text(
             hasLocalAvatar 
-                ? '🔵 Local avatar selected' 
-                : '🟢 Uploaded avatar from server',
+                ? '🔵 Local avatar selected (will upload)' 
+                : '🟢 Synced avatar from server',
             style: AppTypography.caption.copyWith(
               color: hasLocalAvatar ? Colors.blue : Colors.green,
               fontWeight: FontWeight.w500,
