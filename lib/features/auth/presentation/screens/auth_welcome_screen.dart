@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'phone_auth_screen.dart';
 import 'email_auth_screen.dart';
-import 'auth_diagnostic_screen.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
@@ -209,32 +208,6 @@ class _AuthWelcomeScreenState extends State<AuthWelcomeScreen> {
                     showBuildNumber: true,
                     alignment: Alignment.center,
                   ),
-
-                  // 🚨 TEMPORARY DEBUG BUTTON - Remove after fixing auth issue
-                  if (kDebugMode) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => AuthDiagnosticScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.sm,
-                        ),
-                      ),
-                      child: const Text(
-                        '🔍 DEBUG AUTH ISSUE',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: AppSpacing.sm),
                 ],
