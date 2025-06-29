@@ -136,6 +136,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   /// Rewrite Firebase Storage URL for cross-platform compatibility
   /// iOS simulator needs localhost, Android emulator needs 10.0.2.2
   String _rewriteStorageUrl(String originalUrl) {
+    // Validate input URL
+    if (originalUrl.isEmpty) {
+      debugPrint('[StoryViewer] ⚠️ Empty URL provided for rewriting');
+      return originalUrl;
+    }
+    
+    // Check if this is a Firebase Storage emulator URL that needs rewriting
+    bool isEmulatorUrl = originalUrl.contains(':9199') && 
+                        (originalUrl.contains('10.0.2.2') || originalUrl.contains('localhost'));
+    
+    if (!isEmulatorUrl) {
+      debugPrint('[StoryViewer] 📝 No URL rewriting needed for: $originalUrl');
+      return originalUrl;
+    }
+    
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       // iOS: Convert 10.0.2.2 URLs to localhost for iOS simulator connectivity
       if (originalUrl.contains('10.0.2.2:9199')) {
@@ -152,21 +167,44 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
     }
     
-    // No rewriting needed
+    // No rewriting needed or already in correct format
+    debugPrint('[StoryViewer] 📝 URL already in correct format: $originalUrl');
     return originalUrl;
   }
 
   /// Initialize video player for video snaps
   Future<void> _initializeVideo(String videoUrl) async {
     try {
+      // Dispose existing controller
       _videoController?.dispose();
-      final rewrittenUrl = _rewriteStorageUrl(videoUrl); // Apply URL rewriting
-      debugPrint('[StoryViewer] 🎥 Video URL for playback: $rewrittenUrl');
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(rewrittenUrl));
+      _videoController = null;
+      _isVideoInitialized = false;
       
-      await _videoController!.initialize();
+      // Apply URL rewriting for cross-platform compatibility
+      final rewrittenUrl = _rewriteStorageUrl(videoUrl);
+      debugPrint('[StoryViewer] 🎥 Original video URL: $videoUrl');
+      debugPrint('[StoryViewer] 🎥 Rewritten video URL: $rewrittenUrl');
       
-      if (mounted) {
+      // Parse URL and validate
+      final uri = Uri.tryParse(rewrittenUrl);
+      if (uri == null) {
+        debugPrint('[StoryViewer] ❌ Invalid video URL format: $rewrittenUrl');
+        return;
+      }
+      
+      // Create video controller
+      _videoController = VideoPlayerController.networkUrl(uri);
+      
+      // Initialize with timeout
+      await _videoController!.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('[StoryViewer] ⏱️ Video initialization timeout for URL: $rewrittenUrl');
+          throw Exception('Video initialization timeout');
+        },
+      );
+      
+      if (mounted && _videoController != null) {
         setState(() {
           _isVideoInitialized = true;
         });
@@ -174,12 +212,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         // Auto-play video and loop
         await _videoController!.setLooping(true);
         await _videoController!.play();
+        
+        debugPrint('[StoryViewer] ✅ Video initialized and playing successfully');
       }
     } catch (e) {
-      debugPrint('[StoryViewer] Error initializing video: $e');
-      setState(() {
-        _isVideoInitialized = false;
-      });
+      debugPrint('[StoryViewer] ❌ Error initializing video: $e');
+      if (mounted) {
+        setState(() {
+          _isVideoInitialized = false;
+        });
+      }
+      
+      // Clean up failed controller
+      _videoController?.dispose();
+      _videoController = null;
     }
   }
 

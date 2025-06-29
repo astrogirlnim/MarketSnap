@@ -276,15 +276,13 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
             style: AppTypography.h2.copyWith(color: AppColors.marketBlue),
           ),
           const SizedBox(height: AppSpacing.xs),
-          // ✅ IMPROVED: Added flexible text wrapping to prevent overflow with long vendor names
-          Flexible(
-            child: Text(
-              'Follow ${widget.vendor.displayName} to get notified when they post fresh finds!',
-              style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.visible,
-              maxLines: null, // Allow text to wrap to multiple lines if needed
-            ),
+          // ✅ IMPROVED: Proper text wrapping without Flexible to prevent overflow with long vendor names
+          Text(
+            'Follow ${widget.vendor.displayName} to get notified when they post fresh finds!',
+            style: AppTypography.body.copyWith(color: AppColors.soilCharcoal),
+            textAlign: TextAlign.center,
+            maxLines: null, // Allow text to wrap to multiple lines if needed
+            softWrap: true, // Enable soft line wrapping
           ),
           const SizedBox(height: AppSpacing.lg),
           FollowButton(
