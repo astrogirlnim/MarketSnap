@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:developer' as developer;
 
 import '../../../core/models/vendor_profile.dart';
 import '../../../core/models/regular_user_profile.dart';
@@ -134,23 +135,48 @@ class ProfileService {
 
   /// ✅ NEW METHOD: Sync profile with retry logic and comprehensive avatar handling
   Future<void> _syncProfileWithRetry(String uid, {int maxRetries = 3}) async {
-    debugPrint('[ProfileService] 🔄 Starting sync with retry for UID: $uid');
+    developer.log(
+      'Starting sync with retry for UID: $uid',
+      name: 'ProfileService.Sync',
+      level: 1000,
+      error: {'uid': uid, 'retries': maxRetries},
+    );
     
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        debugPrint('[ProfileService] 🔄 Sync attempt $attempt/$maxRetries');
+        developer.log('Sync attempt $attempt/$maxRetries', name: 'ProfileService.Sync');
         
         final success = await _performProfileSync(uid);
         if (success) {
-          debugPrint('[ProfileService] ✅ Profile sync completed successfully on attempt $attempt');
+          developer.log(
+            '✅ Profile sync completed successfully on attempt $attempt',
+            name: 'ProfileService.Sync',
+            level: 500
+          );
           return;
         } else {
-          debugPrint('[ProfileService] ❌ Profile sync failed on attempt $attempt');
+          developer.log(
+            '❌ Profile sync failed on attempt $attempt, but no exception was thrown.',
+            name: 'ProfileService.Sync',
+            level: 1200
+          );
         }
-      } catch (e) {
-        debugPrint('[ProfileService] ❌ Sync attempt $attempt failed: $e');
+      } catch (e, s) {
+        developer.log(
+          '❌ Sync attempt $attempt failed with exception.',
+          name: 'ProfileService.Sync',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
         if (attempt == maxRetries) {
-          debugPrint('[ProfileService] 🚨 All sync attempts failed - giving up');
+          developer.log(
+            '🚨 All sync attempts failed - giving up',
+            name: 'ProfileService.Sync',
+            level: 2000,
+            error: e,
+            stackTrace: s,
+          );
           rethrow;
         } else {
           // Wait before retry with exponential backoff
@@ -164,33 +190,49 @@ class ProfileService {
 
   /// ✅ NEW METHOD: Perform actual profile sync with comprehensive avatar upload handling
   Future<bool> _performProfileSync(String uid) async {
-    debugPrint('[ProfileService] 🔄 Performing profile sync for UID: $uid');
+    developer.log(
+      'Performing profile sync for UID: $uid',
+      name: 'ProfileService.Sync.Perform',
+      level: 1000,
+      error: {'uid': uid},
+    );
 
     final profile = _hiveService.getVendorProfile(uid);
     if (profile == null) {
-      debugPrint('[ProfileService] ❌ No profile found locally for UID: $uid');
+      developer.log('❌ No profile found locally for UID: $uid', name: 'ProfileService.Sync.Perform', level: 1200);
       return false;
     }
 
     if (!profile.needsSync) {
-      debugPrint('[ProfileService] ✅ Profile already synced for UID: $uid');
+      developer.log('✅ Profile already synced for UID: $uid', name: 'ProfileService.Sync.Perform');
       return true;
     }
 
-    debugPrint('[ProfileService] 🖼️ Avatar sync analysis:');
-    debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
-    debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
+    developer.log(
+      '🖼️ Avatar sync analysis:',
+      name: 'ProfileService.Sync.Perform',
+      error: {
+        'localAvatarPath': profile.localAvatarPath,
+        'avatarURL': profile.avatarURL,
+      }
+    );
 
     // Handle avatar upload if needed
     String? finalAvatarURL = profile.avatarURL;
     
     if (profile.localAvatarPath != null) {
-      debugPrint('[ProfileService] 📤 Uploading local avatar to Firebase Storage...');
+      developer.log('📤 Uploading local avatar to Firebase Storage...', name: 'ProfileService.Sync.Perform');
       try {
         finalAvatarURL = await uploadAvatar(profile.localAvatarPath!);
-        debugPrint('[ProfileService] ✅ Avatar uploaded successfully: $finalAvatarURL');
-      } catch (e) {
-        debugPrint('[ProfileService] ❌ Avatar upload failed: $e');
+        developer.log('✅ Avatar uploaded successfully: $finalAvatarURL', name: 'ProfileService.Sync.Perform');
+      } catch (e, s) {
+        developer.log(
+          '❌ Avatar upload failed',
+          name: 'ProfileService.Sync.Perform',
+          error: e,
+          stackTrace: s,
+          level: 1500,
+        );
         throw Exception('Avatar upload failed: $e');
       }
     }
@@ -202,8 +244,11 @@ class ProfileService {
       needsSync: false, // Mark as synced
     );
 
-    debugPrint('[ProfileService] 📤 Syncing profile to Firestore...');
-    debugPrint('[ProfileService] - Final avatarURL: ${profileToSync.avatarURL}');
+    developer.log(
+      '📤 Syncing profile to Firestore...',
+      name: 'ProfileService.Sync.Perform',
+      error: profileToSync.toFirestore(),
+    );
 
     // Write to Firestore
     await _firestore
@@ -232,14 +277,14 @@ class ProfileService {
   void _attemptImmediateSync(String uid) {
     debugPrint('[ProfileService] Attempting immediate sync for UID: $uid');
 
-    syncProfileToFirestore(uid)
+    _performProfileSync(uid)
         .timeout(
           const Duration(seconds: 5), // 5 second timeout
           onTimeout: () {
             debugPrint(
               '[ProfileService] Sync timed out after 5 seconds - will retry later',
             );
-            return;
+            return false;
           },
         )
         .catchError((error) {
@@ -311,20 +356,25 @@ class ProfileService {
       throw Exception('User must be authenticated to upload avatar');
     }
 
-    debugPrint('[ProfileService] 📤 Starting avatar upload for user: $uid');
-    debugPrint('[ProfileService] - Local file path: $localPath');
+    developer.log(
+      '📤 Starting avatar upload for user: $uid',
+      name: 'ProfileService.Upload',
+      error: {'uid': uid, 'path': localPath}
+    );
 
     try {
       final file = File(localPath);
       if (!await file.exists()) {
+        developer.log('❌ Avatar file does not exist: $localPath', name: 'ProfileService.Upload', level: 1500);
         throw Exception('Avatar file does not exist: $localPath');
       }
 
       // Check file size for reasonable limits
       final fileSize = await file.length();
-      debugPrint('[ProfileService] - File size: ${fileSize} bytes');
+      developer.log('File size: ${fileSize} bytes', name: 'ProfileService.Upload');
       
       if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        developer.log('❌ Avatar file too large', name: 'ProfileService.Upload', level: 1200, error: {'size': fileSize});
         throw Exception('Avatar file too large (${fileSize} bytes). Maximum size is 5MB.');
       }
 
@@ -332,7 +382,7 @@ class ProfileService {
       final ref = _storage.ref().child('vendors/$uid/avatar.jpg');
 
       // Upload the file with metadata
-      debugPrint('[ProfileService] 📤 Uploading to Firebase Storage...');
+      developer.log('📤 Uploading to Firebase Storage...', name: 'ProfileService.Upload');
       final uploadTask = ref.putFile(
         file,
         SettableMetadata(
@@ -347,13 +397,21 @@ class ProfileService {
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      debugPrint('[ProfileService] ✅ Avatar uploaded successfully');
-      debugPrint('[ProfileService] - Download URL: $downloadUrl');
-      debugPrint('[ProfileService] - Storage path: vendors/$uid/avatar.jpg');
+      developer.log(
+        '✅ Avatar uploaded successfully: $downloadUrl',
+        name: 'ProfileService.Upload',
+        error: {'url': downloadUrl, 'path': 'vendors/$uid/avatar.jpg'},
+      );
       
       return downloadUrl;
-    } catch (e) {
-      debugPrint('[ProfileService] ❌ Avatar upload failed: $e');
+    } catch (e, s) {
+      developer.log(
+        '❌ Avatar upload failed',
+        name: 'ProfileService.Upload',
+        level: 1500,
+        error: e,
+        stackTrace: s,
+      );
       throw Exception('Failed to upload avatar: $e');
     }
   }
@@ -586,23 +644,48 @@ class ProfileService {
 
   /// ✅ NEW METHOD: Sync regular user profile with retry logic and comprehensive avatar handling
   Future<void> _syncRegularUserProfileWithRetry(String uid, {int maxRetries = 3}) async {
-    debugPrint('[ProfileService] 🔄 Starting regular user profile sync with retry for UID: $uid');
+    developer.log(
+      'Starting regular user profile sync with retry for UID: $uid',
+      name: 'ProfileService.Sync.Regular',
+      level: 1000,
+      error: {'uid': uid, 'retries': maxRetries},
+    );
     
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        debugPrint('[ProfileService] 🔄 Regular user profile sync attempt $attempt/$maxRetries');
+        developer.log('Sync attempt $attempt/$maxRetries for regular user', name: 'ProfileService.Sync.Regular');
         
         final success = await _performRegularUserProfileSync(uid);
         if (success) {
-          debugPrint('[ProfileService] ✅ Regular user profile sync completed successfully on attempt $attempt');
+          developer.log(
+            '✅ Regular user profile sync completed successfully on attempt $attempt',
+            name: 'ProfileService.Sync.Regular',
+            level: 500
+          );
           return;
         } else {
-          debugPrint('[ProfileService] ❌ Regular user profile sync failed on attempt $attempt');
+          developer.log(
+            '❌ Regular user profile sync failed on attempt $attempt, but no exception was thrown.',
+            name: 'ProfileService.Sync.Regular',
+            level: 1200,
+          );
         }
-      } catch (e) {
-        debugPrint('[ProfileService] ❌ Regular user profile sync attempt $attempt failed: $e');
+      } catch (e, s) {
+        developer.log(
+          '❌ Regular user sync attempt $attempt failed with exception.',
+          name: 'ProfileService.Sync.Regular',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
         if (attempt == maxRetries) {
-          debugPrint('[ProfileService] 🚨 All regular user profile sync attempts failed - giving up');
+          developer.log(
+            '🚨 All regular user sync attempts failed - giving up',
+            name: 'ProfileService.Sync.Regular',
+            level: 2000,
+            error: e,
+            stackTrace: s,
+          );
           rethrow;
         } else {
           // Wait before retry with exponential backoff
@@ -616,34 +699,50 @@ class ProfileService {
 
   /// ✅ NEW METHOD: Perform actual regular user profile sync with comprehensive avatar upload handling
   Future<bool> _performRegularUserProfileSync(String uid) async {
-    debugPrint('[ProfileService] 🔄 Performing regular user profile sync for UID: $uid');
+    developer.log(
+      'Performing regular user profile sync for UID: $uid',
+      name: 'ProfileService.Sync.Perform.Regular',
+      level: 1000,
+      error: {'uid': uid},
+    );
 
     final profile = _hiveService.getRegularUserProfile(uid);
     if (profile == null) {
-      debugPrint('[ProfileService] ❌ No regular user profile found locally for UID: $uid');
+      developer.log('❌ No regular user profile found locally for UID: $uid', name: 'ProfileService.Sync.Perform.Regular', level: 1200);
       return false;
     }
 
     if (!profile.needsSync) {
-      debugPrint('[ProfileService] ✅ Regular user profile already synced for UID: $uid');
+      developer.log('✅ Regular user profile already synced for UID: $uid', name: 'ProfileService.Sync.Perform.Regular');
       return true;
     }
 
-    debugPrint('[ProfileService] 🖼️ Regular user avatar sync analysis:');
-    debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
-    debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
+    developer.log(
+      '🖼️ Regular user avatar sync analysis:',
+      name: 'ProfileService.Sync.Perform.Regular',
+      error: {
+        'localAvatarPath': profile.localAvatarPath,
+        'avatarURL': profile.avatarURL,
+      }
+    );
 
     // Handle avatar upload if needed
     String? finalAvatarURL = profile.avatarURL;
     
     if (profile.localAvatarPath != null) {
-      debugPrint('[ProfileService] 📤 Uploading regular user local avatar to Firebase Storage...');
+      developer.log('📤 Uploading regular user local avatar to Firebase Storage...', name: 'ProfileService.Sync.Perform.Regular');
       try {
         // Use different storage path for regular users
         finalAvatarURL = await _uploadRegularUserAvatar(profile.localAvatarPath!, uid);
-        debugPrint('[ProfileService] ✅ Regular user avatar uploaded successfully: $finalAvatarURL');
-      } catch (e) {
-        debugPrint('[ProfileService] ❌ Regular user avatar upload failed: $e');
+        developer.log('✅ Regular user avatar uploaded successfully: $finalAvatarURL', name: 'ProfileService.Sync.Perform.Regular');
+      } catch (e, s) {
+        developer.log(
+          '❌ Regular user avatar upload failed',
+          name: 'ProfileService.Sync.Perform.Regular',
+          level: 1500,
+          error: e,
+          stackTrace: s,
+        );
         throw Exception('Regular user avatar upload failed: $e');
       }
     }
@@ -655,8 +754,11 @@ class ProfileService {
       needsSync: false, // Mark as synced
     );
 
-    debugPrint('[ProfileService] 📤 Syncing regular user profile to Firestore...');
-    debugPrint('[ProfileService] - Final avatarURL: ${profileToSync.avatarURL}');
+    developer.log(
+      '📤 Syncing regular user profile to Firestore...',
+      name: 'ProfileService.Sync.Perform.Regular',
+      error: profileToSync.toFirestore(),
+    );
 
     // Write to Firestore regular users collection
     await _firestore
@@ -683,20 +785,25 @@ class ProfileService {
 
   /// ✅ NEW METHOD: Upload regular user avatar with proper storage path
   Future<String?> _uploadRegularUserAvatar(String localPath, String uid) async {
-    debugPrint('[ProfileService] 📤 Starting regular user avatar upload for UID: $uid');
-    debugPrint('[ProfileService] - Local file path: $localPath');
+    developer.log(
+      '📤 Starting regular user avatar upload for UID: $uid',
+      name: 'ProfileService.Upload.Regular',
+      error: {'uid': uid, 'path': localPath}
+    );
 
     try {
       final file = File(localPath);
       if (!await file.exists()) {
+        developer.log('❌ Regular user avatar file does not exist: $localPath', name: 'ProfileService.Upload.Regular', level: 1500);
         throw Exception('Regular user avatar file does not exist: $localPath');
       }
 
       // Check file size for reasonable limits
       final fileSize = await file.length();
-      debugPrint('[ProfileService] - File size: ${fileSize} bytes');
+      developer.log('File size: ${fileSize} bytes', name: 'ProfileService.Upload.Regular');
       
       if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        developer.log('❌ Regular user avatar file too large', name: 'ProfileService.Upload.Regular', level: 1200, error: {'size': fileSize});
         throw Exception('Regular user avatar file too large (${fileSize} bytes). Maximum size is 5MB.');
       }
 
@@ -704,7 +811,7 @@ class ProfileService {
       final ref = _storage.ref().child('regularUsers/$uid/avatar.jpg');
 
       // Upload the file with metadata
-      debugPrint('[ProfileService] 📤 Uploading regular user avatar to Firebase Storage...');
+      developer.log('📤 Uploading regular user avatar to Firebase Storage...', name: 'ProfileService.Upload.Regular');
       final uploadTask = ref.putFile(
         file,
         SettableMetadata(
@@ -720,13 +827,21 @@ class ProfileService {
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      debugPrint('[ProfileService] ✅ Regular user avatar uploaded successfully');
-      debugPrint('[ProfileService] - Download URL: $downloadUrl');
-      debugPrint('[ProfileService] - Storage path: regularUsers/$uid/avatar.jpg');
+      developer.log(
+        '✅ Regular user avatar uploaded successfully: $downloadUrl',
+        name: 'ProfileService.Upload.Regular',
+        error: {'url': downloadUrl, 'path': 'regularUsers/$uid/avatar.jpg'},
+      );
       
       return downloadUrl;
-    } catch (e) {
-      debugPrint('[ProfileService] ❌ Regular user avatar upload failed: $e');
+    } catch (e, s) {
+      developer.log(
+        '❌ Regular user avatar upload failed',
+        name: 'ProfileService.Upload.Regular',
+        level: 1500,
+        error: e,
+        stackTrace: s,
+      );
       throw Exception('Failed to upload regular user avatar: $e');
     }
   }
@@ -906,5 +1021,12 @@ class ProfileService {
       );
       throw Exception('Failed to load user profile: $e');
     }
+  }
+
+  /// Checks if the current user has a complete regular user profile
+  bool hasCompleteRegularUserProfile() {
+    final uid = currentUserUid;
+    if (uid == null) return false;
+    return _hiveService.hasCompleteRegularUserProfile(uid);
   }
 }

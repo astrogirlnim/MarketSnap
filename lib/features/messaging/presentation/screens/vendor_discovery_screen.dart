@@ -222,14 +222,19 @@ class _VendorCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundImage: vendor.avatarURL?.isNotEmpty == true
-                  ? NetworkImage(_rewriteUrlForCurrentPlatform(vendor.avatarURL!))
-                  : null,
-              backgroundColor: AppColors.marketBlue,
-              child: vendor.avatarURL?.isEmpty != false
-                  ? Text(
+            vendor.avatarURL?.isNotEmpty == true
+                ? CircleAvatar(
+                    radius: 32,
+                    backgroundImage: NetworkImage(_rewriteUrlForCurrentPlatform(vendor.avatarURL!)),
+                    backgroundColor: AppColors.marketBlue,
+                    onBackgroundImageError: (exception, stackTrace) {
+                      debugPrint('[VendorDiscoveryScreen] ❌ Avatar load error for ${vendor.displayName}: $exception');
+                    },
+                  )
+                : CircleAvatar(
+                    radius: 32,
+                    backgroundColor: AppColors.marketBlue,
+                    child: Text(
                       vendor.displayName.isNotEmpty
                           ? vendor.displayName[0].toUpperCase()
                           : '?',
@@ -237,12 +242,8 @@ class _VendorCard extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : null,
-              onBackgroundImageError: (exception, stackTrace) {
-                debugPrint('[VendorDiscoveryScreen] ❌ Avatar load error for ${vendor.displayName}: $exception');
-              },
-            ),
+                    ),
+                  ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(

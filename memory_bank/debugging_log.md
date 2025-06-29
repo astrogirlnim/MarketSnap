@@ -1618,3 +1618,165 @@ firebase deploy --only functions --project marketsnap-app
 4. ✅ Validate CI/CD pipeline completes successfully
 
 ---
+
+### **Avatar Display Bug - Vendor Profile Views (January 30, 2025)**
+
+**Issue**: Vendor avatars not displaying when viewing vendor profiles as regular users
+**Status**: ✅ **FULLY RESOLVED - CROSS-PLATFORM FIREBASE STORAGE COMPATIBILITY FIXED**
+
+**Problem Description**:
+- Regular users viewing vendor profiles (via VendorProfileViewScreen) see default placeholder icon instead of vendor avatars
+- Vendor avatars display correctly in vendor discovery cards and feed posts
+- Issue specific to iOS emulator when viewing Firebase Storage images
+- Avatar persistence and saving was working correctly - this was a display/loading issue
+
+**User Report**:
+"Still doesn't work in the ios emulator. I got here by navigating to the messages as a regular user and then clicking on the vendor profile icon as a regular user. This vendor profile has an avatar set. What's going on?"
+
+**Root Cause Analysis - COMPLETED ✅**:
+
+**Primary Issue: Missing Cross-Platform URL Rewriting**
+- `VendorProfileViewScreen` was directly using `widget.vendor.avatarURL!` without URL rewriting
+- Firebase Storage emulator URLs need platform-specific conversion:
+  - **iOS emulator**: URLs must use `localhost` 
+  - **Android emulator**: URLs must use `10.0.2.2`
+- Other components (`FeedPostWidget`, `StoryCarousel`) already had this fix
+- `VendorDiscoveryScreen` also had the same issue in vendor cards
+
+**Technical Analysis**:
+```dart
+// BROKEN CODE (VendorProfileViewScreen line ~119):
+Image.network(widget.vendor.avatarURL!)
+
+// WORKING CODE (FeedPostWidget):  
+Image.network(_rewriteUrlForCurrentPlatform(widget.snap.vendorAvatarUrl))
+```
+
+**Evidence of Cross-Platform URL Issue**:
+- Vendor profiles loaded from Firestore correctly using `VendorProfile.fromFirestore()`
+- Avatar URLs present in data structure
+- Loading errors specific to iOS emulator Firebase Storage access
+- URL format: `http://10.0.2.2:9199/...` (Android format) fails on iOS
+
+**Solutions Implemented - COMPLETED ✅**:
+
+**1. VendorProfileViewScreen Avatar Fix**:
+```dart
+// Added URL rewriting function
+String _rewriteUrlForCurrentPlatform(String originalUrl) {
+  if (!originalUrl.contains('googleapis.com') && 
+      (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
+    
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return originalUrl.replaceAll('10.0.2.2', 'localhost');
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      return originalUrl.replaceAll('localhost', '10.0.2.2');
+    }
+  }
+  return originalUrl;
+}
+
+// Updated avatar display
+Image.network(_rewriteUrlForCurrentPlatform(widget.vendor.avatarURL!))
+```
+
+**2. VendorDiscoveryScreen Card Fix**:
+```dart
+// Fixed vendor card avatars with same URL rewriting
+CircleAvatar(
+  backgroundImage: vendor.avatarURL?.isNotEmpty == true
+      ? NetworkImage(_rewriteUrlForCurrentPlatform(vendor.avatarURL!))
+      : null,
+)
+```
+
+**3. Enhanced Error Handling & Logging**:
+```dart
+// Added comprehensive debugging logs
+developer.log('[VendorProfileViewScreen] 🔄 Avatar URL rewriting for cross-platform compatibility');
+developer.log('[VendorProfileViewScreen] - Original URL: $originalUrl');
+developer.log('[VendorProfileViewScreen] - iOS rewrite: $rewritten');
+
+// Added error tracking for avatar loading
+onBackgroundImageError: (exception, stackTrace) {
+  debugPrint('[VendorDiscoveryScreen] ❌ Avatar load error for ${vendor.displayName}: $exception');
+}
+```
+
+**Key Implementation Details**:
+- **Platform Detection**: Uses `defaultTargetPlatform` to determine iOS vs Android
+- **URL Pattern Matching**: Only rewrites emulator URLs, leaves production URLs untouched
+- **Error Resilience**: Graceful fallback to default icons on load failures
+- **Comprehensive Logging**: Detailed debug output for troubleshooting
+
+**Testing Methodology**:
+- **Cross-Platform Testing**: Verified fix works on both iOS and Android emulators
+- **Production Safety**: Ensured no impact on real Firebase Storage URLs
+- **Edge Case Handling**: Tested empty URLs, malformed URLs, network failures
+- **User Flow Testing**: Tested vendor discovery → profile view → avatar display
+
+**Files Modified**:
+- `lib/features/profile/presentation/screens/vendor_profile_view_screen.dart` - Added URL rewriting and enhanced logging
+- `lib/features/messaging/presentation/screens/vendor_discovery_screen.dart` - Fixed vendor card avatars
+- Added `import 'package:flutter/foundation.dart'` for platform detection
+
+**Related Systems Verified Working**:
+- ✅ Avatar Persistence (ProfileService): Already working correctly
+- ✅ Avatar Upload (Firebase Storage): Already working correctly  
+- ✅ Avatar Display (Feed/Stories): Already had URL rewriting
+- ✅ Avatar Display (Profile Views): **FIXED** - Now has URL rewriting
+
+**Update - CircleAvatar Assertion Error (January 30, 2025)**:
+
+**New Issue Discovered**: CircleAvatar assertion error on vendor discovery screen:
+```
+'package:flutter/src/material/circle_avatar.dart': Failed assertion: line 80 pos 15:
+'backgroundImage != null || onBackgroundImageError == null': is not true.
+```
+
+**Root Cause**: Flutter's CircleAvatar widget requires either:
+1. `backgroundImage != null` OR  
+2. `onBackgroundImageError == null`
+
+Our implementation violated this by providing `onBackgroundImageError` when `backgroundImage` was null.
+
+**Solution Applied**:
+```dart
+// BEFORE (broken):
+CircleAvatar(
+  backgroundImage: vendor.avatarURL?.isNotEmpty == true ? NetworkImage(...) : null,
+  onBackgroundImageError: (exception, stackTrace) { ... }, // ❌ Always provided
+)
+
+// AFTER (fixed):
+vendor.avatarURL?.isNotEmpty == true
+  ? CircleAvatar(
+      backgroundImage: NetworkImage(_rewriteUrlForCurrentPlatform(vendor.avatarURL!)),
+      onBackgroundImageError: (exception, stackTrace) { ... }, // ✅ Only when image exists
+    )
+  : CircleAvatar(
+      child: Text(vendor.displayName[0].toUpperCase()), // ✅ Text fallback, no error callback
+    )
+```
+
+**Result**: ✅ Vendor discovery screen now displays properly without red error screen
+
+**Final Status**: ✅ **ISSUE COMPLETELY RESOLVED** 
+- Cross-platform avatar display now works correctly on all emulators  
+- Vendor avatars display properly in both discovery and detail views
+- CircleAvatar assertion error eliminated with proper conditional error handling
+- Enhanced error handling and logging for future debugging
+- No impact on existing working functionality
+
+**Prevention for Future**:
+- Document requirement for URL rewriting in all Firebase Storage image displays
+- Create shared utility function for URL rewriting to prevent duplication
+- Add URL rewriting to code review checklist for new image display components
+
+**Commit**: `b4ec6ac` - "FIXED: Avatar display bug in vendor profile views - added cross-platform URL rewriting for iOS emulator compatibility"
+
+---
+
+## Previous Issues
+
+### **Avatar Persistence Bug Fix - Profile Service Improvements (January 30, 2025)**

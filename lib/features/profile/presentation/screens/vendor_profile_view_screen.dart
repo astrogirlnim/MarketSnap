@@ -9,7 +9,7 @@ import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../../../shared/presentation/widgets/follow_button.dart';
 import '../../../../core/models/vendor_profile.dart';
 import '../../application/profile_service.dart';
-import '../../../messaging/application/follow_service.dart';
+import '../../../../core/services/follow_service.dart';
 
 /// Screen for viewing another vendor's profile (read-only)
 /// Shows vendor information and allows regular users to follow/unfollow
