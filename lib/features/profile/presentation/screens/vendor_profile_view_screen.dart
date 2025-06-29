@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:developer' as developer;
 
 import '../../../../shared/presentation/theme/app_colors.dart';
@@ -7,8 +8,8 @@ import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/widgets/market_snap_components.dart';
 import '../../../../shared/presentation/widgets/follow_button.dart';
 import '../../../../core/models/vendor_profile.dart';
-import '../../../../core/services/follow_service.dart';
 import '../../application/profile_service.dart';
+import '../../../messaging/application/follow_service.dart';
 
 /// Screen for viewing another vendor's profile (read-only)
 /// Shows vendor information and allows regular users to follow/unfollow
@@ -127,9 +128,13 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
                   widget.vendor.avatarURL!.isNotEmpty
               ? ClipOval(
                   child: Image.network(
-                    widget.vendor.avatarURL!,
+                    _rewriteUrlForCurrentPlatform(widget.vendor.avatarURL!),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
+                      developer.log(
+                        '[VendorProfileViewScreen] ❌ Avatar load error: $error',
+                        name: 'VendorProfileViewScreen',
+                      );
                       return Icon(
                         Icons.person,
                         size: 48,
@@ -137,7 +142,13 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
                       );
                     },
                     loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
+                      if (loadingProgress == null) {
+                        developer.log(
+                          '[VendorProfileViewScreen] ✅ Avatar loaded successfully for ${widget.vendor.displayName}',
+                          name: 'VendorProfileViewScreen',
+                        );
+                        return child;
+                      }
                       return Center(
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
@@ -165,6 +176,48 @@ class _VendorProfileViewScreenState extends State<VendorProfileViewScreen> {
         ),
       ],
     );
+  }
+
+  /// ✅ ADD: Cross-platform URL rewriting for avatars to fix iOS emulator Firebase Storage access
+  String _rewriteUrlForCurrentPlatform(String originalUrl) {
+    // Only rewrite Firebase Storage emulator URLs
+    if (!originalUrl.contains('googleapis.com') && 
+        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
+      
+      developer.log(
+        '[VendorProfileViewScreen] 🔄 Avatar URL rewriting for cross-platform compatibility',
+        name: 'VendorProfileViewScreen',
+      );
+      developer.log(
+        '[VendorProfileViewScreen] - Original URL: $originalUrl',
+        name: 'VendorProfileViewScreen',
+      );
+      
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // iOS: Convert Android emulator URL to iOS format
+        final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
+        developer.log(
+          '[VendorProfileViewScreen] - iOS rewrite: $rewritten',
+          name: 'VendorProfileViewScreen',
+        );
+        return rewritten;
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        // Android: Convert iOS emulator URL to Android format  
+        final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
+        developer.log(
+          '[VendorProfileViewScreen] - Android rewrite: $rewritten',
+          name: 'VendorProfileViewScreen',
+        );
+        return rewritten;
+      }
+    }
+    
+    // No rewriting needed for production URLs or non-emulator environments
+    developer.log(
+      '[VendorProfileViewScreen] - No rewriting needed, using original URL',
+      name: 'VendorProfileViewScreen',
+    );
+    return originalUrl;
   }
 
   Widget _buildVendorInfo() {
