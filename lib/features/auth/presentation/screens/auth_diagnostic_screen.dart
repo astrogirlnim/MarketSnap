@@ -7,8 +7,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../main.dart' as main;
 
 class AuthDiagnosticScreen extends StatefulWidget {
+  const AuthDiagnosticScreen({super.key});
+
   @override
-  _AuthDiagnosticScreenState createState() => _AuthDiagnosticScreenState();
+  State<AuthDiagnosticScreen> createState() => _AuthDiagnosticScreenState();
 }
 
 class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
@@ -265,7 +267,7 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
           children: [
             if (isLoading)
               LinearProgressIndicator(
-                backgroundColor: Colors.orange.withOpacity(0.3),
+                backgroundColor: Colors.orange.withValues(alpha: 0.3),
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
               ),
             SizedBox(height: 16),
@@ -275,7 +277,7 @@ class _AuthDiagnosticScreenState extends State<AuthDiagnosticScreen> {
                   width: double.infinity,
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
+                    color: Colors.black.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange, width: 1),
                   ),

@@ -70,6 +70,7 @@ class UserInterests {
   /// Convert UserInterests to Firestore document data
   Map<String, dynamic> toFirestore() {
     return {
+      'userId': userId,
       'preferredKeywords': preferredKeywords,
       'preferredCategories': preferredCategories,
       'preferredContentType': preferredContentType,
@@ -82,6 +83,7 @@ class UserInterests {
       'totalInteractions': totalInteractions,
       'engagementRate': engagementRate,
       'satisfactionScore': satisfactionScore,
+      'personalizationConfidence': personalizationConfidence,
       'recentSearchTerms': recentSearchTerms,
       'favoriteVendors': favoriteVendors,
       'lastUpdated': Timestamp.fromDate(lastUpdated),

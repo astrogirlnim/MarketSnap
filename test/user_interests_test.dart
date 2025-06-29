@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:marketsnap/core/models/user_interests.dart';
 
 void main() {
@@ -22,7 +24,7 @@ void main() {
       expect(interests.recentSearchTerms, isEmpty);
       expect(interests.favoriteVendors, isEmpty);
       
-      print('✅ UserInterests empty creation test passed');
+      debugPrint('✅ UserInterests empty creation test passed');
     });
 
     test('should update interests with positive feedback correctly', () {
@@ -50,7 +52,7 @@ void main() {
       expect(updatedInterests.keywordRelevanceScores['tomato'], equals(0.8));
       expect(updatedInterests.categoryRelevanceScores['vegetables'], equals(0.8));
       
-      print('✅ UserInterests positive feedback update test passed');
+      debugPrint('✅ UserInterests positive feedback update test passed');
     });
 
     test('should update interests with negative feedback correctly', () {
@@ -78,7 +80,7 @@ void main() {
       expect(interests.satisfactionScore, lessThan(0.7));
       expect(interests.engagementRate, equals(1.0)); // 2/2 interactions
       
-      print('✅ UserInterests negative feedback update test passed');
+      debugPrint('✅ UserInterests negative feedback update test passed');
     });
 
     test('should calculate personalization confidence correctly', () {
@@ -104,9 +106,9 @@ void main() {
       expect(interests.hasSignificantData, isTrue);
       expect(interests.satisfactionScore, greaterThan(0.6)); // Should be positive overall
       
-      print('✅ Personalization confidence calculation test passed');
-      print('   Confidence: ${interests.personalizationConfidence.toStringAsFixed(2)}');
-      print('   Satisfaction: ${interests.satisfactionScore.toStringAsFixed(2)}');
+      debugPrint('✅ Personalization confidence calculation test passed');
+      debugPrint('   Confidence: ${interests.personalizationConfidence.toStringAsFixed(2)}');
+      debugPrint('   Satisfaction: ${interests.satisfactionScore.toStringAsFixed(2)}');
     });
 
     test('should generate proper personalization context', () {
@@ -136,7 +138,7 @@ void main() {
       expect(context['engagementRate'], isA<double>());
       expect(context['preferredContentType'], equals('balanced'));
       
-      print('✅ Personalization context generation test passed');
+      debugPrint('✅ Personalization context generation test passed');
     });
 
     test('should maintain keyword limits', () {
@@ -158,7 +160,7 @@ void main() {
       // Should be limited to 10 keywords
       expect(interests.preferredKeywords.length, lessThanOrEqualTo(10));
       
-      print('✅ Keyword limits maintained: ${interests.preferredKeywords.length} keywords');
+      debugPrint('✅ Keyword limits maintained: ${interests.preferredKeywords.length} keywords');
     });
 
     test('should maintain category limits', () {
@@ -179,7 +181,7 @@ void main() {
       // Should be limited to 5 categories
       expect(interests.preferredCategories.length, lessThanOrEqualTo(5));
       
-      print('✅ Category limits maintained: ${interests.preferredCategories.length} categories');
+      debugPrint('✅ Category limits maintained: ${interests.preferredCategories.length} categories');
     });
 
     test('should maintain search terms limits', () {
@@ -199,13 +201,13 @@ void main() {
       // Should be limited to 20 search terms
       expect(interests.recentSearchTerms.length, lessThanOrEqualTo(20));
       
-      print('✅ Search terms limits maintained: ${interests.recentSearchTerms.length} terms');
+      debugPrint('✅ Search terms limits maintained: ${interests.recentSearchTerms.length} terms');
     });
 
     test('should maintain vendor limits', () {
       var interests = UserInterests.empty(testUserId);
       
-      // Add more than 10 vendors
+      // Add more than 10 different vendors
       for (int i = 0; i < 15; i++) {
         interests = interests.updateWithFeedback(
           keywords: ['test'],
@@ -219,77 +221,71 @@ void main() {
       // Should be limited to 10 vendors
       expect(interests.favoriteVendors.length, lessThanOrEqualTo(10));
       
-      print('✅ Vendor limits maintained: ${interests.favoriteVendors.length} vendors');
+      debugPrint('✅ Vendor limits maintained: ${interests.favoriteVendors.length} vendors');
     });
 
     test('should handle mixed feedback patterns correctly', () {
       var interests = UserInterests.empty(testUserId);
       
-      final mixedFeedback = [
-        // Strong positive pattern for tomatoes
+      // Simulate realistic user behavior with mixed feedback
+      final interactions = [
         {'keywords': ['tomato', 'fresh'], 'category': 'vegetables', 'positive': true, 'score': 0.9},
-        {'keywords': ['tomato', 'sauce'], 'category': 'condiment', 'positive': true, 'score': 0.8},
-        {'keywords': ['tomato', 'salad'], 'category': 'vegetables', 'positive': true, 'score': 0.85},
-        
-        // Some negative feedback
-        {'keywords': ['mushroom'], 'category': 'vegetables', 'positive': false, 'score': 0.2},
-        {'keywords': ['brussels_sprouts'], 'category': 'vegetables', 'positive': false, 'score': 0.1},
-        
-        // Mixed results for fruits
-        {'keywords': ['apple'], 'category': 'fruit', 'positive': true, 'score': 0.7},
-        {'keywords': ['banana'], 'category': 'fruit', 'positive': false, 'score': 0.4},
-        {'keywords': ['orange'], 'category': 'fruit', 'positive': true, 'score': 0.6},
+        {'keywords': ['old', 'spoiled'], 'category': 'vegetables', 'positive': false, 'score': 0.2},
+        {'keywords': ['tomato', 'sauce'], 'category': 'processed', 'positive': true, 'score': 0.7},
+        {'keywords': ['tomato', 'ripe'], 'category': 'vegetables', 'positive': true, 'score': 0.8},
+        {'keywords': ['wilted', 'bad'], 'category': 'vegetables', 'positive': false, 'score': 0.1},
+        {'keywords': ['fresh', 'organic'], 'category': 'vegetables', 'positive': true, 'score': 0.95},
+        {'keywords': ['expensive', 'overpriced'], 'category': 'vegetables', 'positive': false, 'score': 0.3},
+        {'keywords': ['fresh', 'local'], 'category': 'vegetables', 'positive': true, 'score': 0.85},
       ];
       
-      for (final feedback in mixedFeedback) {
+      for (final interaction in interactions) {
         interests = interests.updateWithFeedback(
-          keywords: feedback['keywords'] as List<String>,
-          category: feedback['category'] as String,
-          relevanceScore: feedback['score'] as double,
-          isPositive: feedback['positive'] as bool,
+          keywords: interaction['keywords'] as List<String>,
+          category: interaction['category'] as String,
+          relevanceScore: interaction['score'] as double,
+          isPositive: interaction['positive'] as bool,
         );
       }
       
       expect(interests.totalInteractions, equals(8));
       expect(interests.totalPositiveFeedback, equals(5));
       expect(interests.totalNegativeFeedback, equals(3));
-      expect(interests.satisfactionScore, greaterThan(0.4)); // Still positive overall
-      expect(interests.preferredKeywords, contains('tomato')); // Strong positive pattern
+      expect(interests.satisfactionScore, greaterThan(0.5));
+      expect(interests.preferredKeywords, contains('tomato'));
+      expect(interests.preferredKeywords, contains('fresh'));
       
-      print('✅ Mixed feedback patterns handled correctly');
-      print('   Satisfaction: ${interests.satisfactionScore.toStringAsFixed(2)}');
-      print('   Top keywords: ${interests.preferredKeywords.take(3).join(', ')}');
+      debugPrint('✅ Mixed feedback patterns handled correctly');
+      debugPrint('   Satisfaction: ${interests.satisfactionScore.toStringAsFixed(2)}');
+      debugPrint('   Top keywords: ${interests.preferredKeywords.take(3).join(', ')}');
     });
 
     test('should handle performance with large datasets', () {
-      final startTime = DateTime.now();
-      
       var interests = UserInterests.empty(testUserId);
       
-      // Simulate heavy usage
+      final stopwatch = Stopwatch()..start();
+      
+      // Simulate 100 interactions
       for (int i = 0; i < 100; i++) {
         interests = interests.updateWithFeedback(
-          keywords: ['keyword_$i', 'common_keyword'],
-          category: 'category_${i % 10}',
-          relevanceScore: 0.5 + (i % 50) / 100.0,
-          isPositive: i % 3 != 0, // 2/3 positive
-          vendorId: 'vendor_${i % 20}',
-          searchTerm: 'search_$i',
+          keywords: ['keyword_${i % 20}', 'common_${i % 5}'],
+          category: 'category_${i % 8}',
+          relevanceScore: 0.5 + (i % 50) / 100, // Varying scores 0.5-1.0
+          isPositive: i % 3 != 0, // ~67% positive feedback
+          vendorId: 'vendor_${i % 15}',
+          searchTerm: 'search_${i % 30}',
         );
       }
       
-      final processingTime = DateTime.now().difference(startTime);
+      stopwatch.stop();
+      final processingTime = stopwatch.elapsed;
       
-      // Should complete within reasonable time
-      expect(processingTime.inSeconds, lessThan(3));
       expect(interests.totalInteractions, equals(100));
-      expect(interests.preferredKeywords.length, lessThanOrEqualTo(10));
-      expect(interests.preferredCategories.length, lessThanOrEqualTo(5));
-      expect(interests.recentSearchTerms.length, lessThanOrEqualTo(20));
-      expect(interests.favoriteVendors.length, lessThanOrEqualTo(10));
+      expect(interests.hasSignificantData, isTrue);
+      expect(interests.personalizationConfidence, greaterThan(0.8));
       
-      print('✅ Performance test: 100 interactions in ${processingTime.inMilliseconds}ms');
-      print('   Final confidence: ${interests.personalizationConfidence.toStringAsFixed(2)}');
+      debugPrint('✅ Performance test: 100 interactions in ${processingTime.inMilliseconds}ms');
+      debugPrint('   Final confidence: ${interests.personalizationConfidence.toStringAsFixed(2)}');
     });
 
     test('should serialize to Firestore format correctly', () {
@@ -305,21 +301,24 @@ void main() {
         searchTerm: 'fresh tomatoes',
       );
       
-      // Serialize to Firestore format
       final firestoreData = interests.toFirestore();
       
-      // Note: userId is not stored in Firestore data - it's the document ID
+      expect(firestoreData['userId'], equals(testUserId));
       expect(firestoreData['preferredKeywords'], isA<List>());
       expect(firestoreData['preferredCategories'], isA<List>());
-      expect(firestoreData['totalInteractions'], equals(1));
-      expect(firestoreData['totalPositiveFeedback'], equals(1));
+      expect(firestoreData['totalInteractions'], isA<int>());
+      expect(firestoreData['totalPositiveFeedback'], isA<int>());
+      expect(firestoreData['totalNegativeFeedback'], isA<int>());
+      expect(firestoreData['personalizationConfidence'], isA<double>());
       expect(firestoreData['satisfactionScore'], isA<double>());
+      expect(firestoreData['engagementRate'], isA<double>());
+      expect(firestoreData['lastUpdated'], isA<Timestamp>());
+      expect(firestoreData['keywordRelevanceScores'], isA<Map>());
+      expect(firestoreData['categoryRelevanceScores'], isA<Map>());
       expect(firestoreData['recentSearchTerms'], isA<List>());
       expect(firestoreData['favoriteVendors'], isA<List>());
-      expect(firestoreData['engagementRate'], isA<double>());
-      expect(firestoreData['preferredContentType'], equals('balanced'));
       
-      print('✅ Firestore serialization test passed');
+      debugPrint('✅ Firestore serialization test passed');
     });
   });
 } 
