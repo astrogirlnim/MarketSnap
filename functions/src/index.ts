@@ -1682,7 +1682,7 @@ export const batchVectorizeFAQs = createAIHelper(
           success: true,
           processed: 0,
           message: "No FAQs need vectorization",
-          timestamp: admin.firestore.Timestamp.now(),
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
         };
       }
 
@@ -1724,7 +1724,7 @@ export const batchVectorizeFAQs = createAIHelper(
           // Update the faqVector document with the embedding
           await db.collection("faqVectors").doc(faqId).update({
             embedding: embedding,
-            updatedAt: admin.firestore.Timestamp.now(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
           results.processed++;
@@ -1755,7 +1755,7 @@ export const batchVectorizeFAQs = createAIHelper(
         message: results.success ?
           `Successfully vectorized ${results.processed} FAQs` :
           `Vectorized ${results.processed} FAQs with ${results.errors.length} errors`,
-        timestamp: admin.firestore.Timestamp.now(),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
     } catch (error) {
       logger.error("[batchVectorizeFAQs] Error in batch vectorization:", error);
@@ -1837,7 +1837,7 @@ export const autoVectorizeFAQ = onDocumentCreated(
         // Update existing faqVector with embedding
         await faqVectorRef.update({
           embedding: embedding,
-          updatedAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         logger.log(`[autoVectorizeFAQ] ✅ Updated existing faqVector ${faqId}`);
       } else {
@@ -1850,8 +1850,8 @@ export const autoVectorizeFAQ = onDocumentCreated(
           category: faqData.category,
           keywords: faqData.keywords || [],
           embedding: embedding,
-          createdAt: admin.firestore.Timestamp.now(),
-          updatedAt: admin.firestore.Timestamp.now(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         logger.log(`[autoVectorizeFAQ] ✅ Created new faqVector ${faqId}`);
       }
