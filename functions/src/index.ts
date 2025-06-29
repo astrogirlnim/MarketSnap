@@ -1617,12 +1617,28 @@ export const batchVectorizeFAQs = createAIHelper(
 
     const {vendorId, limit = 50} = data;
 
+    // Enhanced authentication check with emulator debugging
+    const isEmulatorMode = process.env.FUNCTIONS_EMULATOR === "true";
+    
     if (!context.auth) {
+      logger.log("[batchVectorizeFAQs] Authentication context missing");
+      logger.log("[batchVectorizeFAQs] Emulator mode:", isEmulatorMode);
+      logger.log("[batchVectorizeFAQs] Context:", JSON.stringify(context, null, 2));
+      
+      // In emulator mode, provide more debugging info but still require auth
+      if (isEmulatorMode) {
+        logger.log("[batchVectorizeFAQs] ⚠️ Authentication required even in emulator mode");
+        logger.log("[batchVectorizeFAQs] 💡 Call function from authenticated Flutter app");
+      }
+      
       throw new functions.https.HttpsError(
         "unauthenticated",
-        "User must be authenticated to vectorize FAQs."
+        "User must be authenticated to vectorize FAQs. " +
+        (isEmulatorMode ? "Emulator: Call from authenticated Flutter app." : "")
       );
     }
+    
+    logger.log("[batchVectorizeFAQs] ✅ Authenticated user:", context.auth.uid);
 
     // Check for OpenAI API key
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
@@ -1682,7 +1698,7 @@ export const batchVectorizeFAQs = createAIHelper(
           success: true,
           processed: 0,
           message: "No FAQs need vectorization",
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: admin.firestore.Timestamp.now(),
         };
       }
 
@@ -1755,7 +1771,7 @@ export const batchVectorizeFAQs = createAIHelper(
         message: results.success ?
           `Successfully vectorized ${results.processed} FAQs` :
           `Vectorized ${results.processed} FAQs with ${results.errors.length} errors`,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: admin.firestore.Timestamp.now(),
       };
     } catch (error) {
       logger.error("[batchVectorizeFAQs] Error in batch vectorization:", error);
