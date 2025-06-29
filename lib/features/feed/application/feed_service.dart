@@ -119,10 +119,10 @@ class FeedService {
             // Convert to StoryItem list and sort by most recent snap
             final storyItems = storyItemsMap.entries.map((entry) {
               final vendorSnaps = entry.value;
-              // Sort snaps for this vendor by creation time (newest first)
-              vendorSnaps.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              // Sort snaps for this vendor by creation time (oldest first for chronological viewing)
+              vendorSnaps.sort((a, b) => a.createdAt.compareTo(b.createdAt));
               
-              final latestSnap = vendorSnaps.first;
+              final latestSnap = vendorSnaps.last; // Latest snap for vendor ordering (last in chronological list)
               return StoryItem(
                 vendorId: latestSnap.vendorId,
                 vendorName: latestSnap.vendorName,
@@ -133,7 +133,7 @@ class FeedService {
             }).toList();
 
             // Sort story items by most recent story (latest snap from each vendor)
-            storyItems.sort((a, b) => b.snaps.first.createdAt.compareTo(a.snaps.first.createdAt));
+            storyItems.sort((a, b) => b.snaps.last.createdAt.compareTo(a.snaps.last.createdAt));
 
             developer.log(
               '[FeedService] Created ${storyItems.length} story items from ${snaps.length} snaps',
