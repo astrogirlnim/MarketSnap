@@ -123,6 +123,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
     else if (previousIndex != cameraTabIndex && currentIndex == cameraTabIndex) {
       debugPrint('[MainShellScreen] 📷 Navigating TO camera tab - resuming camera');
       
+      // ✅ CAMERA UNAVAILABLE FIX: Check if camera is already working before resuming
+      if (_cameraService.controller?.value.isInitialized == true) {
+        debugPrint('[MainShellScreen] ✅ Camera already initialized and working, no resume needed');
+        return;
+      }
+      
       // ✅ CAMERA UNAVAILABLE FIX: Add small delay to allow tab transition to complete
       Future.delayed(const Duration(milliseconds: 100), () {
         _cameraService.resumeCamera().then((success) {

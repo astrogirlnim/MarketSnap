@@ -100,6 +100,25 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       }
     });
     
+    // ✅ CAMERA UNAVAILABLE FIX: Add periodic check to update UI state if camera becomes available
+    Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      // If we're showing loading but camera is actually ready, update UI
+      if (_isInitializing && 
+          _cameraService.controller?.value.isInitialized == true && 
+          _errorMessage == null) {
+        debugPrint('[CameraPreviewScreen] Periodic check: Camera ready, updating UI state');
+        setState(() {
+          _isInitializing = false;
+        });
+        timer.cancel();
+      }
+    });
+    
     debugPrint('[CameraPreviewScreen] ========== INIT STATE END ==========');
   }
 
@@ -203,10 +222,44 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       return;
     }
 
+    // ✅ CAMERA UNAVAILABLE FIX: Check if already initialized and working
+    if (_cameraService.controller?.value.isInitialized == true && !_isInitializing) {
+      debugPrint('[CameraPreviewScreen] Camera already initialized and working, skipping initialization');
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _errorMessage = null;
+        });
+      }
+      return;
+    }
+
     // ✅ CAMERA UNAVAILABLE FIX: Prevent concurrent initialization attempts with timeout protection
     if (_isInitializing) {
-      debugPrint('[CameraPreviewScreen] Already initializing, skipping duplicate attempt');
-      return;
+      debugPrint('[CameraPreviewScreen] Already initializing, waiting for completion...');
+      // Wait for current initialization to complete with timeout
+      int waitAttempts = 0;
+      const int maxWaitAttempts = 50; // 5 seconds max wait
+      while (_isInitializing && waitAttempts < maxWaitAttempts && mounted) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitAttempts++;
+      }
+      
+      // Check if initialization completed successfully
+      if (_cameraService.controller?.value.isInitialized == true) {
+        debugPrint('[CameraPreviewScreen] Initialization completed while waiting');
+        return;
+      }
+      
+      // If still initializing after timeout, force reset
+      if (_isInitializing) {
+        debugPrint('[CameraPreviewScreen] Initialization timeout, forcing reset...');
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+          });
+        }
+      }
     }
 
     // ✅ CAMERA UNAVAILABLE FIX: Check if camera service is stuck and force reset if needed
@@ -215,10 +268,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
       _cameraService.forceResetInitialization();
     }
 
-    setState(() {
-      _isInitializing = true;
-      _errorMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isInitializing = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       // ✅ CAMERA UNAVAILABLE FIX: Enhanced service initialization check
