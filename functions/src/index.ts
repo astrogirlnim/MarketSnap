@@ -1058,7 +1058,7 @@ export const vectorSearchFAQ = createAIHelper(
 
         // Calculate relevance score based on keyword matching
         // In a full implementation, this would use vector similarity
-        let score = 0.02; // Small baseline score to ensure some FAQs always show up
+        let score = 0.02; // Small baseline score to ensure some FAQs show up
 
         const questionText = (faqData.question || "").toLowerCase();
         const answerText = (faqData.answer || "").toLowerCase();
@@ -1073,7 +1073,6 @@ export const vectorSearchFAQ = createAIHelper(
         // Score based on keyword matches (improved with partial matching)
         let keywordMatches = 0;
         let partialMatches = 0;
-        
         keywordSet.forEach((keyword) => {
           if (combinedText.includes(keyword)) {
             keywordMatches++;
@@ -1081,7 +1080,7 @@ export const vectorSearchFAQ = createAIHelper(
             // Check for partial matches (3+ characters)
             if (keyword.length >= 3) {
               const words = combinedText.split(/\s+/);
-              const hasPartialMatch = words.some(word => 
+              const hasPartialMatch = words.some((word) =>
                 word.includes(keyword) || keyword.includes(word)
               );
               if (hasPartialMatch) {
@@ -1130,7 +1129,7 @@ export const vectorSearchFAQ = createAIHelper(
           `score: ${score.toFixed(3)} (threshold: 0.05)`
         );
 
-        // Lower threshold for better matching - many valid FAQs have lower scores
+        // Lower threshold for better matching - valid FAQs have low scores
         if (score > 0.05) {
           results.push({
             question: faqData.question || "",
@@ -1150,7 +1149,7 @@ export const vectorSearchFAQ = createAIHelper(
       logger.log(
         `[vectorSearchFAQ] Returning ${topResults.length} results ` +
         `(scores: ${topResults.map((r) => r.score.toFixed(2)).join(", ")}) ` +
-        "with preference boosting applied"
+        "with preference boosting"
       );
 
       return {
@@ -1611,7 +1610,10 @@ export const deleteUserAccount = functions.https.onCall(
  */
 export const batchVectorizeFAQs = createAIHelper(
   "batchVectorizeFAQs",
-  async (data: any, context: CallableContext) => {
+  async (
+    data: {vendorId?: string; limit?: number},
+    context: CallableContext
+  ) => {
     logger.log("[batchVectorizeFAQs] Starting batch vectorization");
     logger.log("[batchVectorizeFAQs] Input data:", data);
 
@@ -1619,25 +1621,28 @@ export const batchVectorizeFAQs = createAIHelper(
 
     // Enhanced authentication check with emulator debugging
     const isEmulatorMode = process.env.FUNCTIONS_EMULATOR === "true";
-    
+
     if (!context.auth) {
       logger.log("[batchVectorizeFAQs] Authentication context missing");
       logger.log("[batchVectorizeFAQs] Emulator mode:", isEmulatorMode);
-      logger.log("[batchVectorizeFAQs] Context:", JSON.stringify(context, null, 2));
-      
+      logger.log("[batchVectorizeFAQs] Context:",
+        JSON.stringify(context, null, 2));
+
       // In emulator mode, provide more debugging info but still require auth
       if (isEmulatorMode) {
-        logger.log("[batchVectorizeFAQs] ⚠️ Authentication required even in emulator mode");
-        logger.log("[batchVectorizeFAQs] 💡 Call function from authenticated Flutter app");
+        logger.log("[batchVectorizeFAQs] ⚠️ Authentication required even " +
+          "in emulator mode");
+        logger.log("[batchVectorizeFAQs] 💡 Call function from " +
+          "authenticated Flutter app");
       }
-      
+
       throw new functions.https.HttpsError(
         "unauthenticated",
         "User must be authenticated to vectorize FAQs. " +
         (isEmulatorMode ? "Emulator: Call from authenticated Flutter app." : "")
       );
     }
-    
+
     logger.log("[batchVectorizeFAQs] ✅ Authenticated user:", context.auth.uid);
 
     // Check for OpenAI API key
@@ -1760,7 +1765,7 @@ export const batchVectorizeFAQs = createAIHelper(
       }
 
       logger.log(
-        `[batchVectorizeFAQs] Batch vectorization completed. ` +
+        "[batchVectorizeFAQs] Batch vectorization completed. " +
         `Processed: ${results.processed}, Errors: ${results.errors.length}`
       );
 
@@ -1770,7 +1775,8 @@ export const batchVectorizeFAQs = createAIHelper(
         errors: results.errors,
         message: results.success ?
           `Successfully vectorized ${results.processed} FAQs` :
-          `Vectorized ${results.processed} FAQs with ${results.errors.length} errors`,
+          `Vectorized ${results.processed} FAQs with ` +
+          `${results.errors.length} errors`,
         timestamp: admin.firestore.Timestamp.now(),
       };
     } catch (error) {
