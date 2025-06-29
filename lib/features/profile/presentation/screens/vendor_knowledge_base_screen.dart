@@ -304,17 +304,19 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         
         developer.log('[VendorKnowledgeBaseScreen] ✅ Updated FAQ: ${existingFAQ.id}');
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: MarketSnapStatusMessage(
-              message: 'FAQ updated successfully! Re-vectorization in progress...',
-              type: StatusType.success,
-              showIcon: true,
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: MarketSnapStatusMessage(
+                message: 'FAQ updated successfully! Re-vectorization in progress...',
+                type: StatusType.success,
+                showIcon: true,
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
-        );
+          );
+        }
       }
       
       // Reload FAQs to show changes
@@ -322,17 +324,19 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     } catch (e) {
       developer.log('[VendorKnowledgeBaseScreen] ❌ Error saving FAQ: $e');
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: MarketSnapStatusMessage(
-            message: 'Failed to save FAQ: $e',
-            type: StatusType.error,
-            showIcon: true,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: MarketSnapStatusMessage(
+              message: 'Failed to save FAQ: $e',
+              type: StatusType.error,
+              showIcon: true,
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
           ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -424,34 +428,38 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         
         developer.log('[VendorKnowledgeBaseScreen] ✅ Deleted FAQ: ${faq.id}');
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: MarketSnapStatusMessage(
-              message: 'FAQ deleted successfully',
-              type: StatusType.success,
-              showIcon: true,
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: MarketSnapStatusMessage(
+                message: 'FAQ deleted successfully',
+                type: StatusType.success,
+                showIcon: true,
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
-        );
+          );
+        }
         
         // Reload FAQs to show changes
         await _loadFAQs();
       } catch (e) {
         developer.log('[VendorKnowledgeBaseScreen] ❌ Error deleting FAQ: $e');
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: MarketSnapStatusMessage(
-              message: 'Failed to delete FAQ: $e',
-              type: StatusType.error,
-              showIcon: true,
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: MarketSnapStatusMessage(
+                message: 'Failed to delete FAQ: $e',
+                type: StatusType.error,
+                showIcon: true,
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
-        );
+          );
+        }
       }
     }
   }
@@ -766,7 +774,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                                               color: AppColors.leafGreen,
                                             ),
                                           ),
-                                        )).toList(),
+                                        )),
                                         if (faq.keywords.length > 3)
                                           Container(
                                             padding: const EdgeInsets.symmetric(
