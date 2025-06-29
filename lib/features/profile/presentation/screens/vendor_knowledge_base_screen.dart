@@ -1019,7 +1019,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ),
             const SizedBox(height: AppSpacing.md),
             
-            Expanded(
+            // Use SizedBox with fixed height instead of Expanded to prevent overflow
+            SizedBox(
+              height: 300, // Fixed height to prevent overflow issues
               child: ListView.builder(
                 itemCount: topFAQs.length,
                 itemBuilder: (context, index) {
@@ -1046,6 +1048,8 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                               color: AppColors.soilCharcoal,
                               fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           
