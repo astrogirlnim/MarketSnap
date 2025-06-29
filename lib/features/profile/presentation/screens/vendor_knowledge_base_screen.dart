@@ -1023,9 +1023,13 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
                         children: [
                           Icon(Icons.info_outline, color: AppColors.marketBlue, size: 20),
                           const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            'FAQ Search Status',
-                            style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+                          Expanded(
+                            child: Text(
+                              'FAQ Search Status',
+                              style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                         ],
                       ),
@@ -1193,34 +1197,35 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     String suffix = '',
     required Color color,
   }) {
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                '$value$suffix',
-                style: AppTypography.caption.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+    return Container(
+      constraints: const BoxConstraints(
+        maxWidth: 120, // Prevent overflow in constrained spaces
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '$value$suffix',
+              style: AppTypography.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1245,12 +1250,17 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
           Row(
             children: [
               Icon(icon, color: color, size: 20),
-              const Spacer(),
-              Text(
-                value,
-                style: AppTypography.h1.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  value,
+                  style: AppTypography.h1.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
