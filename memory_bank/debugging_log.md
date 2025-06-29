@@ -4,6 +4,118 @@
 
 ---
 
+## 🚨 CRITICAL: Story vs Feed Posting Bug - Data Flow Issue (ACTIVE)
+
+**Date:** December 30, 2024  
+**Issue:** Stories are incorrectly posting to the feed despite user selecting "Stories" option and persistence working correctly  
+**Status:** 🔴 **ACTIVE BUG** - Requires immediate attention
+
+### Problem Analysis
+
+**User Report:** "As a vendor, if I select to post to story, it posts to my story for the first story I create. However, if thereafter I create another video and attempt to add it to the story, it gets added to the feed (and not the story)."
+
+**Technical Evidence from Debug Logs:**
+```
+✅ UI LAYER: Working correctly
+[MediaReviewScreen] 🎯 User changed posting choice to: Stories
+[MediaReviewScreen] 🎯 User posting choice: STORIES
+
+✅ PERSISTENCE LAYER: Working correctly  
+[SettingsService] Saved posting preference: true (Stories)
+
+✅ PENDING MEDIA CREATION: Working correctly
+[MediaReviewScreen] ✅ PendingMediaItem created:
+[MediaReviewScreen]    - isStory: true
+
+❌ DATA CORRUPTION IN HIVE QUEUE: Critical bug identified
+[HiveService] - IsStory: false  <-- Should be true!
+[Main Isolate] - IsStory: false  <-- Should be true!
+
+✅ FIRESTORE DOCUMENT: Correctly reflects corrupted data
+[Main Isolate] Full snapData: {..., isStory: false}
+```
+
+### Root Cause Identified
+
+**The `isStory` field is being corrupted during the Hive storage/retrieval process.**
+
+1. **✅ MediaReviewScreen correctly creates PendingMediaItem with `isStory: true`**
+2. **❌ HiveService corrupts the `isStory` field to `false` during storage or retrieval**
+3. **✅ Upload process correctly uses the corrupted `false` value**
+4. **✅ Firestore correctly stores `isStory: false` (wrong but consistent)**
+
+### Technical Investigation Required
+
+**Suspected Issues:**
+1. **Hive Serialization Bug:** `PendingMediaItem.toJson()` or `fromJson()` may not be handling `isStory` field correctly
+2. **Hive Adapter Issue:** The generated Hive adapter for `PendingMediaItem` may have a field mapping problem
+3. **Race Condition:** Async storage operations might be overwriting the `isStory` field
+4. **Default Value Override:** Some code path might be setting `isStory` to `false` by default
+
+### Next Steps for Resolution
+
+**Priority Order:**
+
+1. **🔍 IMMEDIATE: Inspect PendingMediaItem Model**
+   - Check `lib/core/models/pending_media_item.dart`
+   - Verify `toJson()` and `fromJson()` methods include `isStory` field
+   - Confirm Hive field annotations are correct
+
+2. **🔍 URGENT: Examine Hive Adapter Generation**
+   - Check if `pending_media_item.g.dart` exists and is up-to-date
+   - Run `flutter packages pub run build_runner build --delete-conflicting-outputs`
+   - Verify generated adapter correctly maps `isStory` field
+
+3. **🔍 HIGH: Debug HiveService Storage Logic**
+   - Add detailed logging in `HiveService.addPendingMediaItem()`
+   - Log the exact object before and after Hive storage
+   - Check for any transformations that might affect `isStory`
+
+4. **🔍 MEDIUM: Investigate Upload Process**
+   - Review `lib/core/services/upload_service.dart` or equivalent
+   - Ensure no code path is overriding `isStory` during upload
+   - Verify the isolate communication preserves all fields
+
+### Debugging Commands to Run
+
+```bash
+# 1. Regenerate Hive adapters
+flutter packages pub run build_runner build --delete-conflicting-outputs
+
+# 2. Check for PendingMediaItem definition
+grep -r "class PendingMediaItem" lib/
+grep -r "isStory" lib/core/models/
+
+# 3. Verify Hive field annotations
+grep -r "@HiveField" lib/core/models/pending_media_item.dart
+
+# 4. Check for any default value assignments
+grep -r "isStory.*=" lib/
+```
+
+### Impact Assessment
+
+**User Experience Impact:**
+- **High:** Vendors cannot create story content as intended
+- **Confusing:** UI shows "Posted to Stories" but content appears in feed
+- **Trust Issue:** App behavior doesn't match user expectations
+
+**Technical Debt:**
+- **Data Integrity:** Firestore contains incorrectly categorized content
+- **Feature Reliability:** Core story functionality is broken
+- **Debug Complexity:** Multiple working layers mask the actual bug location
+
+### Success Criteria
+
+**✅ Fix Complete When:**
+1. Debug logs show `isStory: true` throughout entire pipeline
+2. Stories appear in story carousel, not in feed
+3. Feed posts appear in feed, not in story carousel
+4. User's posting choice persists correctly between sessions
+5. No data corruption in Hive storage/retrieval process
+
+---
+
 ## CRITICAL: Google Auth UID Inconsistency Across Platforms (RESOLVED ✅)
 
 ### **✅ RESOLVED: Firebase Auth Generating Different UIDs for Same Google Account Across iOS/Android Emulators**
