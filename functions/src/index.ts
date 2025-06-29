@@ -7,7 +7,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {logger} from "firebase-functions";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
-import {onCall, CallableRequest} from "firebase-functions/v2/https";
+import {CallableRequest, onCall} from "firebase-functions/v2/https";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -20,6 +20,24 @@ const db = admin.firestore();
 const messaging = admin.messaging();
 
 logger.log("Cold start: Initialized Firebase Admin SDK.");
+
+// Configure function options for better performance and reliability
+const FUNCTION_OPTIONS = {
+  memory: "1GiB" as const,
+  timeoutSeconds: 540,
+  maxInstances: 100,
+  minInstances: 0,
+  concurrency: 1,
+};
+
+// Configure heavy function options for AI/external API calls
+const HEAVY_FUNCTION_OPTIONS = {
+  memory: "2GiB" as const,
+  timeoutSeconds: 540,
+  maxInstances: 50,
+  minInstances: 0,
+  concurrency: 1,
+};
 
 /**
  * Retrieves all FCM tokens for a given vendor's followers.
@@ -115,7 +133,10 @@ const getUserFCMToken = async (userId: string): Promise<string | null> => {
  * Cloud Function to send a push notification when a new snap is created.
  */
 export const sendFollowerPush = onDocumentCreated(
-  "vendors/{vendorId}/snaps/{snapId}",
+  {
+    document: "vendors/{vendorId}/snaps/{snapId}",
+    ...FUNCTION_OPTIONS,
+  },
   async (event) => {
     const {vendorId, snapId} = event.params;
     const snap = event.data;
@@ -225,7 +246,10 @@ export const sendFollowerPush = onDocumentCreated(
  * Cloud Function to fan out a broadcast message via push notification.
  */
 export const fanOutBroadcast = onDocumentCreated(
-  "vendors/{vendorId}/broadcasts/{broadcastId}",
+  {
+    document: "vendors/{vendorId}/broadcasts/{broadcastId}",
+    ...FUNCTION_OPTIONS,
+  },
   async (event) => {
     const {vendorId, broadcastId} = event.params;
     const broadcast = event.data;
@@ -341,7 +365,10 @@ export const fanOutBroadcast = onDocumentCreated(
  * Cloud Function to send a push notification when a new message is created.
  */
 export const sendMessageNotification = onDocumentCreated(
-  "messages/{messageId}",
+  {
+    document: "messages/{messageId}",
+    ...FUNCTION_OPTIONS,
+  },
   async (event) => {
     const messageSnap = event.data;
     if (!messageSnap) {
@@ -486,7 +513,7 @@ const createAIHelper = (
 export const generateCaption = createAIHelper(
   "generateCaption",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (data, context) => {
+  async (data, request) => {
     logger.log("[generateCaption] Processing caption generation request");
 
     try {
@@ -1611,7 +1638,7 @@ export const batchVectorizeFAQs = createAIHelper(
   "batchVectorizeFAQs",
   async (
     data: {vendorId?: string; limit?: number},
-    context: CallableRequest
+    request: CallableRequest
   ) => {
     logger.log("[batchVectorizeFAQs] Starting batch vectorization");
     logger.log("[batchVectorizeFAQs] Input data:", data);
@@ -1621,11 +1648,11 @@ export const batchVectorizeFAQs = createAIHelper(
     // Enhanced authentication check with emulator debugging
     const isEmulatorMode = process.env.FUNCTIONS_EMULATOR === "true";
 
-    if (!context.auth) {
+    if (!request.auth) {
       logger.log("[batchVectorizeFAQs] Authentication context missing");
       logger.log("[batchVectorizeFAQs] Emulator mode:", isEmulatorMode);
-      logger.log("[batchVectorizeFAQs] Context:",
-        JSON.stringify(context, null, 2));
+      logger.log("[batchVectorizeFAQs] Request:",
+        JSON.stringify(request, null, 2));
 
       // In emulator mode, provide more debugging info but still require auth
       if (isEmulatorMode) {
@@ -1642,7 +1669,7 @@ export const batchVectorizeFAQs = createAIHelper(
       );
     }
 
-    logger.log("[batchVectorizeFAQs] ✅ Authenticated user:", context.auth.uid);
+    logger.log("[batchVectorizeFAQs] ✅ Authenticated user:", request.auth.uid);
 
     // Check for OpenAI API key
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
@@ -1796,7 +1823,10 @@ export const batchVectorizeFAQs = createAIHelper(
  * Firestore trigger to automatically vectorize FAQs when created
  */
 export const autoVectorizeFAQ = onDocumentCreated(
-  "faqs/{faqId}",
+  {
+    document: "faqs/{faqId}",
+    ...HEAVY_FUNCTION_OPTIONS,
+  },
   async (event) => {
     const faqId = event.params.faqId;
     const faqData = event.data?.data();

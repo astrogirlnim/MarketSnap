@@ -173,6 +173,7 @@ class HiveService {
     debugPrint('[HiveService] - ID: ${item.id}');
     debugPrint('[HiveService] - MediaType: ${item.mediaType}');
     debugPrint('[HiveService] - FilterType: "${item.filterType}"');
+    debugPrint('[HiveService] - IsStory: ${item.isStory}');
     debugPrint('[HiveService] - FilePath: ${item.filePath}');
     debugPrint('[HiveService] - Caption: ${item.caption}');
 
@@ -195,8 +196,8 @@ class HiveService {
         caption: item.caption,
         location: item.location,
         vendorId: item.vendorId,
-        filterType:
-            item.filterType, // ✅ FIX: Include filterType in quarantined item
+        filterType: item.filterType,
+        isStory: item.isStory, // ✅ CRITICAL FIX: Include isStory field in quarantined item
         id: item.id,
         createdAt: item.createdAt,
       );
@@ -206,16 +207,22 @@ class HiveService {
 
       // Verify the item was stored correctly
       final storedItem = pendingMediaQueueBox.get(quarantinedItem.id);
-      debugPrint('[HiveService] ✅ FIX VERIFICATION:');
+      debugPrint('[HiveService] ✅ STORY BUG FIX VERIFICATION:');
+      debugPrint('[HiveService] - Original isStory: ${item.isStory}');
+      debugPrint('[HiveService] - Quarantined isStory: ${quarantinedItem.isStory}');
+      debugPrint('[HiveService] - Stored isStory: ${storedItem?.isStory}');
       debugPrint('[HiveService] - Original filterType: "${item.filterType}"');
-      debugPrint(
-        '[HiveService] - Quarantined filterType: "${quarantinedItem.filterType}"',
-      );
-      debugPrint(
-        '[HiveService] - Stored filterType: "${storedItem?.filterType}"',
-      );
+      debugPrint('[HiveService] - Stored filterType: "${storedItem?.filterType}"');
 
-      // Additional validation
+      // Critical validation for story bug fix
+      if (item.isStory != storedItem?.isStory) {
+        debugPrint('[HiveService] ❌ CRITICAL ERROR: IsStory field mismatch detected!');
+        debugPrint('[HiveService] This will cause stories to post to feed instead!');
+      } else {
+        debugPrint('[HiveService] ✅ SUCCESS: IsStory field preserved correctly');
+      }
+
+      // Additional validation for filterType
       if (item.filterType != storedItem?.filterType) {
         debugPrint('[HiveService] ❌ ERROR: FilterType mismatch detected!');
       } else {

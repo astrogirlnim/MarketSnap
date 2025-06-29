@@ -85,9 +85,10 @@ Future<void> main() async {
 
       // Configure emulators with proper error handling and platform-specific logic
       try {
-        // ✅ FIXED: Use correct platform-specific host configuration
+        // ✅ PLATFORM-SPECIFIC HOSTS: Use correct host for Firebase emulator connectivity
         // iOS simulator: localhost connects to host machine
         // Android emulator: 10.0.2.2 connects to host machine
+        // Storage URL rewriting will handle cross-platform image access separately
         String authHost;
         if (defaultTargetPlatform == TargetPlatform.iOS) {
           authHost = 'localhost'; // iOS simulator uses localhost to reach host
@@ -110,7 +111,7 @@ Future<void> main() async {
         );
         await FirebaseAuth.instance.useAuthEmulator(authHost, 9099);
         debugPrint(
-          '[main] Platform-specific emulator configuration ensures consistent Firebase instance',
+          '[main] Platform-specific emulator configuration ensures proper Firebase connectivity',
         );
 
         // Configure Firestore emulator
@@ -125,6 +126,7 @@ Future<void> main() async {
           '[main] ✅ Storage emulator configured with platform-specific host: $authHost',
         );
         await FirebaseStorage.instance.useStorageEmulator(authHost, 9199);
+        debugPrint('[main] 🖼️ Storage URLs will be rewritten for cross-platform image access');
 
         // Configure Functions emulator
         debugPrint(

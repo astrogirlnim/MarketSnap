@@ -69,6 +69,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   // Posting state
   bool _hasConnectivity = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _postToStory = false; // Whether to post to stories (carousel) or feed
 
   @override
   void initState() {
@@ -112,6 +113,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
     // Initialize connectivity monitoring
     _initializeConnectivity();
+
+    // Initialize posting preference from user settings
+    _initializePostingPreference();
   }
 
   @override
@@ -294,7 +298,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
-  /// Post the media with applied filters and caption
+  /// Post media with enhanced debugging for story vs feed routing
   Future<void> _postMedia() async {
     if (_isPosting) return;
 
@@ -312,17 +316,31 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       final caption = _captionController.text;
       final mediaType = widget.mediaType;
 
+      // 🔍 ENHANCED DEBUGGING: Log posting choice and routing logic
+      debugPrint('');
+      debugPrint('========== POSTING MEDIA DEBUG ==========');
+      debugPrint('[MediaReviewScreen] 🎯 User posting choice: ${_postToStory ? 'STORIES' : 'FEED'}');
+      debugPrint('[MediaReviewScreen] 📱 Media type: ${mediaType.name}');
+      debugPrint('[MediaReviewScreen] 📝 Caption: "$caption"');
+      debugPrint('[MediaReviewScreen] 🎨 Filter: ${_selectedFilter.name}');
+      debugPrint('[MediaReviewScreen] 👤 User ID: ${currentUser.uid}');
+      debugPrint('==========================================');
+
       final pendingItem = PendingMediaItem(
         filePath: mediaPath,
         caption: caption,
         mediaType: mediaType,
         vendorId: currentUser.uid,
         filterType: _selectedFilter.name,
+        isStory: _postToStory,
       );
 
-      debugPrint(
-        '[MediaReviewScreen] Creating PendingMediaItem with filterType: "${_selectedFilter.name}" (from ${_selectedFilter.displayName})',
-      );
+      // 🔍 ENHANCED DEBUGGING: Verify PendingMediaItem creation
+      debugPrint('[MediaReviewScreen] ✅ PendingMediaItem created:');
+      debugPrint('[MediaReviewScreen]    - ID: ${pendingItem.id}');
+      debugPrint('[MediaReviewScreen]    - isStory: ${pendingItem.isStory}');
+      debugPrint('[MediaReviewScreen]    - filterType: "${pendingItem.filterType}"');
+      debugPrint('[MediaReviewScreen]    - mediaType: ${pendingItem.mediaType.name}');
 
       // Phase 4.4: Save to device gallery BEFORE adding to queue
       // This ensures the file still exists at the original path
@@ -330,11 +348,14 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
       await widget.hiveService.addPendingMedia(pendingItem);
 
+      // 🔍 ENHANCED DEBUGGING: Confirm queue addition
+      debugPrint('[MediaReviewScreen] ✅ Added to Hive queue successfully');
+
       // Show different behavior based on connectivity
       if (_hasConnectivity) {
         // Online: Try immediate sync with timeout
         debugPrint(
-          '[MediaReviewScreen] Online - attempting immediate sync with timeout',
+          '[MediaReviewScreen] 🌐 Online - attempting immediate sync with timeout',
         );
 
         try {
@@ -343,7 +364,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
             const Duration(seconds: 10),
             onTimeout: () {
               debugPrint(
-                '[MediaReviewScreen] Immediate sync timed out - will continue in background',
+                '[MediaReviewScreen] ⏱️ Immediate sync timed out - will continue in background',
               );
               throw TimeoutException(
                 'Upload timed out',
@@ -354,9 +375,17 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
           // Success - immediate upload completed
           if (mounted) {
+            // 🔍 ENHANCED DEBUGGING: Log successful posting
+            debugPrint('[MediaReviewScreen] 🎉 Immediate sync completed successfully');
+            debugPrint('[MediaReviewScreen] 📍 Posted to: ${_postToStory ? 'STORIES' : 'FEED'}');
+            
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ Posted successfully!'),
+              SnackBar(
+                content: Text(
+                  _postToStory 
+                    ? '✅ Posted to Stories successfully!' 
+                    : '✅ Posted to Feed successfully!'
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -365,11 +394,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         } on TimeoutException {
           // Timeout - let it continue in background
           if (mounted) {
+            // 🔍 ENHANCED DEBUGGING: Log background posting
+            debugPrint('[MediaReviewScreen] 📤 Posting continuing in background');
+            debugPrint('[MediaReviewScreen] 📍 Will post to: ${_postToStory ? 'STORIES' : 'FEED'}');
+            
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('📤 Posting in background...'),
+              SnackBar(
+                content: Text(
+                  _postToStory 
+                    ? '📤 Posting to Stories in background...' 
+                    : '📤 Posting to Feed in background...'
+                ),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 3),
               ),
             );
             Navigator.of(context).popUntil((route) => route.isFirst);
@@ -378,8 +415,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
       } else {
         // Offline: Add to queue and show offline message with queue count
         debugPrint(
-          '[MediaReviewScreen] Offline - added to queue for later upload',
+          '[MediaReviewScreen] 📶 Offline - added to queue for later upload',
         );
+        debugPrint('[MediaReviewScreen] 📍 Queued for: ${_postToStory ? 'STORIES' : 'FEED'}');
 
         if (mounted) {
           // Get current queue count for better user feedback
@@ -388,6 +426,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         }
       }
     } catch (e) {
+      // 🔍 ENHANCED DEBUGGING: Log posting errors
+      debugPrint('[MediaReviewScreen] ❌ Error during posting: $e');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -402,6 +443,11 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           _isPosting = false;
         });
       }
+      
+      // 🔍 ENHANCED DEBUGGING: Log posting completion
+      debugPrint('[MediaReviewScreen] 🏁 Posting process completed');
+      debugPrint('==========================================');
+      debugPrint('');
     }
   }
 
@@ -742,6 +788,121 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     );
   }
 
+  /// Build story vs feed posting choice
+  Widget _buildPostingChoice() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Where to post',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Stories vs Feed toggle
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                // Feed option
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _updatePostingChoice(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: !_postToStory 
+                          ? Colors.deepPurple 
+                          : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.view_list,
+                            size: 20,
+                            color: !_postToStory ? Colors.white : Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Feed',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: !_postToStory ? Colors.white : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Stories option  
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _updatePostingChoice(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: _postToStory 
+                          ? Colors.deepPurple 
+                          : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt,
+                            size: 20,
+                            color: _postToStory ? Colors.white : Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Stories',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _postToStory ? Colors.white : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Descriptive text
+          const SizedBox(height: 8),
+          Text(
+            _postToStory 
+              ? 'Share as a story that disappears after 24 hours'
+              : 'Post to your main feed for permanent sharing',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Build post button with connectivity awareness
   Widget _buildPostButton() {
     return Container(
@@ -808,7 +969,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         const SizedBox(width: 12),
                         Text(
                           _hasConnectivity
-                              ? 'Posting...'
+                              ? (_postToStory ? 'Posting to Stories...' : 'Posting to Feed...')
                               : 'Adding to queue...',
                           style: const TextStyle(fontSize: 16),
                         ),
@@ -823,7 +984,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _hasConnectivity ? 'Post' : 'Queue for Later',
+                          _hasConnectivity 
+                            ? (_postToStory ? 'Post to Stories' : 'Post to Feed')
+                            : 'Queue for Later',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -917,6 +1080,44 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
     }
   }
 
+  /// Initialize posting preference from stored user settings
+  void _initializePostingPreference() {
+    try {
+      final preferStories = main.settingsService.getPreferredPostingChoice();
+      setState(() {
+        _postToStory = preferStories;
+      });
+      
+      debugPrint(
+        '[MediaReviewScreen] 🎯 Initialized posting preference: ${_postToStory ? 'Stories' : 'Feed'} (from user settings)',
+      );
+    } catch (e) {
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Error loading posting preference, using default (Feed): $e',
+      );
+      // Keep default value of false (Feed)
+    }
+  }
+
+  /// Update posting choice and save preference for future sessions
+  void _updatePostingChoice(bool postToStory) {
+    setState(() {
+      _postToStory = postToStory;
+    });
+
+    debugPrint(
+      '[MediaReviewScreen] 🎯 User changed posting choice to: ${postToStory ? 'Stories' : 'Feed'}',
+    );
+
+    // Save preference asynchronously (don't block UI)
+    main.settingsService.updatePreferredPostingChoice(postToStory).catchError((error) {
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Failed to save posting preference: $error',
+      );
+      // Continue anyway - preference saving failure shouldn't block posting
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Set status bar to light content
@@ -982,6 +1183,9 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
                         // Caption input
                         _buildCaptionInput(),
+
+                        // Posting choice (Stories vs Feed)
+                        _buildPostingChoice(),
 
                         // Post button
                         _buildPostButton(),

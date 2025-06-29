@@ -58,7 +58,7 @@ class FeedService {
   /// Get current user's ID for distinguishing own posts
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Real-time stream of stories from the current user with live profile updates
+  /// Real-time stream of stories from followed vendors with live profile updates
   Stream<List<StoryItem>> getStoriesStream() {
     final userId = currentUserId;
     if (userId == null) {
@@ -74,90 +74,176 @@ class FeedService {
       name: 'FeedService',
     );
 
-    // Create the base stories stream
-    final storiesStream = _firestore
-        .collection('snaps')
-        .where('storyVendorId', isEqualTo: userId)
-        .where('isStory', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
-        .limit(20)
-        .snapshots()
-        .map((snapshot) {
-          developer.log(
-            '[FeedService] Received ${snapshot.docs.length} snaps for stories for user $userId',
-            name: 'FeedService',
-          );
+    // First get the list of vendors this user follows
+    return _getFollowedVendorsStream(userId).asyncExpand((followedVendorIds) {
+      developer.log(
+        '[FeedService] User is following ${followedVendorIds.length} vendors: $followedVendorIds',
+        name: 'FeedService',
+      );
 
-          final snaps = snapshot.docs
-              .map((doc) => Snap.fromFirestore(doc))
-              .toList();
-
-          if (snaps.isEmpty) {
-            return <StoryItem>[];
-          }
-
-          // Create story item with original data (will be updated with fresh profile data below)
-          final storyItem = StoryItem(
-            vendorId: userId,
-            vendorName: snaps.first.vendorName,
-            vendorAvatarUrl: snaps.first.vendorAvatarUrl,
-            snaps: snaps,
-            hasUnseenSnaps: true,
-          );
-
-          return [storyItem];
-        });
-
-    // Combine with profile update stream to get real-time updates
-    return StreamGroup.merge([
-      storiesStream,
-      _profileUpdateNotifier.allProfileUpdates.map(
-        (_) => <StoryItem>[],
-      ), // Trigger refresh on profile updates
-    ]).asyncMap((storyItemsList) async {
-      // If it's just a profile update trigger (empty list), get current stories
-      if (storyItemsList.isEmpty) {
-        try {
-          final snapshot = await _firestore
-              .collection('snaps')
-              .where('storyVendorId', isEqualTo: userId)
-              .where('isStory', isEqualTo: true)
-              .orderBy('createdAt', descending: true)
-              .limit(20)
-              .get();
-
-          final snaps = snapshot.docs
-              .map((doc) => Snap.fromFirestore(doc))
-              .toList();
-
-          if (snaps.isEmpty) {
-            return <StoryItem>[];
-          }
-
-          storyItemsList = [
-            StoryItem(
-              vendorId: userId,
-              vendorName: snaps.first.vendorName,
-              vendorAvatarUrl: snaps.first.vendorAvatarUrl,
-              snaps: snaps,
-              hasUnseenSnaps: true,
-            ),
-          ];
-        } catch (e) {
-          developer.log(
-            '[FeedService] Error fetching stories after profile update: $e',
-          );
-          return <StoryItem>[];
-        }
+      if (followedVendorIds.isEmpty) {
+        developer.log(
+          '[FeedService] No followed vendors, returning empty stories',
+          name: 'FeedService',
+        );
+        return Stream.value(<StoryItem>[]);
       }
 
-      // Apply current profile data to all story items
-      return _applyProfileUpdatesToStories(storyItemsList);
+      // Query stories from all followed vendors and return the live stream
+      return _firestore
+          .collection('snaps')
+          .where('vendorId', whereIn: followedVendorIds)
+          .where('isStory', isEqualTo: true)
+          .orderBy('createdAt', descending: true)
+          .limit(100) // Increased limit to get stories from multiple vendors
+          .snapshots()
+          .asyncMap((snapshot) async {
+            developer.log(
+              '[FeedService] Received ${snapshot.docs.length} story snaps from followed vendors',
+              name: 'FeedService',
+            );
+
+            final snaps = snapshot.docs
+                .map((doc) => Snap.fromFirestore(doc))
+                .toList();
+
+            // Group snaps by vendorId to create story items
+            final storyItemsMap = <String, List<Snap>>{};
+            for (final snap in snaps) {
+              if (!storyItemsMap.containsKey(snap.vendorId)) {
+                storyItemsMap[snap.vendorId] = [];
+              }
+              storyItemsMap[snap.vendorId]!.add(snap);
+            }
+
+            // Convert to StoryItem list and sort by most recent snap
+            final storyItems = storyItemsMap.entries.map((entry) {
+              final vendorSnaps = entry.value;
+              // Sort snaps for this vendor by creation time (oldest first for chronological viewing)
+              vendorSnaps.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+              
+              final latestSnap = vendorSnaps.last; // Latest snap for vendor ordering (last in chronological list)
+              return StoryItem(
+                vendorId: latestSnap.vendorId,
+                vendorName: latestSnap.vendorName,
+                vendorAvatarUrl: latestSnap.vendorAvatarUrl,
+                snaps: vendorSnaps,
+                hasUnseenSnaps: true, // TODO: Implement seen/unseen logic
+              );
+            }).toList();
+
+            // Sort story items by most recent story (latest snap from each vendor)
+            storyItems.sort((a, b) => b.snaps.last.createdAt.compareTo(a.snaps.last.createdAt));
+
+            developer.log(
+              '[FeedService] Created ${storyItems.length} story items from ${snaps.length} snaps',
+              name: 'FeedService',
+            );
+
+            // Debug: Log each story item with snap counts
+            for (final storyItem in storyItems) {
+              developer.log(
+                '[FeedService] 📚 Story: ${storyItem.vendorName} has ${storyItem.snaps.length} snaps',
+                name: 'FeedService',
+              );
+            }
+
+            // Apply current profile data to all story items
+            return await _applyProfileUpdatesToStories(storyItems);
+          });
     });
   }
 
+  /// Get stream of followed vendor IDs for the current user
+  Stream<List<String>> _getFollowedVendorsStream(String userId) {
+    // Note: For now, we'll poll the follow service periodically
+    // In a production app, you might want to cache this or use Firestore streams
+    
+    // Create a controller that starts with an immediate value
+    late StreamController<List<String>> controller;
+    
+    // Start with immediate execution
+    Future<void> getFollowedVendors() async {
+      try {
+        final followedIds = await _getFollowedVendorIds(userId);
+        
+        // Also include current user's own stories
+        if (!followedIds.contains(userId)) {
+          followedIds.add(userId);
+        }
+        
+        if (!controller.isClosed) {
+          controller.add(followedIds);
+        }
+      } catch (e) {
+        developer.log(
+          '[FeedService] Error getting followed vendors: $e',
+          name: 'FeedService',
+        );
+        // Fallback to just current user
+        if (!controller.isClosed) {
+          controller.add([userId]);
+        }
+      }
+    }
+    
+    controller = StreamController<List<String>>.broadcast(
+      onListen: () {
+        // Execute immediately on listen
+        getFollowedVendors();
+        
+        // Set up periodic updates
+        Timer.periodic(const Duration(minutes: 5), (_) {
+          if (!controller.isClosed) {
+            getFollowedVendors();
+          }
+        });
+      },
+    );
+    
+    return controller.stream;
+  }
+
+  /// Get the list of vendor IDs that the current user is following
+  /// Uses direct Firestore query to avoid circular dependencies
+  Future<List<String>> _getFollowedVendorIds(String userId) async {
+    developer.log(
+      '[FeedService] Getting followed vendors for user: $userId',
+      name: 'FeedService',
+    );
+
+    try {
+      // Query all vendor collections to find where current user is a follower
+      final vendorsSnapshot = await _firestore.collection('vendors').get();
+      final followedVendorIds = <String>[];
+
+      for (final vendorDoc in vendorsSnapshot.docs) {
+        final followerDoc = await vendorDoc.reference
+            .collection('followers')
+            .doc(userId)
+            .get();
+
+        if (followerDoc.exists) {
+          followedVendorIds.add(vendorDoc.id);
+        }
+      }
+
+      developer.log(
+        '[FeedService] User is following ${followedVendorIds.length} vendors',
+        name: 'FeedService',
+      );
+      return followedVendorIds;
+    } catch (e) {
+      developer.log(
+        '[FeedService] Error getting followed vendors: $e',
+        name: 'FeedService',
+      );
+      return [];
+    }
+  }
+
   /// Apply cached profile updates to a list of story items
-  List<StoryItem> _applyProfileUpdatesToStories(List<StoryItem> stories) {
+  Future<List<StoryItem>> _applyProfileUpdatesToStories(List<StoryItem> stories) async {
     return stories.map((story) {
       final cachedProfile = _profileCache[story.vendorId];
       if (cachedProfile != null) {
@@ -190,17 +276,27 @@ class FeedService {
     // Combine the Firestore snaps stream with profile update stream
     final snapsStream = _firestore
         .collection('snaps')
+        .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
           developer.log(
-            '[FeedService] Received ${snapshot.docs.length} snaps for feed',
+            '[FeedService] Received ${snapshot.docs.length} regular feed snaps (stories excluded)',
             name: 'FeedService',
           );
           final snaps = snapshot.docs
               .map((doc) => Snap.fromFirestore(doc))
               .toList();
+
+          // Debug: Verify no stories leaked into feed
+          final storyCount = snaps.where((snap) => snap.isStory).length;
+          if (storyCount > 0) {
+            developer.log(
+              '[FeedService] ⚠️ WARNING: $storyCount stories found in regular feed!',
+              name: 'FeedService',
+            );
+          }
 
           // Log current user's snaps for debugging
           final currentUser = currentUserId;
@@ -229,6 +325,7 @@ class FeedService {
         try {
           final snapshot = await _firestore
               .collection('snaps')
+              .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
               .orderBy('createdAt', descending: true)
               .limit(limit)
               .get();

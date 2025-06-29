@@ -174,7 +174,7 @@ class _FollowButtonState extends State<FollowButton> {
     // Loading state
     if (_isLoading) {
       return Container(
-        width: 120,
+        constraints: const BoxConstraints(minWidth: 100, maxWidth: 160),
         height: 40,
         decoration: BoxDecoration(
           color: AppColors.eggshell,
@@ -194,9 +194,8 @@ class _FollowButtonState extends State<FollowButton> {
       );
     }
 
-    // Follow/Unfollow button
+    // Follow/Unfollow button - dynamic width to fit text content
     return SizedBox(
-      width: 120,
       height: 40,
       child: _isFollowing ? _buildUnfollowButton() : _buildFollowButton(),
     );

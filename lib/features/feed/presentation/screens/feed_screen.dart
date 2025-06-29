@@ -7,6 +7,7 @@ import 'package:marketsnap/features/feed/presentation/widgets/feed_post_widget.d
 import 'package:marketsnap/features/feed/presentation/widgets/story_carousel_widget.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/broadcast_widget.dart';
 import 'package:marketsnap/features/feed/presentation/widgets/create_broadcast_modal.dart';
+import 'package:marketsnap/features/feed/presentation/screens/story_viewer_screen.dart';
 import 'package:marketsnap/core/models/broadcast.dart';
 import 'package:marketsnap/shared/presentation/theme/app_colors.dart';
 import 'package:marketsnap/shared/presentation/theme/app_spacing.dart';
@@ -107,8 +108,42 @@ class _FeedScreenState extends State<FeedScreen> {
           '[FeedScreen] Stories stream: displaying ${stories.length} stories',
           name: 'FeedScreen',
         );
-        return StoryCarouselWidget(stories: stories);
+        return StoryCarouselWidget(
+          stories: stories,
+          onStoryTap: (tappedStory) => _handleStoryTap(stories, tappedStory),
+        );
       },
+    );
+  }
+
+  /// Handle story tap - navigate to story viewer
+  void _handleStoryTap(List<StoryItem> allStories, StoryItem tappedStory) {
+    developer.log(
+      '[FeedScreen] Story tapped: ${tappedStory.vendorName} with ${tappedStory.snaps.length} snaps',
+      name: 'FeedScreen',
+    );
+
+    // Find the index of the tapped story
+    final tappedIndex = allStories.indexWhere(
+      (story) => story.vendorId == tappedStory.vendorId,
+    );
+
+    if (tappedIndex == -1) {
+      developer.log(
+        '[FeedScreen] Error: Could not find tapped story in stories list',
+        name: 'FeedScreen',
+      );
+      return;
+    }
+
+    // Navigate to story viewer
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => StoryViewerScreen(
+          stories: allStories,
+          initialStoryIndex: tappedIndex,
+        ),
+      ),
     );
   }
 

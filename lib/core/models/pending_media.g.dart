@@ -23,6 +23,7 @@ class PendingMediaItemAdapter extends TypeAdapter<PendingMediaItem> {
       caption: fields[4] as String?,
       location: (fields[5] as Map?)?.cast<String, double>(),
       filterType: fields[7] as String?,
+      isStory: fields[8] as bool,
       id: fields[0] as String?,
       createdAt: fields[3] as DateTime?,
     );
@@ -31,7 +32,7 @@ class PendingMediaItemAdapter extends TypeAdapter<PendingMediaItem> {
   @override
   void write(BinaryWriter writer, PendingMediaItem obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class PendingMediaItemAdapter extends TypeAdapter<PendingMediaItem> {
       ..writeByte(6)
       ..write(obj.vendorId)
       ..writeByte(7)
-      ..write(obj.filterType);
+      ..write(obj.filterType)
+      ..writeByte(8)
+      ..write(obj.isStory);
   }
 
   @override

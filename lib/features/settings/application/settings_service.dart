@@ -51,6 +51,7 @@ class SettingsService {
     bool? enableCoarseLocation,
     bool? autoCompressVideo,
     bool? saveToDeviceDefault,
+    bool? preferStoryPosting,
   }) async {
     developer.log(
       '[SettingsService] Updating settings...',
@@ -65,6 +66,8 @@ class SettingsService {
       autoCompressVideo: autoCompressVideo ?? currentSettings.autoCompressVideo,
       saveToDeviceDefault:
           saveToDeviceDefault ?? currentSettings.saveToDeviceDefault,
+      preferStoryPosting:
+          preferStoryPosting ?? currentSettings.preferStoryPosting,
     );
 
     await _updateSettings(updatedSettings);
@@ -336,5 +339,35 @@ Thank you!
       );
       return false;
     }
+  }
+
+  /// Gets the user's preferred posting choice (story vs feed)
+  /// Returns true if user prefers stories, false if user prefers feed
+  bool getPreferredPostingChoice() {
+    final settings = getCurrentSettings();
+    final preference = settings.preferStoryPosting;
+    
+    developer.log(
+      '[SettingsService] Getting preferred posting choice: ${preference ? 'Stories' : 'Feed'}',
+      name: 'SettingsService',
+    );
+    
+    return preference;
+  }
+
+  /// Updates the user's preferred posting choice (story vs feed)
+  /// This remembers their last choice for future posts
+  Future<void> updatePreferredPostingChoice(bool preferStories) async {
+    developer.log(
+      '[SettingsService] Updating preferred posting choice to: ${preferStories ? 'Stories' : 'Feed'}',
+      name: 'SettingsService',
+    );
+
+    await updateSettings(preferStoryPosting: preferStories);
+
+    developer.log(
+      '[SettingsService] ✅ Preferred posting choice saved successfully',
+      name: 'SettingsService',
+    );
   }
 }
