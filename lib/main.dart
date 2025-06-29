@@ -11,6 +11,7 @@ import 'core/services/messaging_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/device_gallery_save_service.dart';
 import 'core/services/user_data_sync_service.dart';
+import 'core/services/auth_issue_fix_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -54,6 +55,7 @@ late final BroadcastService broadcastService;
 late final SettingsService settingsService;
 late final DeviceGallerySaveService deviceGallerySaveService;
 late final UserDataSyncService userDataSyncService;
+late final AuthIssueFixService authIssueFixService;
 
 // Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -524,6 +526,30 @@ Future<void> main() async {
     }
   }
 
+  // Initialize authentication issue fix service
+  try {
+    authIssueFixService = AuthIssueFixService(
+      hiveService: hiveService,
+      profileUpdateNotifier: profileUpdateNotifier,
+    );
+    debugPrint('[main] ✅ Auth issue fix service initialized - profile mismatch fixes enabled');
+  } catch (e) {
+    debugPrint('[main] Error initializing auth issue fix service: $e');
+    // Create fallback auth issue fix service
+    try {
+      authIssueFixService = AuthIssueFixService(
+        hiveService: hiveService,
+        profileUpdateNotifier: profileUpdateNotifier,
+      );
+      debugPrint('[main] Fallback auth issue fix service created.');
+    } catch (fallbackError) {
+      debugPrint(
+        '[main] CRITICAL: Cannot create auth issue fix service: $fallbackError',
+      );
+      rethrow;
+    }
+  }
+
   // Add global connectivity monitoring for background sync
   try {
     // Monitor connectivity changes globally to trigger sync when coming back online
@@ -629,7 +655,34 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
 
     try {
-      debugPrint('[AuthWrapper] 🔗 Starting account linking process');
+      debugPrint('[AuthWrapper] 🔧 Attempting to fix auth profile mismatch first');
+
+      // ✅ NEW: Try to fix authentication profile mismatch issues first
+      final authIssueFixed = await authIssueFixService.fixAuthenticationProfileMismatch();
+      debugPrint('[AuthWrapper] 🔧 Auth issue fix result: $authIssueFixed');
+
+      if (authIssueFixed) {
+        debugPrint('[AuthWrapper] ✅ Authentication profile mismatch fixed - user has existing profile');
+        // Skip account linking since we already found and fixed the profile
+        
+        debugPrint('[AuthWrapper] 🔔 Saving FCM token');
+        // Save FCM token
+        final token = await pushNotificationService.getFCMToken();
+        if (token != null) {
+          debugPrint(
+            '[AuthWrapper] 📱 FCM token obtained: ${token.substring(0, 20)}...',
+          );
+          await profileService.saveFCMToken(token);
+          debugPrint('[AuthWrapper] ✅ FCM token saved successfully');
+        } else {
+          debugPrint('[AuthWrapper] ⚠️ No FCM token available');
+        }
+
+        debugPrint('[AuthWrapper] 🏁 Post-authentication flow completed with auth fix');
+        return true;
+      }
+
+      debugPrint('[AuthWrapper] 🔗 Auth fix didn\'t find existing profile, proceeding with account linking');
 
       // Handle account linking after sign-in
       final hasExistingProfile = await accountLinkingService
