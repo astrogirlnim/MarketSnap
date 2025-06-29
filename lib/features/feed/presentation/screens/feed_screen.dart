@@ -191,6 +191,22 @@ class _FeedScreenState extends State<FeedScreen> {
             return FeedPostWidget(
               snap: snap,
               isCurrentUserPost: snap.vendorId == _feedService.currentUserId,
+              onDelete: (snapId) async {
+                try {
+                  await _feedService.deleteSnap(snapId);
+                  developer.log('[FeedScreen] Snap deleted successfully: $snapId');
+                } catch (e) {
+                  developer.log('[FeedScreen] Error deleting snap: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to delete post: $e'),
+                        backgroundColor: AppColors.appleRed,
+                      ),
+                    );
+                  }
+                }
+              },
             );
           }, childCount: snaps.length),
         );

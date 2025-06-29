@@ -4,7 +4,123 @@
 
 ---
 
-## 🚨 LATEST RESOLVED: iOS Auth + Cross-Platform Storage Bug (COMPLETE)
+## 🚨 LATEST ACTIVE: Avatar Persistence Bug - Failed Fix Attempt (ONGOING)
+
+**Date:** June 29, 2025  
+**Issue:** Avatar persistence fails after profile save - avatars disappear when returning to profile screens  
+**Status:** ❌ **FAILED IMPLEMENTATION** - Attempted fix with profile update listeners did not resolve the issue
+
+### Problem Analysis
+
+**User Report:** "The avatar is not persisting when set. On the left is a vendor profile, on the right is a regular profile. Please troubleshoot and bugfix."
+
+**Previous Understanding:** The avatar persistence issue was believed to be caused by profile screens not reloading after the avatar sync process completed.
+
+**Failed Fix Attempt:** Implemented profile update listeners using ProfileUpdateNotifier system to automatically refresh UI after avatar sync:
+
+```dart
+// ATTEMPTED FIX (FAILED):
+// 1. Added profile reload after saving profiles
+await _loadExistingProfile();
+
+// 2. Added profile update listeners
+_profileUpdateSubscription = main.profileUpdateNotifier.vendorProfileUpdates.listen(_onProfileUpdate);
+
+// 3. Added stream subscriptions for profile updates
+void _onProfileUpdate(VendorProfile profile) {
+  setState(() {
+    _localAvatarPath = profile.localAvatarPath;
+    _avatarURL = profile.avatarURL;
+  });
+}
+```
+
+### Why The Fix Failed
+
+**Critical Analysis:**
+1. **ProfileUpdateNotifier Dependency:** The fix relies on a ProfileUpdateNotifier service that may not exist or be properly implemented
+2. **Timing Issues:** The profile reload might be happening before the sync process actually completes
+3. **State Management Gaps:** The dual-state management (local vs remote avatars) might have fundamental architectural issues
+4. **Sync Process Unclear:** The actual profile sync mechanism might not be working as expected
+
+**Technical Evidence from iOS Logs:**
+- No specific avatar-related error messages in the provided logs
+- Authentication and app initialization working correctly
+- No obvious errors in the profile loading process
+
+### Root Cause Hypothesis
+
+**Suspected Issues:**
+1. **ProfileService Sync Logic:** The `syncProfileToFirestore()` method might not be properly updating the local profile state after upload
+2. **Avatar Upload Process:** The Firebase Storage upload might be succeeding but the local Hive profile might not be updated with the new avatarURL
+3. **State Synchronization:** The UI state might not be properly synchronized with the persistent profile data
+4. **ProfileUpdateNotifier Missing:** The notification system for profile updates might not be implemented or working
+
+### Recommended Solutions
+
+**Priority 1: Debug the ProfileService Sync Process**
+```dart
+// Add comprehensive logging to understand sync flow
+await profileService.saveProfile(profile);
+debugPrint('Profile saved - checking sync status...');
+final savedProfile = await profileService.getVendorProfile(uid);
+debugPrint('Reloaded profile - localAvatarPath: ${savedProfile?.localAvatarPath}');
+debugPrint('Reloaded profile - avatarURL: ${savedProfile?.avatarURL}');
+```
+
+**Priority 2: Simplify Avatar State Management**
+Instead of complex notification system, use direct state refresh:
+```dart
+// Simple approach - directly reload profile data after save
+await _saveProfile();
+await Future.delayed(Duration(seconds: 1)); // Give sync time to complete
+await _loadExistingProfile(); // Force UI refresh
+```
+
+**Priority 3: Verify Avatar Upload Process**
+Check if the issue is in the upload process itself:
+```dart
+// Debug the actual upload and Hive storage
+debugPrint('Before upload - localAvatarPath: $_localAvatarPath');
+await profileService.saveProfile(profile);
+debugPrint('After upload - checking Hive storage...');
+final hiveProfile = await HiveService.getVendorProfile(uid);
+debugPrint('Hive profile - avatarURL: ${hiveProfile?.avatarURL}');
+```
+
+**Priority 4: Implement ProfileUpdateNotifier Properly**
+If the notification system is missing, implement it:
+```dart
+// Create proper profile update notification system
+class ProfileUpdateNotifier {
+  static final _instance = ProfileUpdateNotifier._internal();
+  factory ProfileUpdateNotifier() => _instance;
+  ProfileUpdateNotifier._internal();
+  
+  final _vendorProfileController = StreamController<VendorProfile>.broadcast();
+  Stream<VendorProfile> get vendorProfileUpdates => _vendorProfileController.stream;
+  
+  void notifyVendorProfileUpdate(VendorProfile profile) {
+    _vendorProfileController.add(profile);
+  }
+}
+```
+
+### Next Steps
+
+1. **Implement Priority 1 Debug Logging** to understand exactly where the sync process fails
+2. **Test Priority 2 Simple Approach** to verify if the issue is timing-related
+3. **Verify Avatar Upload Process** to ensure the issue isn't in the upload itself
+4. **Create Proper Profile Update System** if the notification system is missing
+
+### Status
+- **Failed Fix Attempt:** Profile update listener approach did not work
+- **Next Action Required:** Implement debugging recommendations to identify root cause
+- **User Impact:** Avatar persistence still broken - users cannot reliably set profile avatars
+
+---
+
+## ✅ RESOLVED: iOS Auth + Cross-Platform Storage Bug (COMPLETE)
 
 **Date:** June 29, 2025  
 **Issue:** iOS phone auth spinning indefinitely + iOS simulator images/carousels not loading due to cross-platform host conflicts  

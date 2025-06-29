@@ -1,15 +1,14 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/models/snap_model.dart';
-import '../../application/feed_service.dart';
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_typography.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
 import '../../../../core/services/rag_service.dart';
 import '../../../../core/models/rag_feedback.dart';
-import '../../../../main.dart'; // Import to access global services
 
 /// Individual feed post widget displaying a snap with media and interactions
 /// Handles both photo and video content with proper aspect ratios
@@ -19,6 +18,7 @@ class FeedPostWidget extends StatefulWidget {
   final VoidCallback? onComment;
   final VoidCallback? onShare;
   final bool isCurrentUserPost;
+  final Future<void> Function(String)? onDelete;
 
   const FeedPostWidget({
     super.key,
@@ -27,6 +27,7 @@ class FeedPostWidget extends StatefulWidget {
     this.onComment,
     this.onShare,
     this.isCurrentUserPost = false,
+    this.onDelete,
   });
 
   @override
@@ -34,9 +35,6 @@ class FeedPostWidget extends StatefulWidget {
 }
 
 class _FeedPostWidgetState extends State<FeedPostWidget> {
-  // Use global feed service instance
-  final FeedService _feedService = feedService;
-
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
   bool _isDeleting = false; // Track deletion state
@@ -222,38 +220,60 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
           // Vendor avatar
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.marketBlue,
             backgroundImage: widget.snap.vendorAvatarUrl.isNotEmpty
-                ? NetworkImage(widget.snap.vendorAvatarUrl)
+                ? NetworkImage(_rewriteUrlForCurrentPlatform(widget.snap.vendorAvatarUrl))
                 : null,
+            backgroundColor: AppColors.marketBlue,
             child: widget.snap.vendorAvatarUrl.isEmpty
                 ? Text(
                     widget.snap.vendorName.isNotEmpty
                         ? widget.snap.vendorName[0].toUpperCase()
-                        : 'V',
+                        : '?',
                     style: AppTypography.bodyLG.copyWith(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                     ),
                   )
                 : null,
           ),
           const SizedBox(width: AppSpacing.sm),
-
-          // Vendor info
+          // Vendor name and location
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.snap.vendorName,
-                  style: AppTypography.h2.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: widget.isCurrentUserPost
-                        ? AppColors.marketBlue
-                        : AppColors.soilCharcoal,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.snap.vendorName,
+                        style: AppTypography.bodyLG.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (widget.isCurrentUserPost) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      // Delete button for current user's posts
+                      GestureDetector(
+                        onTap: () => _showDeleteDialog(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.appleRed.withAlpha(26),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: AppColors.appleRed,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (widget.isCurrentUserPost) ...[
                   const SizedBox(height: 2),
@@ -273,30 +293,6 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
             _formatTimestamp(widget.snap.createdAt),
             style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           ),
-
-          // Delete button for current user's posts
-          if (widget.isCurrentUserPost) ...[
-            const SizedBox(width: AppSpacing.sm),
-            _isDeleting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.appleRed,
-                    ),
-                  )
-                : IconButton(
-                    onPressed: _showDeleteConfirmation,
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: AppColors.appleRed,
-                      size: 20,
-                    ),
-                    tooltip: 'Delete post',
-                    visualDensity: VisualDensity.compact,
-                  ),
-          ],
         ],
       ),
     );
@@ -441,6 +437,32 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     }
     
     // No rewriting needed
+    return originalUrl;
+  }
+
+  /// ✅ ADD: Cross-platform URL rewriting for avatars specifically
+  String _rewriteUrlForCurrentPlatform(String originalUrl) {
+    // Only rewrite Firebase Storage emulator URLs
+    if (!originalUrl.contains('googleapis.com') && 
+        (originalUrl.contains('localhost') || originalUrl.contains('10.0.2.2'))) {
+      
+      debugPrint('[FeedPostWidget] 🔄 Avatar URL rewriting for cross-platform compatibility');
+      debugPrint('[FeedPostWidget] - Original URL: $originalUrl');
+      
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // iOS: Convert Android emulator URL to iOS format
+        final rewritten = originalUrl.replaceAll('10.0.2.2', 'localhost');
+        debugPrint('[FeedPostWidget] - iOS rewrite: $rewritten');
+        return rewritten;
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        // Android: Convert iOS emulator URL to Android format  
+        final rewritten = originalUrl.replaceAll('localhost', '10.0.2.2');
+        debugPrint('[FeedPostWidget] - Android rewrite: $rewritten');
+        return rewritten;
+      }
+    }
+    
+    // No rewriting needed for production URLs or non-emulator environments
     return originalUrl;
   }
 
@@ -1055,176 +1077,92 @@ class _FeedPostWidgetState extends State<FeedPostWidget> {
     return combinedString.hashCode.toString();
   }
 
-  /// Show confirmation dialog before deleting the snap
-  Future<void> _showDeleteConfirmation() async {
-    HapticFeedback.mediumImpact();
-
-    final confirmed = await showDialog<bool>(
+  /// ✅ ADD: Show delete confirmation dialog
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete ${widget.snap.mediaType == MediaType.video ? 'Video' : 'Photo'}?',
-          style: AppTypography.h2.copyWith(color: AppColors.soilCharcoal),
-        ),
-        content: Text(
-          'This action cannot be undone. Your ${widget.snap.mediaType == MediaType.video ? 'video' : 'photo'} and caption will be permanently deleted.',
-          style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.bodyLG.copyWith(
-                color: AppColors.soilTaupe,
-                fontWeight: FontWeight.w600,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Delete Post',
+            style: AppTypography.h2.copyWith(color: AppColors.appleRed),
+          ),
+          content: Text(
+            'Are you sure you want to delete this post? This action cannot be undone.',
+            style: AppTypography.body,
+          ),
+          backgroundColor: AppColors.eggshell,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: AppTypography.body.copyWith(color: AppColors.soilTaupe),
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              backgroundColor: AppColors.appleRed.withAlpha(26),
-            ),
-            child: Text(
-              'Delete',
-              style: AppTypography.bodyLG.copyWith(
-                color: AppColors.appleRed,
-                fontWeight: FontWeight.w600,
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deletePost();
+              },
+              child: Text(
+                'Delete',
+                style: AppTypography.body.copyWith(
+                  color: AppColors.appleRed,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
-
-    if (confirmed == true) {
-      await _deleteSnap();
-    }
   }
 
-  /// Delete the snap using FeedService
-  Future<void> _deleteSnap() async {
-    debugPrint(
-      '[FeedPostWidget] 🗑️ Starting snap deletion for ${widget.snap.id}',
-    );
+  /// ✅ ADD: Handle post deletion
+  Future<void> _deletePost() async {
+    if (_isDeleting) return; // Prevent multiple deletion attempts
 
     setState(() {
       _isDeleting = true;
     });
 
     try {
-      final success = await _feedService.deleteSnap(widget.snap.id);
-
-      if (mounted) {
-        if (success) {
-          debugPrint('[FeedPostWidget] ✅ Snap deletion successful');
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    '${widget.snap.mediaType == MediaType.video ? 'Video' : 'Photo'} deleted successfully',
-                    style: AppTypography.body.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-              backgroundColor: AppColors.leafGreen,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(AppSpacing.md),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          );
-
-          // Note: The UI will automatically update via the FeedService streams
-          // No need to manually remove this widget from the UI
-        } else {
-          debugPrint('[FeedPostWidget] ❌ Snap deletion failed');
-
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Failed to delete ${widget.snap.mediaType == MediaType.video ? 'video' : 'photo'}. Please try again.',
-                    style: AppTypography.body.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-              backgroundColor: AppColors.appleRed,
-              duration: const Duration(seconds: 5),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(AppSpacing.md),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              action: SnackBarAction(
-                label: 'Retry',
-                textColor: Colors.white,
-                onPressed: _showDeleteConfirmation,
-              ),
-            ),
-          );
-        }
-
-        setState(() {
-          _isDeleting = false;
-        });
+      debugPrint('[FeedPostWidget] Deleting snap: ${widget.snap.id}');
+      
+      // Call the deletion callback provided by parent
+      if (widget.onDelete != null) {
+        await widget.onDelete!(widget.snap.id);
+        debugPrint('[FeedPostWidget] ✅ Snap deleted successfully');
+      } else {
+        debugPrint('[FeedPostWidget] ❌ No deletion callback provided');
       }
-    } catch (error) {
-      debugPrint('[FeedPostWidget] ❌ Snap deletion error: $error');
-
+    } catch (e) {
+      debugPrint('[FeedPostWidget] ❌ Error deleting snap: $e');
+      
+      // Show error message to user
       if (mounted) {
-        setState(() {
-          _isDeleting = false;
-        });
-
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'An error occurred while deleting. Please try again.',
-                  style: AppTypography.body.copyWith(color: Colors.white),
-                ),
-              ],
+            content: Text(
+              'Failed to delete post: $e',
+              style: AppTypography.body.copyWith(color: Colors.white),
             ),
             backgroundColor: AppColors.appleRed,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _showDeleteConfirmation,
-            ),
+            duration: const Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../shared/presentation/theme/app_colors.dart';
 import '../../../../shared/presentation/theme/app_spacing.dart';
@@ -10,6 +11,10 @@ import '../../application/profile_service.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../auth/application/auth_service.dart';
 import 'vendor_knowledge_base_screen.dart';
+import '../../../../core/services/profile_update_notifier.dart';
+import '../../../../core/models/vendor_profile.dart';
+import '../../../../main.dart' as main;
+import 'dart:async';
 
 /// Vendor Profile Form Screen
 /// Allows vendors to create/edit their profile with stall name, market city, and avatar upload
@@ -38,14 +43,19 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   // Note: Location setting now managed in Settings & Help screen
   String? _localAvatarPath;
+  String? _avatarURL;
   String? _errorMessage;
   bool _isLoading = false;
   bool _isSaving = false;
+  StreamSubscription<VendorProfile>? _profileUpdateSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadExistingProfile();
+    
+    // ✅ Listen for profile updates from sync process
+    _profileUpdateSubscription = main.profileUpdateNotifier.vendorProfileUpdates.listen(_onProfileUpdate);
   }
 
   @override
@@ -53,7 +63,31 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     _displayNameController.dispose();
     _stallNameController.dispose();
     _marketCityController.dispose();
+    
+    // ✅ Cancel profile update subscription
+    _profileUpdateSubscription?.cancel();
+    
     super.dispose();
+  }
+
+  /// ✅ Handle profile updates from sync process
+  void _onProfileUpdate(VendorProfile profile) {
+    // Only update if it's the current user's profile
+    final currentUid = widget.profileService.currentUserUid;
+    if (profile.uid == currentUid && mounted) {
+      debugPrint('[VendorProfileScreen] 📢 Received profile update from sync - updating UI');
+      setState(() {
+        _displayNameController.text = profile.displayName;
+        _stallNameController.text = profile.stallName;
+        _marketCityController.text = profile.marketCity;
+        _localAvatarPath = profile.localAvatarPath;
+        _avatarURL = profile.avatarURL;
+      });
+      
+      debugPrint('[VendorProfileScreen] ✅ UI updated with synced avatar state:');
+      debugPrint('[VendorProfileScreen] - Local path: $_localAvatarPath');
+      debugPrint('[VendorProfileScreen] - Remote URL: $_avatarURL');
+    }
   }
 
   /// Loads existing profile data if available
@@ -71,12 +105,21 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         debugPrint(
           '[VendorProfileScreen] Found existing profile: ${profile.stallName}',
         );
+        debugPrint('[VendorProfileScreen] 🖼️ Avatar status:');
+        debugPrint('[VendorProfileScreen] - localAvatarPath: ${profile.localAvatarPath}');
+        debugPrint('[VendorProfileScreen] - avatarURL: ${profile.avatarURL}');
+        
         setState(() {
           _displayNameController.text = profile.displayName;
           _stallNameController.text = profile.stallName;
           _marketCityController.text = profile.marketCity;
           _localAvatarPath = profile.localAvatarPath;
+          _avatarURL = profile.avatarURL;
         });
+        
+        debugPrint('[VendorProfileScreen] ✅ Profile loaded with avatar state:');
+        debugPrint('[VendorProfileScreen] - Local path: $_localAvatarPath');
+        debugPrint('[VendorProfileScreen] - Remote URL: $_avatarURL');
       } else {
         debugPrint('[VendorProfileScreen] No existing profile found');
       }
@@ -105,6 +148,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       if (imagePath != null) {
         setState(() {
           _localAvatarPath = imagePath;
+          debugPrint('[VendorProfileScreen] 🖼️ New local avatar selected, clearing remote URL');
         });
         debugPrint('[VendorProfileScreen] Avatar selected: $imagePath');
       }
@@ -151,7 +195,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (_localAvatarPath != null)
+                if (_localAvatarPath != null || _avatarURL != null)
                   MarketSnapSecondaryButton(
                     text: 'Remove Photo',
                     icon: Icons.delete,
@@ -159,7 +203,9 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                       Navigator.pop(context);
                       setState(() {
                         _localAvatarPath = null;
+                        _avatarURL = null;
                       });
+                      debugPrint('[VendorProfileScreen] 🗑️ Avatar removed (both local and remote)');
                     },
                   ),
               ],
@@ -225,6 +271,12 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
       debugPrint('[VendorProfileScreen] Profile saved successfully');
 
+      // ✅ CRITICAL FIX: Reload profile to get updated avatar URL after sync
+      debugPrint('[VendorProfileScreen] 🔄 Reloading profile to get updated avatar state');
+      // Give the sync process a moment to complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _loadExistingProfile();
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -264,6 +316,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
 
   /// Builds the avatar section
   Widget _buildAvatarSection() {
+    final bool hasLocalAvatar = _localAvatarPath != null;
+    final bool hasRemoteAvatar = _avatarURL?.isNotEmpty == true;
+    final bool hasAnyAvatar = hasLocalAvatar || hasRemoteAvatar;
+    
+    debugPrint('[VendorProfileScreen] 🖼️ Avatar display logic:');
+    debugPrint('[VendorProfileScreen] - hasLocalAvatar: $hasLocalAvatar');
+    debugPrint('[VendorProfileScreen] - hasRemoteAvatar: $hasRemoteAvatar');
+    debugPrint('[VendorProfileScreen] - hasAnyAvatar: $hasAnyAvatar');
+    
     return Column(
       children: [
         GestureDetector(
@@ -276,19 +337,50 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
               color: AppColors.eggshell,
               border: Border.all(color: AppColors.seedBrown, width: 2),
             ),
-            child: _localAvatarPath != null
+            child: hasAnyAvatar
                 ? ClipOval(
-                    child: Image.file(
-                      File(_localAvatarPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.broken_image,
-                          size: 48,
-                          color: AppColors.soilTaupe,
-                        );
-                      },
-                    ),
+                    child: hasLocalAvatar
+                        ? Image.file(
+                            File(_localAvatarPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('[VendorProfileScreen] ❌ Local avatar load error: $error');
+                              return Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.soilTaupe,
+                              );
+                            },
+                          )
+                        : Image.network(
+                            _avatarURL!,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) {
+                                debugPrint('[VendorProfileScreen] ✅ Remote avatar loaded');
+                                return child;
+                              }
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.marketBlue,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('[VendorProfileScreen] ❌ Remote avatar load error: $error');
+                              return Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.soilTaupe,
+                              );
+                            },
+                          ),
                   )
                 : Icon(
                     Icons.person_add_alt_1,
@@ -301,7 +393,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         GestureDetector(
           onTap: _showAvatarOptions,
           child: Text(
-            _localAvatarPath != null ? 'Change Avatar' : 'Add Avatar',
+            hasAnyAvatar ? 'Change Avatar' : 'Add Avatar',
             style: AppTypography.body.copyWith(
               color: AppColors.marketBlue,
               fontWeight: FontWeight.w600,
@@ -314,6 +406,19 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           style: AppTypography.caption.copyWith(color: AppColors.soilTaupe),
           textAlign: TextAlign.center,
         ),
+        if (kDebugMode && hasAnyAvatar) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            hasLocalAvatar 
+                ? '🔵 Local avatar selected' 
+                : '🟢 Uploaded avatar from server',
+            style: AppTypography.caption.copyWith(
+              color: hasLocalAvatar ? Colors.blue : Colors.green,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ],
     );
   }

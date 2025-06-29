@@ -64,9 +64,24 @@ class ProfileService {
 
     debugPrint('[ProfileService] Saving profile for user: $uid');
     debugPrint('[ProfileService] Profile data: $stallName in $marketCity');
+    debugPrint('[ProfileService] 🖼️ Avatar handling:');
+    debugPrint('[ProfileService] - localAvatarPath parameter: $localAvatarPath');
 
     // Get existing profile or create new one
     final existingProfile = _hiveService.getVendorProfile(uid);
+    
+    // ✅ CRITICAL FIX: Preserve existing avatarURL unless we have a new local avatar
+    String? avatarURL = existingProfile?.avatarURL;
+    debugPrint('[ProfileService] - Existing avatarURL: $avatarURL');
+    
+    // ✅ If user is updating profile WITHOUT changing avatar, preserve existing URL
+    if (localAvatarPath == null && existingProfile?.localAvatarPath == null) {
+      debugPrint('[ProfileService] 🔄 Profile update without avatar change - preserving existing avatarURL');
+    } else if (localAvatarPath != null) {
+      debugPrint('[ProfileService] 🆕 New local avatar provided - will upload and replace avatarURL');
+      // Clear existing URL since we'll upload new one
+      avatarURL = null;
+    }
 
     final profile = VendorProfile(
       uid: uid,
@@ -75,10 +90,14 @@ class ProfileService {
       marketCity: marketCity.trim(),
       allowLocation: allowLocation,
       localAvatarPath: localAvatarPath,
-      avatarURL: existingProfile?.avatarURL, // Preserve existing avatar URL
+      avatarURL: avatarURL, // ✅ CRITICAL FIX: Preserve existing avatar URL
       needsSync: true, // Mark for sync since we're updating locally
       lastUpdated: DateTime.now(),
     );
+
+    debugPrint('[ProfileService] 📦 Final profile before save:');
+    debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
+    debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
 
     await _hiveService.saveVendorProfile(profile);
     debugPrint('[ProfileService] Profile saved locally successfully');
@@ -222,18 +241,35 @@ class ProfileService {
 
     try {
       debugPrint('[ProfileService] Starting Firestore sync process...');
+      debugPrint('[ProfileService] 🖼️ Avatar sync analysis:');
+      debugPrint('[ProfileService] - Current localAvatarPath: ${profile.localAvatarPath}');
+      debugPrint('[ProfileService] - Current avatarURL: ${profile.avatarURL}');
 
       // Upload avatar if we have a local path but no URL
       String? avatarURL = profile.avatarURL;
       if (profile.localAvatarPath != null && profile.avatarURL == null) {
+        debugPrint('[ProfileService] 🔄 Avatar upload needed: local path exists but no URL');
         debugPrint('[ProfileService] Uploading avatar before profile sync');
         avatarURL = await uploadAvatar(profile.localAvatarPath!);
+        debugPrint('[ProfileService] ✅ Avatar uploaded successfully: $avatarURL');
+      } else if (profile.localAvatarPath == null && profile.avatarURL != null) {
+        debugPrint('[ProfileService] ✅ Using existing avatar URL, no upload needed');
+      } else if (profile.localAvatarPath != null && profile.avatarURL != null) {
+        debugPrint('[ProfileService] 🔄 New local avatar overrides existing URL');
+        avatarURL = await uploadAvatar(profile.localAvatarPath!);
+        debugPrint('[ProfileService] ✅ Avatar re-uploaded successfully: $avatarURL');
+      } else {
+        debugPrint('[ProfileService] ℹ️ No avatar to process');
       }
 
       // Update profile with avatar URL if we got one
       final profileToSync = avatarURL != null
           ? profile.copyWith(avatarURL: avatarURL, localAvatarPath: null)
           : profile;
+
+      debugPrint('[ProfileService] 📤 Final profile data being synced to Firestore:');
+      debugPrint('[ProfileService] - avatarURL: ${profileToSync.avatarURL}');
+      debugPrint('[ProfileService] - localAvatarPath: ${profileToSync.localAvatarPath}');
 
       debugPrint(
         '[ProfileService] Writing profile to Firestore collection: vendors/$uid',
@@ -260,6 +296,8 @@ class ProfileService {
       if (avatarURL != null) {
         final finalProfile = profileToSync.copyWith(needsSync: false);
         await _hiveService.saveVendorProfile(finalProfile);
+
+        debugPrint('[ProfileService] 💾 Updated local profile with synced avatar URL');
 
         // 📢 Broadcast profile update since avatar URL was updated
         _profileUpdateNotifier.notifyVendorProfileUpdate(finalProfile);
@@ -459,6 +497,8 @@ class ProfileService {
     }
 
     debugPrint('[ProfileService] Saving regular user profile for UID: $uid');
+    debugPrint('[ProfileService] 🖼️ Avatar handling:');
+    debugPrint('[ProfileService] - localAvatarPath parameter: $localAvatarPath');
 
     try {
       // Get current user's contact info from auth
@@ -466,14 +506,35 @@ class ProfileService {
       final phoneNumber = user?.phoneNumber;
       final email = user?.email;
 
+      // Get existing profile to preserve avatarURL
+      final existingProfile = _hiveService.getRegularUserProfile(uid);
+      
+      // ✅ CRITICAL FIX: Preserve existing avatarURL unless we have a new local avatar
+      String? avatarURL = existingProfile?.avatarURL;
+      debugPrint('[ProfileService] - Existing avatarURL: $avatarURL');
+      
+      // ✅ If user is updating profile WITHOUT changing avatar, preserve existing URL
+      if (localAvatarPath == null && existingProfile?.localAvatarPath == null) {
+        debugPrint('[ProfileService] 🔄 Profile update without avatar change - preserving existing avatarURL');
+      } else if (localAvatarPath != null) {
+        debugPrint('[ProfileService] 🆕 New local avatar provided - will upload and replace avatarURL');
+        // Clear existing URL since we'll upload new one
+        avatarURL = null;
+      }
+
       final profile = RegularUserProfile(
         uid: uid,
         displayName: displayName.trim(),
         localAvatarPath: localAvatarPath,
         phoneNumber: phoneNumber,
         email: email,
+        avatarURL: avatarURL, // ✅ CRITICAL FIX: Preserve existing avatar URL
         needsSync: true,
       );
+
+      debugPrint('[ProfileService] 📦 Final regular user profile before save:');
+      debugPrint('[ProfileService] - localAvatarPath: ${profile.localAvatarPath}');
+      debugPrint('[ProfileService] - avatarURL: ${profile.avatarURL}');
 
       // Save locally
       await _hiveService.saveRegularUserProfile(profile);

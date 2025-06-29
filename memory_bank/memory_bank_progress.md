@@ -295,6 +295,96 @@ Phase 4.11 represents masterful problem-solving for complex cross-platform emula
 
 ---
 
+### **❌ ONGOING ISSUE: Avatar Persistence Bug - Failed Fix Attempt (June 29, 2025)**
+
+**Status:** ❌ **CRITICAL BUG - FIX FAILED** - Avatar persistence issue remains unresolved after attempted implementation
+
+**Problem Statement:** User avatars disappear when returning to profile pages after setting them, creating a critical user experience issue where profile avatars cannot be reliably maintained.
+
+**Failed Fix Attempt Analysis:**
+
+**🔧 What Was Attempted:**
+1. **Profile Reload Logic**: Added `_loadExistingProfile()` calls after profile save operations
+2. **Profile Update Listeners**: Implemented ProfileUpdateNotifier system with stream subscriptions
+3. **Real-time State Updates**: Added automatic UI state updates when profile changes detected
+4. **Timing Delays**: Added delays to allow sync process to complete before reloading
+
+**❌ Why The Fix Failed:**
+1. **Missing Dependency**: ProfileUpdateNotifier service may not exist or be properly implemented
+2. **Timing Issues**: Profile reload happening before sync process actually completes
+3. **State Management Gaps**: Fundamental issues with dual-state management (local vs remote avatars)
+4. **Sync Process Problems**: The actual profile sync mechanism may not be working as expected
+
+**🔍 Root Cause Hypothesis:**
+- **ProfileService Sync Logic**: `syncProfileToFirestore()` may not properly update local profile state after upload
+- **Avatar Upload Process**: Firebase Storage upload succeeds but Hive profile not updated with avatarURL
+- **State Synchronization**: UI state not properly synchronized with persistent profile data
+- **Architecture Issue**: The dual avatar state system (localAvatarPath vs avatarURL) may be fundamentally flawed
+
+**💡 Recommended Solutions (Priority Order):**
+
+**Priority 1: Debug ProfileService Sync Process**
+```dart
+// Add comprehensive logging to understand sync flow
+await profileService.saveProfile(profile);
+debugPrint('Profile saved - checking sync status...');
+final savedProfile = await profileService.getVendorProfile(uid);
+debugPrint('Reloaded profile - localAvatarPath: ${savedProfile?.localAvatarPath}');
+debugPrint('Reloaded profile - avatarURL: ${savedProfile?.avatarURL}');
+```
+
+**Priority 2: Simplify Avatar State Management**
+```dart
+// Simple approach - direct state refresh instead of complex listeners
+await _saveProfile();
+await Future.delayed(Duration(seconds: 1)); // Give sync time to complete
+await _loadExistingProfile(); // Force UI refresh
+```
+
+**Priority 3: Verify Avatar Upload Process**
+```dart
+// Debug the upload and Hive storage pipeline
+debugPrint('Before upload - localAvatarPath: $_localAvatarPath');
+await profileService.saveProfile(profile);
+debugPrint('After upload - checking Hive storage...');
+final hiveProfile = await HiveService.getVendorProfile(uid);
+debugPrint('Hive profile - avatarURL: ${hiveProfile?.avatarURL}');
+```
+
+**Priority 4: Implement Proper Profile Update System**
+If ProfileUpdateNotifier is missing, create it:
+```dart
+class ProfileUpdateNotifier {
+  static final _instance = ProfileUpdateNotifier._internal();
+  factory ProfileUpdateNotifier() => _instance;
+  ProfileUpdateNotifier._internal();
+  
+  final _vendorProfileController = StreamController<VendorProfile>.broadcast();
+  Stream<VendorProfile> get vendorProfileUpdates => _vendorProfileController.stream;
+  
+  void notifyVendorProfileUpdate(VendorProfile profile) {
+    _vendorProfileController.add(profile);
+  }
+}
+```
+
+**🎯 Current Status:**
+- **User Impact**: Critical - Users cannot reliably set or maintain profile avatars
+- **Technical Impact**: Core functionality broken, affects user onboarding and identity
+- **Business Impact**: Poor user experience affects app adoption and vendor engagement
+- **Next Action Required**: Implement Priority 1 debugging to identify exact failure point
+
+**📊 Investigation Required:**
+1. Trace the complete avatar upload and sync flow with detailed logging
+2. Verify that Firebase Storage upload actually completes successfully  
+3. Check if Hive profile gets updated with the new avatarURL after upload
+4. Confirm that ProfileService.syncProfileToFirestore() works correctly
+5. Test if the issue is platform-specific (iOS vs Android)
+
+This represents a critical bug that blocks core user functionality and requires immediate attention with a systematic debugging approach to identify the root cause.
+
+---
+
 ## Completed Tasks
 
 - **Phase 1: Foundation** ✅ **COMPLETE**
