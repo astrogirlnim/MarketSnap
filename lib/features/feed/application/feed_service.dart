@@ -75,7 +75,7 @@ class FeedService {
     );
 
     // First get the list of vendors this user follows
-    return _getFollowedVendorsStream(userId).asyncMap((followedVendorIds) async {
+    return _getFollowedVendorsStream(userId).asyncExpand((followedVendorIds) {
       developer.log(
         '[FeedService] User is following ${followedVendorIds.length} vendors: $followedVendorIds',
         name: 'FeedService',
@@ -86,18 +86,18 @@ class FeedService {
           '[FeedService] No followed vendors, returning empty stories',
           name: 'FeedService',
         );
-        return <StoryItem>[];
+        return Stream.value(<StoryItem>[]);
       }
 
-      // Query stories from all followed vendors
-      final storiesStream = _firestore
+      // Query stories from all followed vendors and return the live stream
+      return _firestore
           .collection('snaps')
           .where('vendorId', whereIn: followedVendorIds)
           .where('isStory', isEqualTo: true)
           .orderBy('createdAt', descending: true)
           .limit(100) // Increased limit to get stories from multiple vendors
           .snapshots()
-          .map((snapshot) {
+          .asyncMap((snapshot) async {
             developer.log(
               '[FeedService] Received ${snapshot.docs.length} story snaps from followed vendors',
               name: 'FeedService',
@@ -140,13 +140,17 @@ class FeedService {
               name: 'FeedService',
             );
 
-            return storyItems;
-          });
+            // Debug: Log each story item with snap counts
+            for (final storyItem in storyItems) {
+              developer.log(
+                '[FeedService] 📚 Story: ${storyItem.vendorName} has ${storyItem.snaps.length} snaps',
+                name: 'FeedService',
+              );
+            }
 
-      return storiesStream.first;
-    }).asyncMap((storyItems) async {
-      // Apply current profile data to all story items
-      return _applyProfileUpdatesToStories(storyItems);
+            // Apply current profile data to all story items
+            return await _applyProfileUpdatesToStories(storyItems);
+          });
     });
   }
 
@@ -239,7 +243,7 @@ class FeedService {
   }
 
   /// Apply cached profile updates to a list of story items
-  List<StoryItem> _applyProfileUpdatesToStories(List<StoryItem> stories) {
+  Future<List<StoryItem>> _applyProfileUpdatesToStories(List<StoryItem> stories) async {
     return stories.map((story) {
       final cachedProfile = _profileCache[story.vendorId];
       if (cachedProfile != null) {
@@ -272,17 +276,27 @@ class FeedService {
     // Combine the Firestore snaps stream with profile update stream
     final snapsStream = _firestore
         .collection('snaps')
+        .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
           developer.log(
-            '[FeedService] Received ${snapshot.docs.length} snaps for feed',
+            '[FeedService] Received ${snapshot.docs.length} regular feed snaps (stories excluded)',
             name: 'FeedService',
           );
           final snaps = snapshot.docs
               .map((doc) => Snap.fromFirestore(doc))
               .toList();
+
+          // Debug: Verify no stories leaked into feed
+          final storyCount = snaps.where((snap) => snap.isStory).length;
+          if (storyCount > 0) {
+            developer.log(
+              '[FeedService] ⚠️ WARNING: $storyCount stories found in regular feed!',
+              name: 'FeedService',
+            );
+          }
 
           // Log current user's snaps for debugging
           final currentUser = currentUserId;
@@ -311,6 +325,7 @@ class FeedService {
         try {
           final snapshot = await _firestore
               .collection('snaps')
+              .where('isStory', isEqualTo: false) // Only get regular feed posts, not stories
               .orderBy('createdAt', descending: true)
               .limit(limit)
               .get();

@@ -13,6 +13,7 @@ class Snap {
   final String? filterType;
   final DateTime createdAt;
   final DateTime expiresAt;
+  final bool isStory;
 
   Snap({
     required this.id,
@@ -25,6 +26,7 @@ class Snap {
     this.filterType,
     required this.createdAt,
     required this.expiresAt,
+    this.isStory = false,
   });
 
   factory Snap.fromFirestore(DocumentSnapshot doc) {
@@ -42,6 +44,7 @@ class Snap {
       filterType: data['filterType'],
       createdAt: (data['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
       expiresAt: (data['expiresAt'] as Timestamp? ?? Timestamp.now()).toDate(),
+      isStory: data['isStory'] ?? false,
     );
   }
 
@@ -57,6 +60,7 @@ class Snap {
     String? filterType,
     DateTime? createdAt,
     DateTime? expiresAt,
+    bool? isStory,
   }) {
     return Snap(
       id: id ?? this.id,
@@ -69,6 +73,7 @@ class Snap {
       filterType: filterType ?? this.filterType,
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
+      isStory: isStory ?? this.isStory,
     );
   }
 
