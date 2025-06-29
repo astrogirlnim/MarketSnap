@@ -856,6 +856,16 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
         ? (totalUpvotes / (totalUpvotes + totalDownvotes)) * 100
         : 0.0;
     
+    // Debug vectorization status
+    final faqsNeedingVectorization = _faqs.where((faq) => faq.embedding == null).length;
+    developer.log('[VendorKnowledgeBaseScreen] Vectorization status: $_currentVendorId');
+    developer.log('[VendorKnowledgeBaseScreen] Total FAQs: ${_faqs.length}');
+    developer.log('[VendorKnowledgeBaseScreen] FAQs needing vectorization: $faqsNeedingVectorization');
+    for (int i = 0; i < _faqs.length; i++) {
+      final faq = _faqs[i];
+      developer.log('[VendorKnowledgeBaseScreen] FAQ $i: ${faq.question} - Embedding: ${faq.embedding != null ? "${faq.embedding!.length} dimensions" : "null"}');
+    }
+    
     // Top performing FAQs
     final faqPerformance = <String, Map<String, dynamic>>{};
     for (final faq in _faqs) {
@@ -877,7 +887,7 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
     final topFAQs = faqPerformance.entries.toList()
       ..sort((a, b) => b.value['interactions'].compareTo(a.value['interactions']));
     
-    return Padding(
+    return SingleChildScrollView(
       padding: AppSpacing.edgeInsetsLg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1019,64 +1029,64 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
             ),
             const SizedBox(height: AppSpacing.md),
             
-            // Use SizedBox with fixed height instead of Expanded to prevent overflow
-            SizedBox(
-              height: 300, // Fixed height to prevent overflow issues
-              child: ListView.builder(
-                itemCount: topFAQs.length,
-                itemBuilder: (context, index) {
-                  final entry = topFAQs[index];
-                  final faq = entry.value['faq'] as FAQVector;
-                  final interactions = entry.value['interactions'] as int;
-                  final satisfaction = entry.value['satisfaction'] as double;
-                  
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                    color: AppColors.eggshell,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                      side: BorderSide(color: AppColors.seedBrown),
-                    ),
-                    child: Padding(
-                      padding: AppSpacing.edgeInsetsCard,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            faq.question,
-                            style: AppTypography.body.copyWith(
-                              color: AppColors.soilCharcoal,
-                              fontWeight: FontWeight.w600,
+            // Use ListView.builder with shrinkWrap instead of fixed height
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: topFAQs.length,
+              itemBuilder: (context, index) {
+                final entry = topFAQs[index];
+                final faq = entry.value['faq'] as FAQVector;
+                final interactions = entry.value['interactions'] as int;
+                final satisfaction = entry.value['satisfaction'] as double;
+                
+                return Card(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  color: AppColors.eggshell,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    side: BorderSide(color: AppColors.seedBrown),
+                  ),
+                  child: Padding(
+                    padding: AppSpacing.edgeInsetsCard,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          faq.question,
+                          style: AppTypography.body.copyWith(
+                            color: AppColors.soilCharcoal,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            _buildAnalyticsChip(
+                              icon: Icons.trending_up,
+                              label: 'Interactions',
+                              value: interactions,
+                              color: AppColors.marketBlue,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          
-                          Row(
-                            children: [
-                              _buildAnalyticsChip(
-                                icon: Icons.trending_up,
-                                label: 'Interactions',
-                                value: interactions,
-                                color: AppColors.marketBlue,
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              _buildAnalyticsChip(
-                                icon: Icons.sentiment_satisfied,
-                                label: 'Satisfaction',
-                                value: satisfaction.toInt(),
-                                suffix: '%',
-                                color: satisfaction >= 70 ? AppColors.leafGreen : AppColors.sunsetAmber,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            _buildAnalyticsChip(
+                              icon: Icons.sentiment_satisfied,
+                              label: 'Satisfaction',
+                              value: satisfaction.toInt(),
+                              suffix: '%',
+                              color: satisfaction >= 70 ? AppColors.leafGreen : AppColors.sunsetAmber,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ] else ...[
             Container(
@@ -1110,6 +1120,9 @@ class _VendorKnowledgeBaseScreenState extends State<VendorKnowledgeBaseScreen>
               ),
             ),
           ],
+          
+          // Add bottom padding to ensure content is not cut off
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
