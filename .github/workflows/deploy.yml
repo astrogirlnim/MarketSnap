@@ -438,27 +438,41 @@ jobs:
           firebase use --add ${{ secrets.FIREBASE_PROJECT_ID }} --alias default
           echo "✅ Firebase project setup complete"
 
-      - name: Configure AI Functions Settings
+      - name: Setup Firebase Functions v2 Environment Variables
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "🤖 Configuring AI functions settings..."
+          echo "🤖 Setting up Firebase Functions v2 environment variables..."
           
-          # Enable AI functions
-          firebase functions:config:set ai.functions_enabled=true
-          echo "✅ AI functions enabled"
+          # Create functions/.env file for Firebase Functions v2
+          cd functions
           
-          # Set OpenAI API key
+          cat > .env << EOF
+          # MarketSnap Firebase Functions Environment Configuration
+          # Firebase Functions v2 environment variables (non-reserved only)
+          
+          # OpenAI API Key for AI Helper Functions
+          OPENAI_API_KEY=$OPENAI_API_KEY
+          
+          # AI Functions Control  
+          AI_FUNCTIONS_ENABLED=true
+          EOF
+          
           if [ -n "$OPENAI_API_KEY" ]; then
-            firebase functions:config:set marketsnap.openai.key="$OPENAI_API_KEY"
-            echo "✅ OpenAI API key configured (key: ${OPENAI_API_KEY:0:10}...)"
+            echo "✅ OpenAI API key configured for Functions v2 (key: ${OPENAI_API_KEY:0:10}...)"
+            echo "✅ AI functions enabled"
           else
             echo "⚠️  OPENAI_API_KEY secret not found - AI features will be disabled"
-            firebase functions:config:set ai.functions_enabled=false
+            # Update .env to disable AI functions
+            sed -i 's/AI_FUNCTIONS_ENABLED=true/AI_FUNCTIONS_ENABLED=false/' .env
           fi
           
-          echo "🔧 Current AI configuration:"
-          firebase functions:config:get
+          echo "🔧 Functions v2 environment configuration:"
+          echo "  - Environment file: functions/.env created"
+          echo "  - Variables: OPENAI_API_KEY, AI_FUNCTIONS_ENABLED"
+          echo "  - Firebase Functions v1 config system replaced with v2 environment variables"
+          
+          cd ..
 
       - name: Deploy Firebase Backend
         run: |
