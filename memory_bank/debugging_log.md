@@ -814,3 +814,101 @@ Console Logs:
 **Next Steps**: Real device testing or acceptance that simulator limitations don't affect production functionality.
 
 ---
+
+### **Vectorization Button "Service Temporarily Unavailable" Error (January 30, 2025)**
+
+**Issue**: Phase 4.10 Vectorization button shows "Service temporarily unavailable. Please try again later." error after timestamp fix
+**Status**: 🔍 **UNDER INVESTIGATION**
+
+**Problem Description**:
+- User clicks "Enhance All" button in vendor knowledge base analytics tab
+- Red error banner appears: "Service temporarily unavailable. Please try again later."
+- Error occurs despite successful timestamp fix in `batchVectorizeFAQs` Cloud Function
+- Previous `TypeError: Cannot read properties of undefined (reading 'now')` was resolved
+
+**Context & Previous Fixes**:
+- ✅ Fixed `admin.firestore.Timestamp.now()` → `admin.firestore.FieldValue.serverTimestamp()`
+- ✅ TypeScript compilation successful with no errors
+- ✅ Function rebuilds completed successfully
+- ✅ OpenAI API key confirmed present in `.env` file
+
+**Error Flow Analysis**:
+```
+User Action: Click "Enhance All" button
+↓
+Dart: _batchVectorizeAllFAQs() called
+↓
+Cloud Function: batchVectorizeFAQs invoked
+↓
+Result: "Service temporarily unavailable" error
+↓
+UI: Red error banner with retry button
+```
+
+**Error Message Mapping**:
+The "Service temporarily unavailable" message corresponds to one of these error handling cases in the Dart code:
+1. **Internal Error**: Cloud Function throws INTERNAL error
+2. **Authentication Error**: Cloud Function throws UNAUTHENTICATED 
+3. **API Key Error**: Cloud Function throws FAILED_PRECONDITION
+4. **Unknown Error**: Catch-all for unexpected errors
+
+**Potential Root Causes**:
+
+**1. OpenAI API Call Failure**:
+- API key valid but API call to `openai.embeddings.create()` failing
+- Rate limiting or quota issues with OpenAI API
+- Network connectivity between emulator and OpenAI services
+- Model name or request format issues
+
+**2. Firestore Query Issues**:
+- Vendor ID not being passed correctly to Cloud Function
+- FAQ query returning unexpected results or timing out
+- Firestore emulator connectivity problems
+
+**3. Cloud Function Runtime Issues**:
+- OpenAI package import failing in runtime environment
+- Environment variable loading issues in emulator
+- Memory or timeout constraints in function execution
+
+**4. Authentication Context Problems**:
+- User context not being passed correctly to Cloud Function
+- Vendor ID extraction failing from auth context
+- Permission validation failing
+
+**Debugging Strategy**:
+
+**Immediate Investigation Steps**:
+1. **Check Cloud Function Logs**: Examine Firebase emulator console for detailed error logs
+2. **Network Connectivity**: Verify emulator can reach external APIs
+3. **Authentication Context**: Confirm vendor ID is correctly passed to function
+4. **OpenAI API Status**: Test direct API call to verify service availability
+5. **Function Parameters**: Log input data being sent to Cloud Function
+
+**Technical Analysis Points**:
+- The error is generic, suggesting it's hitting the catch-all error handler
+- Timestamp fix was successful, indicating different error source
+- Error handling is working correctly (user-friendly message displayed)
+- Function is being invoked (error response received vs. no response)
+
+**Next Steps for Resolution**:
+1. **Enhanced Logging**: Add more granular error logging in Cloud Function
+2. **API Testing**: Direct OpenAI API connectivity test from emulator
+3. **Parameter Validation**: Verify all function inputs are correct
+4. **Error Categorization**: Distinguish between different failure modes
+5. **Fallback Implementation**: Consider graceful degradation options
+
+**Priority**: High - Affects core vendor functionality but system remains operational with basic keyword matching
+
+**Impact Assessment**:
+- ✅ FAQ search continues to work perfectly (keyword fallback)
+- ✅ User experience remains functional
+- ⚠️ Enhanced search features unavailable until resolved
+- 🔄 System gracefully degrades to basic functionality
+
+**Test Environment**:
+- Platform: iOS Simulator (iPhone 16 Pro, iOS 18.5)
+- Firebase: Local emulator suite
+- Authentication: Working correctly (analytics show data)
+- Network: Emulator environment with external API access
+
+---
