@@ -86,18 +86,25 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
                     ),
                   ),
                   padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.eggshell,
-                    backgroundImage: story.vendorAvatarUrl.isNotEmpty
-                        ? NetworkImage(
+                  child: story.vendorAvatarUrl.isNotEmpty
+                      ? CircleAvatar(
+                          radius: 28,
+                          backgroundColor: AppColors.eggshell,
+                          backgroundImage: NetworkImage(
                             _rewriteUrlForCurrentPlatform(
                               story.vendorAvatarUrl,
                             ),
-                          )
-                        : null,
-                    child: story.vendorAvatarUrl.isEmpty
-                        ? Text(
+                          ),
+                          onBackgroundImageError: (exception, stackTrace) {
+                            debugPrint(
+                              '[StoryCarousel] ❌ Avatar load error for ${story.vendorName}: $exception',
+                            );
+                          },
+                        )
+                      : CircleAvatar(
+                          radius: 28,
+                          backgroundColor: AppColors.eggshell,
+                          child: Text(
                             story.vendorName.isNotEmpty
                                 ? story.vendorName[0].toUpperCase()
                                 : '?',
@@ -105,14 +112,8 @@ class _StoryCarouselWidgetState extends State<StoryCarouselWidget> {
                               color: AppColors.marketBlue,
                               fontWeight: FontWeight.bold,
                             ),
-                          )
-                        : null,
-                    onBackgroundImageError: (exception, stackTrace) {
-                      debugPrint(
-                        '[StoryCarousel] ❌ Avatar load error for ${story.vendorName}: $exception',
-                      );
-                    },
-                  ),
+                          ),
+                        ),
                 ),
 
                 // Deleting overlay
