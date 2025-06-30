@@ -130,3 +130,9 @@ android/key.properties
 **/firebase_options.dart
 firebase.json
 .firebaserc
+
+# Large demo video files
+*.mp4
+*.mov
+documentation/demo_music/*.mov
+documentation/demo_music/*.mp4

@@ -39,11 +39,31 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   /// Determines if the current user is a vendor or regular user
   void _determineUserType() {
+    final uid = widget.profileService.currentUserUid;
+    debugPrint('[MainShellScreen] Determining user type for UID: $uid');
+
     // Check if user has a vendor profile
     final vendorProfile = widget.profileService.getCurrentUserProfile();
+    final regularProfile = widget.profileService.getCurrentRegularUserProfile();
 
-    // User is a vendor if they have a vendor profile
-    _isVendor = vendorProfile != null;
+    debugPrint(
+      '[MainShellScreen] Vendor profile: ${vendorProfile != null ? 'EXISTS' : 'NULL'}',
+    );
+    debugPrint(
+      '[MainShellScreen] Regular profile: ${regularProfile != null ? 'EXISTS' : 'NULL'}',
+    );
+
+    // For vendor UIDs (starting with 'vendor-'), prefer vendor type
+    if (uid != null && uid.startsWith('vendor-')) {
+      debugPrint('[MainShellScreen] UID suggests vendor type: $uid');
+      _isVendor = true;
+    } else if (uid != null && uid.startsWith('user-')) {
+      debugPrint('[MainShellScreen] UID suggests regular user type: $uid');
+      _isVendor = false;
+    } else {
+      // Fallback to profile-based detection
+      _isVendor = vendorProfile != null && regularProfile == null;
+    }
 
     debugPrint(
       '[MainShellScreen] User type detected: ${_isVendor ? 'Vendor' : 'Regular User'}',
@@ -65,10 +85,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ];
 
       _navigationItems = const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Feed'),
-        BottomNavigationBarItem(icon: Icon(Icons.camera_alt), label: 'Capture'),
-        BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.storefront_rounded), // More market-themed than home
+          label: 'Feed',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.camera_alt_rounded,
+          ), // Rounded camera for friendliness
+          label: 'Capture',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble_rounded), // More friendly than message
+          label: 'Messages',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.account_circle_rounded), // Rounded for friendliness
+          label: 'Profile',
+        ),
       ];
     } else {
       // Regular user navigation: Feed, Messages, Profile (no camera)
@@ -82,9 +116,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ];
 
       _navigationItems = const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Feed'),
-        BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.shopping_basket_rounded,
+          ), // Perfect for regular users browsing market
+          label: 'Feed',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble_rounded), // Consistent with vendor
+          label: 'Messages',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.account_circle_rounded), // Consistent with vendor
+          label: 'Profile',
+        ),
       ];
     }
   }
@@ -209,13 +254,57 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
-      bottomNavigationBar: BottomNavigationBar(
-        items: _navigationItems,
-        currentIndex: _selectedIndex,
-        selectedItemColor: AppColors.marketBlue,
-        unselectedItemColor: AppColors.soilTaupe,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+      bottomNavigationBar: Container(
+        // Add brand-friendly container styling
+        decoration: BoxDecoration(
+          color: AppColors.eggshell,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.soilCharcoal.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: BottomNavigationBar(
+              items: _navigationItems,
+              currentIndex: _selectedIndex,
+              selectedItemColor: AppColors.marketBlue,
+              unselectedItemColor: AppColors.soilTaupe,
+              onTap: _onItemTapped,
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedLabelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Inter',
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'Inter',
+              ),
+              selectedIconTheme: const IconThemeData(
+                size: 26,
+                color: AppColors.marketBlue,
+              ),
+              unselectedIconTheme: const IconThemeData(
+                size: 24,
+                color: AppColors.soilTaupe,
+              ),
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+            ),
+          ),
+        ),
       ),
     );
   }
