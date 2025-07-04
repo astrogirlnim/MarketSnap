@@ -1354,12 +1354,23 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 ),
               ),
             )
+          // ✅ DEFINITIVE NAVIGATION CRASH FIX
+          // When taking a photo/video, the camera controller is paused/disposed.
+          // During the navigation animation, this screen can be rebuilt,
+          // causing a crash if it tries to access the disposed controller.
+          // By showing a black container during this brief transition state,
+          // we prevent the CameraPreview widget from ever being built with an invalid controller.
+          else if (_isTakingPhoto || _isRecordingVideo)
+            Container(color: Colors.black)
           else
             // Camera preview
             SizedBox.expand(child: _buildCameraPreview()),
 
           // Camera controls overlay
-          if (!_isInitializing && _errorMessage == null) ...[
+          if (!_isInitializing &&
+              _errorMessage == null &&
+              !_isTakingPhoto &&
+              !_isRecordingVideo) ...[
             _buildTopControls(),
             _buildCameraControls(),
           ],

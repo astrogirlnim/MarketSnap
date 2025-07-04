@@ -1,0 +1,84 @@
+# Pre-commit hooks for MarketSnap
+# Install with: pip install pre-commit
+# Setup with: pre-commit install
+
+repos:
+  # Gitleaks - Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.27.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks
+        description: Detect hardcoded secrets using Gitleaks
+        entry: gitleaks detect --source . --verbose
+        language: system
+        pass_filenames: false
+
+  # General code quality hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'
+
+      - id: end-of-file-fixer
+        exclude: '\.md$'
+
+      - id: check-yaml
+        exclude: 'pubspec.yaml'  # Flutter specific YAML has different rules
+
+      - id: check-json
+
+      - id: check-merge-conflict
+
+      - id: check-added-large-files
+        args: ['--maxkb=1000']  # 1MB limit
+
+      - id: check-case-conflict
+
+      - id: mixed-line-ending
+
+  # Dart/Flutter specific hooks
+  - repo: local
+    hooks:
+      - id: dart-format
+        name: Dart Format
+        description: Format Flutter/Dart code
+        entry: dart format
+        language: system
+        files: '\.dart$'
+        pass_filenames: false
+        args: ['--set-exit-if-changed', '.']
+
+      - id: flutter-analyze
+        name: Flutter Analyze
+        description: Analyze Flutter/Dart code for issues
+        entry: flutter analyze
+        language: system
+        files: '\.dart$'
+        pass_filenames: false
+
+      - id: flutter-test
+        name: Flutter Test
+        description: Run Flutter tests
+        entry: flutter test
+        language: system
+        files: '\.dart$'
+        pass_filenames: false
+
+  # Environment and secrets validation
+  - repo: local
+    hooks:
+      - id: env-check
+        name: Environment File Check
+        description: Ensure .env files are not committed
+        entry: /bin/bash
+        language: system
+        files: '\.env$'
+        args: ['-c', 'echo "ERROR: .env files should not be committed!" && exit 1']
+
+# Global configuration
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+fail_fast: false
+minimum_pre_commit_version: "2.15.0"

@@ -11,9 +11,28 @@ jobs:
   validate:
     name: Validate Code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for Gitleaks
+
+      - name: Run Gitleaks Security Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Gitleaks Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.sarif
+          retention-days: 30
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -69,7 +88,7 @@ jobs:
           // Dummy Firebase options for CI validation
           import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
           import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
-          
+
           class DefaultFirebaseOptions {
             static FirebaseOptions get currentPlatform {
               if (kIsWeb) {
@@ -84,7 +103,7 @@ jobs:
                   throw UnsupportedError('Platform not supported');
               }
             }
-          
+
             static const FirebaseOptions android = FirebaseOptions(
               apiKey: 'dummy-key',
               appId: '1:123456789:android:dummy',
@@ -92,7 +111,7 @@ jobs:
               projectId: 'dummy-project',
               storageBucket: 'dummy-project.appspot.com',
             );
-          
+
             static const FirebaseOptions ios = FirebaseOptions(
               apiKey: 'dummy-key',
               appId: '1:123456789:ios:dummy',
@@ -137,7 +156,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -229,46 +248,46 @@ jobs:
       - name: Update version number automatically
         run: |
           echo "📋 Auto-incrementing semantic version for release..."
-          
+
           # Get current version from pubspec.yaml and parse components
           CURRENT_FULL=$(grep "^version:" pubspec.yaml | sed 's/version: //')
           CURRENT_VERSION=$(echo $CURRENT_FULL | cut -d'+' -f1)
-          
+
           echo "Current version: $CURRENT_VERSION"
-          
+
           # Parse semantic version components (major.minor.patch)
           MAJOR=$(echo $CURRENT_VERSION | cut -d'.' -f1)
           MINOR=$(echo $CURRENT_VERSION | cut -d'.' -f2)
           PATCH=$(echo $CURRENT_VERSION | cut -d'.' -f3)
-          
+
           # Auto-increment patch version for each deployment
           NEW_PATCH=$((PATCH + 1))
           NEW_SEMANTIC_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-          
+
           # Use GitHub run number as build number for Android versionCode
           GITHUB_RUN_NUM=${{ github.run_number }}
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
-          
+
           # Create final version: semantic+buildnumber
           NEW_VERSION="${NEW_SEMANTIC_VERSION}+${GITHUB_RUN_NUM}"
-          
+
           echo "🚀 Version increment:"
           echo "  • Current: $CURRENT_VERSION"
           echo "  • New semantic: $NEW_SEMANTIC_VERSION"
           echo "  • Build number: $GITHUB_RUN_NUM"
           echo "  • Final version: $NEW_VERSION"
           echo "  • Commit: $SHORT_SHA"
-          
+
           # Update pubspec.yaml with new version
           sed -i "s/^version:.*/version: $NEW_VERSION/" pubspec.yaml
-          
+
           echo "✅ Version auto-incremented to: $NEW_VERSION"
-          
+
           # Show the updated version line for verification
           echo "📄 Updated pubspec.yaml version:"
           grep "^version:" pubspec.yaml
-          
+
           # Create version info file for deployment reference
           cat > version_info.txt << EOF
           MarketSnap Release Information
@@ -282,14 +301,14 @@ jobs:
           Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           Branch: ${{ github.ref_name }}
           Workflow: ${{ github.workflow }}
-          
+
           🎯 Automatic Version Increment
           • Major: $MAJOR (breaking changes)
           • Minor: $MINOR (new features)
           • Patch: $NEW_PATCH (bug fixes) ⬆️ AUTO-INCREMENTED
           • Build: $GITHUB_RUN_NUM (CI run number)
           EOF
-          
+
           echo "📄 Version info file created:"
           cat version_info.txt
 
@@ -301,7 +320,7 @@ jobs:
           fi
           flutter pub get
           echo "✅ Flutter dependencies installed"
-      
+
       - name: Create .env file
         env:
           DOTENV: ${{ secrets.DOTENV }}
@@ -323,7 +342,7 @@ jobs:
         run: |
           # Decode and save the release keystore
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
-          
+
           # Create key.properties file for signing
           cat > android/key.properties << EOF
           storeFile=release.keystore
@@ -331,13 +350,13 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           EOF
-          
+
           echo "✅ Release keystore and signing configuration ready"
 
       - name: Build Android APK with caching optimization
         run: |
           echo "🏗️ Building Android APK with optimized caching..."
-          
+
           # Check cache status
           if [ -d "~/.gradle/caches" ]; then
             echo "✅ Gradle dependencies cache restored"
@@ -345,16 +364,16 @@ jobs:
           if [ -d "android/build" ]; then
             echo "✅ Gradle build cache restored"
           fi
-          
+
           # Enable Gradle daemon and parallel builds for faster compilation
           export GRADLE_OPTS="-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
-          
+
           # Skip flutter clean to preserve cached builds
           echo "⚡ Skipping flutter clean to preserve build cache..."
-          
+
           # Build with verbose output for debugging
           flutter build apk --release --verbose
-          
+
           echo "✅ Android APK built successfully with caching optimizations"
 
       - name: Deploy to Firebase App Distribution
@@ -443,21 +462,21 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "🤖 Setting up Firebase Functions v2 environment variables..."
-          
+
           # Create functions/.env file for Firebase Functions v2
           cd functions
-          
+
           cat > .env << EOF
           # MarketSnap Firebase Functions Environment Configuration
           # Firebase Functions v2 environment variables (non-reserved only)
-          
+
           # OpenAI API Key for AI Helper Functions
           OPENAI_API_KEY=$OPENAI_API_KEY
-          
-          # AI Functions Control  
+
+          # AI Functions Control
           AI_FUNCTIONS_ENABLED=true
           EOF
-          
+
           if [ -n "$OPENAI_API_KEY" ]; then
             echo "✅ OpenAI API key configured for Functions v2 (key: ${OPENAI_API_KEY:0:10}...)"
             echo "✅ AI functions enabled"
@@ -466,12 +485,12 @@ jobs:
             # Update .env to disable AI functions
             sed -i 's/AI_FUNCTIONS_ENABLED=true/AI_FUNCTIONS_ENABLED=false/' .env
           fi
-          
+
           echo "🔧 Functions v2 environment configuration:"
           echo "  - Environment file: functions/.env created"
           echo "  - Variables: OPENAI_API_KEY, AI_FUNCTIONS_ENABLED"
           echo "  - Firebase Functions v1 config system replaced with v2 environment variables"
-          
+
           cd ..
 
       - name: Fix Deployment Issues
@@ -483,27 +502,27 @@ jobs:
       - name: Deploy Firebase Backend
         run: |
           echo "🚀 Deploying Firebase backend with enhanced stability..."
-          
+
           cd functions
-          
+
           # Verify dependencies are installed (should be done by fix script)
           if [ ! -d "node_modules" ]; then
             echo "⚠️  Installing dependencies as backup..."
             npm install
           fi
-          
+
           # Verify build is complete (should be done by fix script)
           if [ ! -d "lib" ]; then
             echo "⚠️  Building functions as backup..."
             npm run build
           fi
-          
+
           cd ..
-          
+
           # Deploy with enhanced error handling
           echo "📦 Starting final deployment verification..."
           firebase deploy --only functions,firestore,storage --non-interactive --debug
-          
+
           echo "✅ Firebase backend deployed successfully with enhanced stability"
 
       - name: Activate Service Account for gcloud
@@ -521,7 +540,7 @@ jobs:
             --project=${{ secrets.FIREBASE_PROJECT_ID }} \
             --quiet
           echo "✅ TTL policy configured successfully"
-  
+
 #  deploy_ios:
 #    name: Build and Deploy iOS
 #    needs: [validate]
@@ -573,15 +592,15 @@ jobs:
 #
 #      - name: Install dependencies
 #        run: flutter pub get
-#      
+#
 #      - name: Build iOS
 #        run: |
 #          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-#          
+#
 #      - name: Deploy to Firebase App Distribution
 #        uses: wzieba/Firebase-Distribution-Github-Action@v1
 #        with:
 #          appId: ${{ secrets.IOS_APP_ID }}
 #          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
 #          groups: testers
-#          file: build/ios/ipa/*.ipa 
+#          file: build/ios/ipa/*.ipa
