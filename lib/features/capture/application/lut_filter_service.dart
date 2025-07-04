@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 /// Enum for available LUT filter types
 enum LutFilterType {
@@ -315,99 +316,48 @@ class LutFilterService {
     return outputPath;
   }
 
-  /// Get a preview of what the filter would look like with rate limiting
-  /// Returns a thumbnail with the filter applied
+  /// Get a preview thumbnail for a given filter.
+  /// Handles debouncing and caching.
   Future<Uint8List?> getFilterPreview({
-    required String inputImagePath,
+    required String mediaPath,
     required LutFilterType filterType,
-    int previewSize = 64,
+    int previewSize = 96,
   }) async {
-    // If no filter, return null (will show original)
+    // For 'none' filter, we don't need to process anything
     if (filterType == LutFilterType.none) {
-      return null;
+      debugPrint('[LutFilterService] Skipping preview for "none" filter.');
+      return _getThumbnailData(mediaPath: mediaPath, quality: 25);
     }
 
-    // Create cache key
-    final String cacheKey =
-        '${path.basename(inputImagePath)}_${filterType.name}_$previewSize';
+    final cacheKey = '${mediaPath}_${filterType.name}_$previewSize';
 
-    // Return cached preview if available
+    // Return from cache if available
     if (_previewCache.containsKey(cacheKey)) {
-      debugPrint(
-        '[LutFilterService] Returning cached filter preview for: ${filterType.displayName}',
-      );
+      debugPrint('[LutFilterService] Returning cached preview for: $cacheKey');
       return _previewCache[cacheKey];
     }
 
-    // ✅ BUFFER OVERFLOW FIX: Rate limit concurrent processing
-    if (_currentProcessingCount >= _maxConcurrentProcessing) {
-      debugPrint(
-        '[LutFilterService] Rate limiting: queuing preview for ${filterType.displayName}',
-      );
+    final completer = Completer<Uint8List?>();
 
-      final Completer<Uint8List?> queuedCompleter = Completer<Uint8List?>();
-      _processingQueue.add(queuedCompleter);
-
-      // Wait for our turn
-      await queuedCompleter.future.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          debugPrint(
-            '[LutFilterService] Preview generation timed out for ${filterType.displayName}',
-          );
-          return null;
-        },
-      );
-
-      // Try again now that we have capacity
-      return getFilterPreview(
-        inputImagePath: inputImagePath,
-        filterType: filterType,
-        previewSize: previewSize,
-      );
+    // Debounce to prevent rapid, repeated requests
+    if (_previewDebounceTimers.containsKey(cacheKey)) {
+      _previewDebounceTimers[cacheKey]!.cancel();
     }
 
-    // Cancel any existing debounce timer for this cache key
-    _previewDebounceTimers[cacheKey]?.cancel();
-
-    // Create a completer for the debounced operation
-    final Completer<Uint8List?> completer = Completer<Uint8List?>();
-
-    // Set up debounced preview generation (100ms delay to reduce concurrent operations)
     _previewDebounceTimers[cacheKey] = Timer(
-      const Duration(
-        milliseconds: 100,
-      ), // Increased delay to reduce concurrency
+      const Duration(milliseconds: 200),
       () async {
         debugPrint(
           '[LutFilterService] Generating debounced filter preview for: ${filterType.displayName}',
         );
-
-        try {
-          _currentProcessingCount++;
-          final result = await _generateFilterPreview(
-            inputImagePath,
-            filterType,
-            previewSize,
-            cacheKey,
-          );
-          if (!completer.isCompleted) {
-            completer.complete(result);
-          }
-        } catch (e) {
-          if (!completer.isCompleted) {
-            completer.completeError(e);
-          }
-        } finally {
-          _currentProcessingCount--;
-
-          // ✅ BUFFER OVERFLOW FIX: Process next item in queue
-          if (_processingQueue.isNotEmpty) {
-            final nextCompleter = _processingQueue.removeAt(0);
-            if (!nextCompleter.isCompleted) {
-              nextCompleter.complete(null); // Signal to retry
-            }
-          }
+        final result = await _generateAndCachePreview(
+          mediaPath: mediaPath,
+          filterType: filterType,
+          previewSize: previewSize,
+          cacheKey: cacheKey,
+        );
+        if (!completer.isCompleted) {
+          completer.complete(result);
         }
       },
     );
@@ -415,30 +365,79 @@ class LutFilterService {
     return completer.future;
   }
 
-  /// Internal method to generate filter preview with memory optimization
-  Future<Uint8List?> _generateFilterPreview(
-    String inputImagePath,
-    LutFilterType filterType,
-    int previewSize,
-    String cacheKey,
-  ) async {
+  /// ✅ NEW: Centralized method to get thumbnail data from photo or video
+  Future<Uint8List?> _getThumbnailData({
+    required String mediaPath,
+    int quality = 75,
+  }) async {
     try {
-      // ✅ BUFFER OVERFLOW FIX: Use smaller preview size to reduce memory usage
-      final int optimizedPreviewSize = previewSize.clamp(
-        32,
-        64,
-      ); // Smaller previews
+      final fileExtension = path.extension(mediaPath).toLowerCase();
+      debugPrint(
+        '[LutFilterService] Getting thumbnail for "$fileExtension" file.',
+      );
 
-      // Load and resize the input image for preview
-      final File inputFile = File(inputImagePath);
-      if (!await inputFile.exists()) {
+      if (['.mp4', '.mov', '.avi', '.mkv'].contains(fileExtension)) {
+        // It's a video file, generate a thumbnail
+        final thumbnailBytes = await VideoThumbnail.thumbnailData(
+          video: mediaPath,
+          imageFormat: ImageFormat.JPEG,
+          maxWidth: 128, // Small size for performance
+          quality: quality,
+        );
         debugPrint(
-          '[LutFilterService] Input image file does not exist for preview: $inputImagePath',
+          '[LutFilterService] ✅ Successfully generated video thumbnail.',
+        );
+        return thumbnailBytes;
+      } else {
+        // Assume it's an image file
+        final file = File(mediaPath);
+        if (await file.exists()) {
+          debugPrint('[LutFilterService] ✅ Reading image file for thumbnail.');
+          return await file.readAsBytes();
+        } else {
+          debugPrint(
+            '[LutFilterService] ⚠️ Image file not found at path: $mediaPath',
+          );
+          return null;
+        }
+      }
+    } catch (e) {
+      debugPrint(
+        '[LutFilterService] ❌ Error generating thumbnail data for $mediaPath: $e',
+      );
+      return null;
+    }
+  }
+
+  /// Generate and cache a filter preview with rate limiting
+  Future<Uint8List?> _generateAndCachePreview({
+    required String mediaPath,
+    required LutFilterType filterType,
+    required int previewSize,
+    required String cacheKey,
+  }) async {
+    if (_currentProcessingCount >= _maxConcurrentProcessing) {
+      debugPrint(
+        '[LutFilterService] Queueing preview generation for ${filterType.displayName} (limit reached)',
+      );
+      final completer = Completer<Uint8List?>();
+      _processingQueue.add(completer);
+      return completer.future;
+    }
+
+    _currentProcessingCount++;
+    try {
+      // ✅ MODIFIED: Use the new thumbnail data utility
+      final Uint8List? inputBytes = await _getThumbnailData(
+        mediaPath: mediaPath,
+      );
+      if (inputBytes == null) {
+        debugPrint(
+          '[LutFilterService] Failed to get thumbnail data for preview generation.',
         );
         return null;
       }
 
-      final Uint8List inputBytes = await inputFile.readAsBytes();
       final img.Image? inputImage = img.decodeImage(inputBytes);
 
       if (inputImage == null) {
@@ -447,6 +446,20 @@ class LutFilterService {
         );
         return null;
       }
+
+      final img.Image? lutImage = await _loadLutAsset(filterType);
+      if (lutImage == null) {
+        debugPrint(
+          '[LutFilterService] Failed to load LUT for filter: ${filterType.displayName}',
+        );
+        return null;
+      }
+
+      // ✅ BUFFER OVERFLOW FIX: Use smaller preview size to reduce memory usage
+      final int optimizedPreviewSize = previewSize.clamp(
+        32,
+        64,
+      ); // Smaller previews
 
       // ✅ BUFFER OVERFLOW FIX: Resize to very small size first to reduce processing load
       final img.Image resizedImage = img.copyResize(
@@ -480,6 +493,16 @@ class LutFilterService {
     } catch (e) {
       debugPrint('[LutFilterService] Error generating filter preview: $e');
       return null;
+    } finally {
+      _currentProcessingCount--;
+
+      // ✅ BUFFER OVERFLOW FIX: Process next item in queue
+      if (_processingQueue.isNotEmpty) {
+        final nextCompleter = _processingQueue.removeAt(0);
+        if (!nextCompleter.isCompleted) {
+          nextCompleter.complete(null); // Signal to retry
+        }
+      }
     }
   }
 

@@ -74,48 +74,158 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   @override
   void initState() {
     super.initState();
-    // Initialize caption with provided text
-    if (widget.caption != null) {
-      _captionController.text = widget.caption!;
+
+    // Wrap entire initialization in try-catch to prevent red screen errors
+    try {
+      // Initialize caption with provided text
+      if (widget.caption != null) {
+        _captionController.text = widget.caption!;
+      }
+
+      _isPhoto = widget.mediaType == MediaType.photo;
+      if (!_isPhoto) {
+        _initializeVideoPlayer();
+      }
+
+      // Initialize animation controllers with error handling
+      try {
+        _filterAnimationController = AnimationController(
+          duration: const Duration(milliseconds: 300),
+          vsync: this,
+        );
+        _filterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: _filterAnimationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+        _aiButtonAnimationController = AnimationController(
+          duration: const Duration(milliseconds: 2000),
+          vsync: this,
+        )..repeat(); // Start the breathing animation immediately
+
+        debugPrint(
+          '[MediaReviewScreen] ✅ Animation controllers initialized successfully',
+        );
+      } catch (e) {
+        debugPrint(
+          '[MediaReviewScreen] ⚠️ Animation controller initialization failed: $e',
+        );
+        // Create fallback controllers to prevent null references
+        _filterAnimationController = AnimationController(
+          duration: const Duration(milliseconds: 300),
+          vsync: this,
+        );
+        _filterAnimation = Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(_filterAnimationController);
+        _aiButtonAnimationController = AnimationController(
+          duration: const Duration(milliseconds: 2000),
+          vsync: this,
+        );
+      }
+
+      // Initialize services with individual error handling
+      _initializeLutService();
+      _initializeAIService();
+
+      // Initialize background sync service with error handling
+      try {
+        backgroundSyncService = BackgroundSyncService();
+        debugPrint(
+          '[MediaReviewScreen] ✅ Background sync service initialized successfully',
+        );
+      } catch (e) {
+        debugPrint(
+          '[MediaReviewScreen] ⚠️ Background sync service initialization failed: $e',
+        );
+        // Create a basic fallback service
+        try {
+          backgroundSyncService = BackgroundSyncService();
+        } catch (fallbackError) {
+          debugPrint(
+            '[MediaReviewScreen] ❌ Critical: Cannot create background sync service',
+          );
+          // This shouldn't happen, but if it does, we'll handle it gracefully
+        }
+      }
+
+      // Initialize profile service with error handling
+      try {
+        _profileService = ProfileService(hiveService: widget.hiveService);
+        debugPrint(
+          '[MediaReviewScreen] ✅ Profile service initialized successfully',
+        );
+      } catch (e) {
+        debugPrint(
+          '[MediaReviewScreen] ⚠️ Profile service initialization failed: $e',
+        );
+        // Create fallback profile service
+        try {
+          _profileService = ProfileService(hiveService: widget.hiveService);
+        } catch (fallbackError) {
+          debugPrint(
+            '[MediaReviewScreen] ❌ Critical: Cannot create profile service',
+          );
+        }
+      }
+
+      // Initialize connectivity monitoring with error handling
+      _initializeConnectivity();
+      debugPrint(
+        '[MediaReviewScreen] ✅ Connectivity monitoring initialized successfully',
+      );
+
+      // Initialize posting preference with error handling
+      _initializePostingPreference();
+      debugPrint(
+        '[MediaReviewScreen] ✅ Posting preference initialized successfully',
+      );
+
+      debugPrint(
+        '[MediaReviewScreen] ✅ MediaReviewScreen initialization completed successfully',
+      );
+    } catch (e) {
+      debugPrint(
+        '[MediaReviewScreen] ❌ Critical error during initialization: $e',
+      );
+
+      // Show error to user and provide recovery option
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Error loading media review. Some features may be limited.',
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade600,
+                duration: const Duration(seconds: 4),
+                behavior: SnackBarBehavior.floating,
+                action: SnackBarAction(
+                  label: 'Retry',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    // Navigate back and try again
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            );
+          }
+        });
+      }
     }
-
-    _isPhoto = widget.mediaType == MediaType.photo;
-    if (!_isPhoto) {
-      _initializeVideoPlayer();
-    }
-
-    // Initialize animation controllers
-    _filterAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _filterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _filterAnimationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _aiButtonAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(); // Start the breathing animation immediately
-
-    // Initialize services
-    _initializeLutService();
-    _initializeAIService();
-
-    // Initialize background sync service
-    backgroundSyncService = BackgroundSyncService();
-
-    // Initialize profile service
-    _profileService = ProfileService(hiveService: widget.hiveService);
-
-    // Initialize connectivity monitoring
-    _initializeConnectivity();
-
-    // Initialize posting preference from user settings
-    _initializePostingPreference();
   }
 
   @override
@@ -134,8 +244,35 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
   Future<void> _initializeLutService() async {
     try {
       await _lutFilterService.initialize();
+      debugPrint(
+        '[MediaReviewScreen] ✅ LUT filter service initialized successfully',
+      );
     } catch (e) {
-      // Handle error
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ LUT filter service initialization failed: $e',
+      );
+      // Graceful degradation: LUT filters won't be available but the app continues
+      // Show a brief warning to the user but don't block the UI
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Photo filters temporarily unavailable'),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
     }
   }
 
@@ -149,8 +286,19 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         });
         _aiButtonAnimationController.forward();
       }
+      debugPrint(
+        '[MediaReviewScreen] ✅ AI caption service initialized successfully',
+      );
     } catch (e) {
-      debugPrint('[MediaReviewScreen] Failed to initialize AI service: $e');
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ AI caption service initialization failed: $e',
+      );
+      // Graceful degradation: AI captions won't be available but the app continues
+      if (mounted) {
+        setState(() {
+          _aiCaptionAvailable = false;
+        });
+      }
     }
   }
 
@@ -169,8 +317,37 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
           _isVideoInitialized = true;
         });
       }
+      debugPrint('[MediaReviewScreen] ✅ Video player initialized successfully');
     } catch (e) {
-      // Handle error
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Video player initialization failed: $e',
+      );
+      // Graceful degradation: Show error state for video preview
+      if (mounted) {
+        setState(() {
+          _isVideoInitialized = false;
+        });
+
+        // Show user-friendly error message
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Video preview unavailable'),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade600,
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
     }
   }
 
@@ -645,8 +822,60 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Build video preview with filter overlay
   Widget _buildVideoPreview() {
+    // Handle video initialization failure gracefully
+    if (_videoController == null) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey.shade200,
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_file, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'Video preview unavailable',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'You can still apply filters and post',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (!_isVideoInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Loading video preview...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // Define overlay colors for video filters
@@ -666,24 +895,33 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         break;
     }
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Video player
-        AspectRatio(
-          aspectRatio: _videoController!.value.aspectRatio,
-          child: VideoPlayer(_videoController!),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.black,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video player
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: VideoPlayer(_videoController!),
+            ),
+            // Animated filter overlay
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              decoration: BoxDecoration(
+                color: overlayColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
         ),
-        // Animated filter overlay
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          decoration: BoxDecoration(
-            color: overlayColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1083,14 +1321,36 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
 
   /// Initialize connectivity monitoring
   void _initializeConnectivity() async {
-    // Check initial connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    _updateConnectivityStatus(connectivityResult);
+    try {
+      // Check initial connectivity
+      final connectivityResult = await Connectivity().checkConnectivity();
+      _updateConnectivityStatus(connectivityResult);
 
-    // Listen for connectivity changes
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
-      _updateConnectivityStatus,
-    );
+      // Listen for connectivity changes
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+        _updateConnectivityStatus,
+        onError: (error) {
+          debugPrint(
+            '[MediaReviewScreen] ⚠️ Connectivity monitoring error: $error',
+          );
+          // Set default connectivity state on error
+          if (mounted) {
+            setState(() {
+              _hasConnectivity = true; // Assume connected on error
+            });
+          }
+        },
+      );
+      debugPrint(
+        '[MediaReviewScreen] ✅ Connectivity monitoring started successfully',
+      );
+    } catch (e) {
+      debugPrint(
+        '[MediaReviewScreen] ⚠️ Connectivity initialization failed: $e',
+      );
+      // Set default connectivity state and continue
+      _hasConnectivity = true;
+    }
   }
 
   /// Update connectivity status
@@ -1127,6 +1387,7 @@ class _MediaReviewScreenState extends State<MediaReviewScreen>
         '[MediaReviewScreen] ⚠️ Error loading posting preference, using default (Feed): $e',
       );
       // Keep default value of false (Feed)
+      _postToStory = false;
     }
   }
 
@@ -1366,7 +1627,7 @@ class _FilterThumbnailWidgetState extends State<_FilterThumbnailWidget>
 
     try {
       final previewData = await widget.lutFilterService.getFilterPreview(
-        inputImagePath: widget.mediaPath,
+        mediaPath: widget.mediaPath,
         filterType: widget.filterType,
         previewSize: 48,
       );
