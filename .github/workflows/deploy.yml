@@ -25,14 +25,16 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        id: gitleaks
 
       - name: Upload Gitleaks Report
-        if: always()
+        if: failure() && steps.gitleaks.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: gitleaks-report
+          name: gitleaks-report-${{ github.run_number }}
           path: gitleaks-report.sarif
-          retention-days: 30
+          retention-days: 7
 
       - name: Setup Java
         uses: actions/setup-java@v3
