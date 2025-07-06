@@ -1235,74 +1235,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
   }
 
   /// Build video recording overlay - semi-transparent with countdown
-  /// ✅ CAMERA PREVIEW BLACK SCREEN FIX: Shows countdown over live preview during video recording
-  Widget _buildVideoRecordingOverlay() {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.3), // Less opaque for video
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Large countdown display
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.red.withValues(alpha: 0.8),
-                border: Border.all(color: Colors.white, width: 3),
-              ),
-              child: Text(
-                '$_recordingCountdown',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Recording indicator
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25),
-                color: Colors.red.withValues(alpha: 0.9),
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Pulsing red dot
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.3, end: 1.0),
-                    duration: const Duration(milliseconds: 800),
-                    builder: (context, value, child) => Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: value),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'RECORDING',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// Build top controls (close button, camera info, sign out button)
   Widget _buildTopControls() {
@@ -1464,17 +1396,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
 
                 // Photo capture overlay - semi-transparent with spinner
                 if (_isTakingPhoto) _buildPhotoCapturingOverlay(),
-
-                // Video recording overlay - semi-transparent with countdown
-                if (_isRecordingVideo) _buildVideoRecordingOverlay(),
               ],
             ),
 
           // Camera controls overlay
-          if (!_isInitializing &&
-              _errorMessage == null &&
-              !_isTakingPhoto &&
-              !_isRecordingVideo) ...[
+          if (!_isInitializing && _errorMessage == null) ...[
             _buildTopControls(),
             _buildCameraControls(),
           ],
