@@ -1205,6 +1205,105 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     );
   }
 
+  /// Build photo capturing overlay - semi-transparent with spinner
+  /// ✅ CAMERA PREVIEW BLACK SCREEN FIX: Shows spinner over live preview during photo capture
+  Widget _buildPhotoCapturingOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.5), // Semi-transparent overlay
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Spinner for photo capture
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 3,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Capturing photo...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build video recording overlay - semi-transparent with countdown
+  /// ✅ CAMERA PREVIEW BLACK SCREEN FIX: Shows countdown over live preview during video recording
+  Widget _buildVideoRecordingOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.3), // Less opaque for video
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Large countdown display
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.red.withValues(alpha: 0.8),
+                border: Border.all(color: Colors.white, width: 3),
+              ),
+              child: Text(
+                '$_recordingCountdown',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Recording indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(25),
+                color: Colors.red.withValues(alpha: 0.9),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Pulsing red dot
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.3, end: 1.0),
+                    duration: const Duration(milliseconds: 800),
+                    builder: (context, value, child) => Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: value),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'RECORDING',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Build top controls (close button, camera info, sign out button)
   Widget _buildTopControls() {
     return Positioned(
@@ -1354,17 +1453,22 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 ),
               ),
             )
-          // ✅ DEFINITIVE NAVIGATION CRASH FIX
-          // When taking a photo/video, the camera controller is paused/disposed.
-          // During the navigation animation, this screen can be rebuilt,
-          // causing a crash if it tries to access the disposed controller.
-          // By showing a black container during this brief transition state,
-          // we prevent the CameraPreview widget from ever being built with an invalid controller.
-          else if (_isTakingPhoto || _isRecordingVideo)
-            Container(color: Colors.black)
           else
-            // Camera preview
-            SizedBox.expand(child: _buildCameraPreview()),
+            // ✅ CAMERA PREVIEW BLACK SCREEN FIX
+            // Always show camera preview when controller is valid.
+            // Use overlays for capture states instead of hiding the preview.
+            Stack(
+              children: [
+                // Camera preview - always visible when controller is valid
+                SizedBox.expand(child: _buildCameraPreview()),
+
+                // Photo capture overlay - semi-transparent with spinner
+                if (_isTakingPhoto) _buildPhotoCapturingOverlay(),
+
+                // Video recording overlay - semi-transparent with countdown
+                if (_isRecordingVideo) _buildVideoRecordingOverlay(),
+              ],
+            ),
 
           // Camera controls overlay
           if (!_isInitializing &&
