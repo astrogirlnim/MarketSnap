@@ -19,19 +19,16 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for Gitleaks
 
-      - name: Run Gitleaks Security Scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Gitleaks
+        run: |
+          wget https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          tar -xzf gitleaks_8.24.3_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
 
-      - name: Upload Gitleaks Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-report
-          path: results.sarif
-          retention-days: 30
-        continue-on-error: true  # Don't fail pipeline if artifact upload fails
+      - name: Run Gitleaks Security Scan
+        run: |
+          gitleaks detect --verbose --exit-code=2
+          echo "✅ Gitleaks security scan completed - no leaks found"
 
       - uses: actions/setup-java@v3
         with:
