@@ -7,22 +7,6 @@ import 'package:marketsnap/features/feed/domain/models/snap_model.dart';
 import 'package:marketsnap/features/feed/domain/models/story_item_model.dart';
 import 'package:marketsnap/core/services/profile_update_notifier.dart';
 
-// Local StreamGroup implementation for merging streams
-class StreamGroup {
-  static Stream<T> merge<T>(Iterable<Stream<T>> streams) {
-    final controller = StreamController<T>.broadcast();
-    final subscriptions = <StreamSubscription>[];
-
-    for (final stream in streams) {
-      subscriptions.add(
-        stream.listen(controller.add, onError: controller.addError),
-      );
-    }
-
-    return controller.stream;
-  }
-}
-
 class FeedService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -279,8 +263,8 @@ class FeedService {
       name: 'FeedService',
     );
 
-    // Combine the Firestore snaps stream with profile update stream
-    final snapsStream = _firestore
+    // Use only the Firestore snaps stream - no more problematic merging
+    return _firestore
         .collection('snaps')
         .where(
           'isStory',
@@ -291,7 +275,7 @@ class FeedService {
         .snapshots()
         .map((snapshot) {
           developer.log(
-            '[FeedService] Received ${snapshot.docs.length} regular feed snaps (stories excluded)',
+            '[FeedService] Received ${snapshot.docs.length} regular feed snaps',
             name: 'FeedService',
           );
           final snaps = snapshot.docs
@@ -319,42 +303,16 @@ class FeedService {
             );
           }
 
-          return snaps;
-        });
+          // Apply current profile data to all snaps (using cached data)
+          final result = _applyProfileUpdatesToSnaps(snaps);
 
-    // Create a combined stream that updates snaps when profiles change
-    return StreamGroup.merge([
-      snapsStream,
-      _profileUpdateNotifier.allProfileUpdates.map(
-        (_) => <Snap>[],
-      ), // Trigger refresh on any profile update
-    ]).asyncMap((snapsList) async {
-      // If it's just a profile update trigger (empty list), get current snaps
-      if (snapsList.isEmpty) {
-        try {
-          final snapshot = await _firestore
-              .collection('snaps')
-              .where(
-                'isStory',
-                isEqualTo: false,
-              ) // Only get regular feed posts, not stories
-              .orderBy('createdAt', descending: true)
-              .limit(limit)
-              .get();
-          snapsList = snapshot.docs
-              .map((doc) => Snap.fromFirestore(doc))
-              .toList();
-        } catch (e) {
           developer.log(
-            '[FeedService] Error fetching snaps after profile update: $e',
+            '[FeedService] Emitting ${result.length} snaps to feed',
+            name: 'FeedService',
           );
-          return <Snap>[];
-        }
-      }
 
-      // Apply current profile data to all snaps
-      return _applyProfileUpdatesToSnaps(snapsList);
-    });
+          return result;
+        });
   }
 
   /// Apply cached profile updates to a list of snaps
