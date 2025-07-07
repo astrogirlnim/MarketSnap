@@ -1205,6 +1205,37 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
     );
   }
 
+  /// Build photo capturing overlay - semi-transparent with spinner
+  /// ✅ CAMERA PREVIEW BLACK SCREEN FIX: Shows spinner over live preview during photo capture
+  Widget _buildPhotoCapturingOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.5), // Semi-transparent overlay
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Spinner for photo capture
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 3,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Capturing photo...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build video recording overlay - semi-transparent with countdown
+
   /// Build top controls (close button, camera info, sign out button)
   Widget _buildTopControls() {
     return Positioned(
@@ -1354,23 +1385,22 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen>
                 ),
               ),
             )
-          // ✅ DEFINITIVE NAVIGATION CRASH FIX
-          // When taking a photo/video, the camera controller is paused/disposed.
-          // During the navigation animation, this screen can be rebuilt,
-          // causing a crash if it tries to access the disposed controller.
-          // By showing a black container during this brief transition state,
-          // we prevent the CameraPreview widget from ever being built with an invalid controller.
-          else if (_isTakingPhoto || _isRecordingVideo)
-            Container(color: Colors.black)
           else
-            // Camera preview
-            SizedBox.expand(child: _buildCameraPreview()),
+            // ✅ CAMERA PREVIEW BLACK SCREEN FIX
+            // Always show camera preview when controller is valid.
+            // Use overlays for capture states instead of hiding the preview.
+            Stack(
+              children: [
+                // Camera preview - always visible when controller is valid
+                SizedBox.expand(child: _buildCameraPreview()),
+
+                // Photo capture overlay - semi-transparent with spinner
+                if (_isTakingPhoto) _buildPhotoCapturingOverlay(),
+              ],
+            ),
 
           // Camera controls overlay
-          if (!_isInitializing &&
-              _errorMessage == null &&
-              !_isTakingPhoto &&
-              !_isRecordingVideo) ...[
+          if (!_isInitializing && _errorMessage == null) ...[
             _buildTopControls(),
             _buildCameraControls(),
           ],
