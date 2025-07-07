@@ -23,17 +23,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
         id: gitleaks
-
-      - name: Gitleaks Results
-        run: |
-          if [ "${{ steps.gitleaks.outcome }}" == "failure" ]; then
-            echo "⚠️ Gitleaks detected potential security issues"
-            exit 1
-          else
-            echo "✅ Gitleaks security scan completed - no leaks found"
-          fi
 
       - uses: actions/setup-java@v3
         with:
