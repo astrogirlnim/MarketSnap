@@ -153,37 +153,81 @@ class _FeedScreenState extends State<FeedScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           developer.log(
-            '[FeedScreen] Snaps stream: waiting for data',
+            '[FeedScreen] Loading feed snaps...',
             name: 'FeedScreen',
           );
           return const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),
           );
         }
+
         if (snapshot.hasError) {
           developer.log(
-            '[FeedScreen] Snaps stream error: ${snapshot.error}',
+            '[FeedScreen] Error loading snaps: ${snapshot.error}',
             name: 'FeedScreen',
           );
-          return const SliverFillRemaining(
-            child: Center(child: Text('Error loading snaps')),
-          );
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          developer.log(
-            '[FeedScreen] Snaps stream: no data available',
-            name: 'FeedScreen',
-          );
-          return const SliverFillRemaining(
-            child: Center(child: Text('No snaps yet!')),
+          return SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Something went wrong',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please try again later',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
-        final snaps = snapshot.data!;
+        final snaps = snapshot.data ?? [];
         developer.log(
-          '[FeedScreen] Snaps stream: displaying ${snaps.length} snaps',
+          '[FeedScreen] Displaying ${snaps.length} snaps in feed',
           name: 'FeedScreen',
         );
+
+        if (snaps.isEmpty) {
+          return SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.photo_camera_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No snaps yet!',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Be the first to share something fresh',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
 
         return SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
